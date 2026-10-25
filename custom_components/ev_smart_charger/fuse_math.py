@@ -29,6 +29,7 @@ Every uncertainty is resolved towards a *smaller* limit:
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 NOMINAL_VOLTAGE = 230.0
@@ -86,6 +87,26 @@ def _plausible_voltage(voltage: float | None) -> float:
     return NOMINAL_VOLTAGE
 
 
+def _export_equivalent(magnitude: float, reading: PhaseReading) -> float:
+    """Signed equivalent of an exporting phase, safe against reactive current.
+
+    The meter current is an RMS magnitude: it includes reactive current that
+    the EV charger (unity power factor) does not cancel. Only the ACTIVE
+    export current (export power / voltage) is credited as negative; the
+    remaining reactive part still counts as load. By the triangle inequality
+    ``|(Ia + Ic, Ir)| <= (Ia + Ic) + Ir``, so ``Ir - Ie`` never overstates the
+    room. A pure export (power factor 1) still gives ``-magnitude``; a phase
+    carrying ~3 A of reactive current with a few watts of export (seen on a
+    real meter) is no longer read as 3 A of export.
+    """
+    net_export_w = (reading.export_w or 0.0) - (reading.import_w or 0.0)
+    active_a = min(magnitude, max(0.0, net_export_w) / _plausible_voltage(
+        reading.voltage_v
+    ))
+    reactive_a = math.sqrt(max(0.0, magnitude * magnitude - active_a * active_a))
+    return reactive_a - active_a
+
+
 def signed_grid_current(reading: PhaseReading) -> tuple[float | None, str]:
     """Return the signed grid current for a phase and how it was obtained.
 
@@ -98,7 +119,9 @@ def signed_grid_current(reading: PhaseReading) -> tuple[float | None, str]:
         magnitude = abs(reading.grid_current_a)
         if reading.import_w is not None and reading.export_w is not None:
             if reading.export_w > reading.import_w:
-                return -magnitude, SOURCE_CURRENT_WITH_DIRECTION
+                return _export_equivalent(magnitude, reading), (
+                    SOURCE_CURRENT_WITH_DIRECTION
+                )
             return magnitude, SOURCE_CURRENT_WITH_DIRECTION
         return magnitude, SOURCE_CURRENT
 

@@ -757,6 +757,22 @@ async def _set_amperage(self, target_amperage: int):
 
 ## Version History
 
+### v2.14.2 (2026-10-25) — fork dodg3r
+**FIX: fuse protection over-credited reactive current as export**
+
+Replaying a real HiBerry meter history (20 A fuse) showed L1 carrying ~2.9 A
+while only a few watts were exported: mostly reactive current. The meter
+current is an RMS magnitude, and `signed_grid_current` flipped the whole
+2.9 A to export whenever `export_w > import_w`, so the limit jumped from
+~15 A to ~21 A on a few watts of export. New `_export_equivalent()` credits
+only the ACTIVE export current (`export_w / V`, capped at the magnitude) and
+keeps the reactive remainder as load (`Ir - Ie`; safe by the triangle
+inequality since the EV draws at unity power factor). Pure export still gives
+`-magnitude`; the import path is unchanged. Tests: realistic watts in the
+`_phase` helper, +2 cases (reactive with tiny export, partial power factor).
+
+---
+
 ### v2.14.1 (2026-10-25) — fork dodg3r
 **FIX: dashboard showed "EV charging" with no car plugged in (OCPP `Available`)**
 

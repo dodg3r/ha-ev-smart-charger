@@ -38,10 +38,37 @@ def test_current_with_import_direction_is_positive():
 
 def test_current_with_export_direction_is_negative():
     value, source = signed_grid_current(
-        PhaseReading(grid_current_a=14.0, import_w=0.0, export_w=3200.0)
+        PhaseReading(
+            grid_current_a=14.0, import_w=0.0, export_w=3220.0, voltage_v=230.0
+        )
     )
-    assert value == -14.0
+    assert value == pytest.approx(-14.0)
     assert source == SOURCE_CURRENT_WITH_DIRECTION
+
+
+def test_reactive_current_with_tiny_export_is_not_export():
+    """Real meter: 2.9 A on L1 while only 44 W is exported (reactive load)."""
+    value, _ = signed_grid_current(
+        PhaseReading(grid_current_a=2.9, import_w=0.0, export_w=44.0)
+    )
+    # Active export 0.19 A, reactive 2.89 A -> counts as ~2.7 A of load.
+    assert value == pytest.approx(2.70, abs=0.01)
+
+
+def test_export_with_partial_power_factor_is_conservative():
+    """Export credit never exceeds the active export current."""
+    value, _ = signed_grid_current(
+        PhaseReading(grid_current_a=10.0, export_w=1840.0, voltage_v=230.0)
+    )
+    # Unsigned-current path (no import reading) -> import, the safe side.
+    assert value == 10.0
+    value, _ = signed_grid_current(
+        PhaseReading(
+            grid_current_a=10.0, import_w=0.0, export_w=1840.0, voltage_v=230.0
+        )
+    )
+    # Active 8 A, reactive 6 A -> equivalent -2 A (not -10 A).
+    assert value == pytest.approx(-2.0)
 
 
 def test_current_without_direction_counts_as_import():
@@ -113,7 +140,8 @@ def test_charger_without_setpoint_uses_measurement():
 
 def _phase(grid, imp=None, exp=None, charger=0.0):
     if imp is None and exp is None:
-        imp, exp = (1.0, 0.0) if grid >= 0 else (0.0, 1.0)
+        # Unity power factor: the power matches the current at 230 V.
+        imp, exp = (grid * 230.0, 0.0) if grid >= 0 else (0.0, -grid * 230.0)
     return PhaseReading(
         grid_current_a=abs(grid), import_w=imp, export_w=exp, charger_current_a=charger
     )
