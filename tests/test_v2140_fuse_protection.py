@@ -628,3 +628,130 @@ async def test_fuse_entities_created_only_when_enabled(hass):
             headroom.publish(13, {"state": "limited"})
             assert headroom.native_value == 13
             assert headroom.extra_state_attributes == {"state": "limited"}
+
+
+# ----------------------------------------------------------------------------
+# restoring after a fuse reduction / stop
+# ----------------------------------------------------------------------------
+
+
+def _mutable_guard(ceiling):
+    stub = SimpleNamespace(enabled=True, ceiling=ceiling)
+    stub.max_allowed_amps = lambda: stub.ceiling
+    return stub
+
+
+async def test_reduction_is_restored_up_to_the_request(hass, services):
+    hass.states.async_set("switch.charger", "on")
+    hass.states.async_set("number.charger_current", "16")
+    guard = _mutable_guard(9)
+    controller = _controller(hass, _runtime(guard))
+    await controller.async_setup()
+
+    with patch("asyncio.sleep", new=AsyncMock()):
+        await controller.async_enforce_fuse_ceiling(9, "test")
+        assert controller.fuse_restore_pending() is True
+
+        guard.ceiling = 13
+        await controller.async_restore_after_fuse(13, "room")
+        assert controller.fuse_restore_pending() is True
+
+        guard.ceiling = 32
+        await controller.async_restore_after_fuse(32, "room")
+
+    assert [c[2]["value"] for c in services] == [9, 13, 16]  # never above 16
+    assert controller.fuse_restore_pending() is False
+
+
+async def test_request_capped_at_start_is_restored(hass, services):
+    hass.states.async_set("switch.charger", "off")
+    hass.states.async_set("number.charger_current", "6")
+    guard = _mutable_guard(10)
+    controller = _controller(hass, _runtime(guard))
+    await controller.async_setup()
+
+    with patch("asyncio.sleep", new=AsyncMock()):
+        await controller.start_charger(target_amps=16, reason="night")
+        assert controller.fuse_restore_pending() is True
+        guard.ceiling = 20
+        await controller.async_restore_after_fuse(20, "room")
+
+    values = [c[2]["value"] for c in services if c[0] == "number"]
+    assert values == [10, 16]
+
+
+async def test_automation_lowering_current_is_not_undone(hass, services):
+    hass.states.async_set("switch.charger", "on")
+    hass.states.async_set("number.charger_current", "16")
+    guard = _mutable_guard(9)
+    controller = _controller(hass, _runtime(guard))
+    await controller.async_setup()
+
+    with patch("asyncio.sleep", new=AsyncMock()):
+        await controller.async_enforce_fuse_ceiling(9, "test")
+        # Solar surplus now asks for 8 A itself: that is the new request.
+        await controller.set_amperage(8, reason="solar")
+        guard.ceiling = 32
+        await controller.async_restore_after_fuse(32, "room")
+
+    assert [c[2]["value"] for c in services] == [9, 8]
+
+
+async def test_fuse_stop_restarts_when_room_returns(hass, services):
+    hass.states.async_set("switch.charger", "on")
+    hass.states.async_set("number.charger_current", "16")
+    guard = _mutable_guard(0)
+    controller = _controller(hass, _runtime(guard))
+    await controller.async_setup()
+
+    with patch("asyncio.sleep", new=AsyncMock()):
+        await controller.async_enforce_fuse_ceiling(0, "overload")
+        assert controller.is_fuse_paused() is True
+
+        guard.ceiling = 10
+        await controller.async_restore_after_fuse(10, "room")
+
+    assert services == [
+        ("switch", "turn_off", {"entity_id": "switch.charger"}),
+        ("number", "set_value", {"entity_id": "number.charger_current", "value": 10}),
+        ("switch", "turn_on", {"entity_id": "switch.charger"}),
+    ]
+    assert controller.is_fuse_paused() is False
+
+
+async def test_deliberate_stop_cancels_fuse_restart(hass, services):
+    hass.states.async_set("switch.charger", "on")
+    hass.states.async_set("number.charger_current", "16")
+    guard = _mutable_guard(0)
+    controller = _controller(hass, _runtime(guard))
+    await controller.async_setup()
+
+    with patch("asyncio.sleep", new=AsyncMock()):
+        await controller.async_enforce_fuse_ceiling(0, "overload")
+        # The user (or an automation) turns the charger off on purpose; the
+        # stop must win over the pending fuse restart.
+        hass.states.async_set("switch.charger", "on")
+        await controller.stop_charger(reason="user")
+        guard.ceiling = 16
+        await controller.async_restore_after_fuse(16, "room")
+
+    assert ("switch", "turn_on", {"entity_id": "switch.charger"}) not in services
+    assert controller.is_fuse_paused() is False
+
+
+async def test_guard_triggers_restore_when_room_returns(hass):
+    _set_phase(hass, 1, 5)
+    _set_phase(hass, 2, 5)
+    _set_phase(hass, 3, 5)
+    _set_charger(hass, False, 6, [0, 0, 0])
+    controller = SimpleNamespace(
+        async_enforce_fuse_ceiling=AsyncMock(),
+        async_restore_after_fuse=AsyncMock(),
+        fuse_restore_pending=lambda: True,
+    )
+    guard, _ = await _guard(hass, controller=controller)
+    await hass.async_block_till_done()
+
+    controller.async_restore_after_fuse.assert_awaited_with(18, ANY)
+    controller.async_enforce_fuse_ceiling.assert_not_awaited()
+    await guard.async_remove()

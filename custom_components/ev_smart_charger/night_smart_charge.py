@@ -1900,6 +1900,17 @@ class NightSmartCharge:
                 else:
                     self._grid_battery_masking_tracker.reset()
 
+        # v2.14.0: the main-fuse guard paused charging (house load too high
+        # for even the minimum current). That is not the end of the session:
+        # skip the "still charging?" checks so the session survives the pause,
+        # and let the guard restart the charger when the fuse has room again.
+        is_fuse_paused = getattr(self.charger_controller, "is_fuse_paused", None)
+        if callable(is_fuse_paused) and is_fuse_paused() is True:
+            self._grid_drawing_low_since = None
+            self.logger.info("Charging paused by main fuse protection - session kept")
+            self.logger.separator()
+            return
+
         # Check 2: Validate the charger is still actually charging.
         # v2.2.0 has TWO independent stop reasons:
         #   (a) Lifecycle stop — an explicit not-charging status (free/end/

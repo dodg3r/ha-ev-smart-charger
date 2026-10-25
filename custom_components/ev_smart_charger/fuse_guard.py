@@ -334,9 +334,30 @@ class FuseGuard:
         self._log_transition(decision, limit)
         self._publish(decision, limit, margin, readings)
 
-        if enforce and charger_on and self._needs_enforcement(decision, setpoint, readings):
-            self._start_enforcement(decision)
+        if enforce:
+            if charger_on and self._needs_enforcement(decision, setpoint, readings):
+                self._start_enforcement(decision)
+            elif decision.allowed_a > 0 and self._restore_pending():
+                self._start_restore(decision)
         return decision
+
+    def _restore_pending(self) -> bool:
+        check = getattr(self._controller, "fuse_restore_pending", None)
+        return bool(check()) if callable(check) else False
+
+    def _start_restore(self, decision: LimiterDecision) -> None:
+        if self._enforce_task is not None and not self._enforce_task.done():
+            return
+        reason = f"Main fuse protection: room again (ceiling {decision.allowed_a}A)"
+        self._enforce_task = self.hass.async_create_task(
+            self._async_restore(decision.allowed_a, reason)
+        )
+
+    async def _async_restore(self, ceiling: int, reason: str) -> None:
+        try:
+            await self._controller.async_restore_after_fuse(ceiling, reason)
+        except Exception as ex:  # never let the watchdog die
+            self.logger.error("Fuse restore failed: %s", ex)
 
     def _needs_enforcement(
         self,
