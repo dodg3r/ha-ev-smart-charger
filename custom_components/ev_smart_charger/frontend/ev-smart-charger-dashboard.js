@@ -168,6 +168,8 @@ const DOMAIN_SUFFIXES = {
   // v1.11.9: runtime state of Night Smart Charge (`idle` | `battery` | `grid`).
   // Drives the blue-violet hero banner when a session is running.
   nightSession: ["sensor", "evsc_night_session_state"],
+  // v2.15.0: main fuse protection (only exists when a fuse size is set).
+  fuseHeadroom: ["sensor", "evsc_fuse_headroom"],
 };
 
 // Daily helper entities — generated programmatically (saves ~50 lines of boilerplate).
@@ -649,6 +651,18 @@ const FRONTEND_LOCALES = {
     "hero.banner.boost_session": "Boost Session Active",
     "hero.banner.night_charge": "Night Smart Charge Active",
     "hero.banner.charging": "EV Charging",
+    "status.charging": "Charging",
+    "status.capped_by_fuse": "capped by main fuse ({phase})",
+    "status.no_car": "No car connected",
+    "status.manual_stop": "Stopped manually · Stop Charging is on",
+    "status.fuse_paused": "Paused by main fuse protection · {phase} at {amps} A of {fuse} A",
+    "status.fuse_invalid": "Paused · main fuse meter data unavailable",
+    "status.complete": "Charging complete",
+    "status.boost_starting": "Boost is starting…",
+    "status.force_waiting": "Force Charge is on · charger is not running",
+    "status.night_waiting": "Night charge starts at {time}",
+    "status.waiting": "Waiting · {reason}",
+    "status.not_charging": "Not charging",
     "hero.forecast_tomorrow": "Tomorrow Forecast",
     "hero.grid_lost": "⚠ Grid lost",
     "toast.boost.target_reached": "Boost can't start: EV at {ev}% (≥ target {target}%). Raise the target or wait for the battery to drain.",
@@ -801,6 +815,18 @@ const FRONTEND_LOCALES = {
     "hero.banner.boost_session": "Boost Session in corso",
     "hero.banner.night_charge": "Night Smart Charge in corso",
     "hero.banner.charging": "EV in ricarica",
+    "status.charging": "In ricarica",
+    "status.capped_by_fuse": "limitata dal fusibile principale ({phase})",
+    "status.no_car": "Nessuna auto collegata",
+    "status.manual_stop": "Fermata manualmente · Blocca ricarica attivo",
+    "status.fuse_paused": "In pausa per protezione fusibile principale · {phase} a {amps} A su {fuse} A",
+    "status.fuse_invalid": "In pausa · dati del contatore non disponibili",
+    "status.complete": "Ricarica completata",
+    "status.boost_starting": "Avvio Boost…",
+    "status.force_waiting": "Forza ricarica attiva · il caricatore non è in funzione",
+    "status.night_waiting": "La ricarica notturna inizia alle {time}",
+    "status.waiting": "In attesa · {reason}",
+    "status.not_charging": "Non in carica",
     "hero.forecast_tomorrow": "Forecast Domani",
     "hero.grid_lost": "⚠ Rete assente",
     "toast.boost.target_reached": "Boost non può partire: EV al {ev}% (≥ target {target}%). Alza il target o aspetta che la batteria scenda.",
@@ -953,6 +979,18 @@ const FRONTEND_LOCALES = {
     "hero.banner.boost_session": "Boost Sessie actief",
     "hero.banner.night_charge": "Slim nachtelijk laden actief",
     "hero.banner.charging": "EV aan het laden",
+    "status.charging": "Aan het laden",
+    "status.capped_by_fuse": "begrensd door hoofdzekering ({phase})",
+    "status.no_car": "Geen auto aangesloten",
+    "status.manual_stop": "Handmatig gestopt · Laden stoppen staat aan",
+    "status.fuse_paused": "Gepauzeerd door hoofdzekeringbeveiliging · {phase} op {amps} A van {fuse} A",
+    "status.fuse_invalid": "Gepauzeerd · meetgegevens hoofdzekering niet beschikbaar",
+    "status.complete": "Laden voltooid",
+    "status.boost_starting": "Boost wordt gestart…",
+    "status.force_waiting": "Laden forceren staat aan · lader is niet actief",
+    "status.night_waiting": "Nachtladen start om {time}",
+    "status.waiting": "Wachten · {reason}",
+    "status.not_charging": "Laadt niet",
     "hero.forecast_tomorrow": "Verwachting morgen",
     "hero.grid_lost": "⚠ Net weg",
     "toast.boost.target_reached": "Boost kan niet starten: EV op {ev}% (≥ doel {target}%). Verhoog het doel of wacht tot de batterij zakt.",
@@ -1151,6 +1189,10 @@ class EvSmartChargerDashboard extends HTMLElement {
       // _computeChargingPowerKw. MUST be whitelisted or it is silently dropped
       // (cf. the v1.11.13 pv_forecast_entity regression above).
       charging_power_entities: config?.charging_power_entities,
+      // v2.15.0: measured charger current (fuse protection mapping) for the
+      // Charge Current tile and the hero status line. MUST be whitelisted.
+      charger_current_entity: config?.charger_current_entity,
+      charger_current_entities: config?.charger_current_entities,
     };
 
     // v1.11.4: capture the build version injected by dashboard_manager.py.
@@ -1635,6 +1677,166 @@ class EvSmartChargerDashboard extends HTMLElement {
    * unit_of_measurement. Unknown / missing unit → assume W (the config-flow
    * field maps watt sensors). null when unreadable.
    */
+  /**
+   * v2.15.0: translate with {placeholder} substitution.
+   */
+  _tf(key, vars = {}) {
+    let text = this._t(key);
+    for (const [name, value] of Object.entries(vars)) {
+      text = text.replaceAll(`{${name}}`, String(value));
+    }
+    return text;
+  }
+
+  /**
+   * v2.15.0: highest MEASURED charger phase current in amps, or null.
+   * Reads the fuse-protection mapping: per-phase sensors when mapped, else
+   * the single sensor's L1/L2/L3 attributes (OCPP `current_import`), else its
+   * state. Mirrors fuse_guard so the card shows what the guard sees.
+   */
+  _measuredChargerCurrentA() {
+    const readNum = (raw) => {
+      if (raw == null) return null;
+      const v = Number(String(raw).replace(",", "."));
+      return Number.isFinite(v) ? v : null;
+    };
+    const ids = this._config.charger_current_entities;
+    if (Array.isArray(ids) && ids.length > 0) {
+      const values = ids
+        .map((id) => this._stateObj(id))
+        .filter((o) => o && o.state !== "unknown" && o.state !== "unavailable")
+        .map((o) => readNum(o.state))
+        .filter((v) => v != null);
+      return values.length ? Math.max(0, ...values) : null;
+    }
+    const obj = this._stateObj(this._config.charger_current_entity);
+    if (!obj || obj.state === "unknown" || obj.state === "unavailable") return null;
+    const names = [
+      ["L1", "l1", "L1-N", "phase_1", "phase1", "current_l1"],
+      ["L2", "l2", "L2-N", "phase_2", "phase2", "current_l2"],
+      ["L3", "l3", "L3-N", "phase_3", "phase3", "current_l3"],
+    ];
+    const phases = [];
+    for (const group of names) {
+      for (const name of group) {
+        const v = readNum(obj.attributes?.[name]);
+        if (v != null) { phases.push(v); break; }
+      }
+    }
+    if (phases.length) return Math.max(0, ...phases);
+    return readNum(obj.state);
+  }
+
+  /** v2.15.0: "15.9 A" style display of a current, or null. */
+  _formatAmps(value) {
+    if (value == null) return null;
+    if (value < 0.05) return "0 A";
+    return `${value >= 10 ? Math.round(value) : value.toFixed(1)} A`;
+  }
+
+  /**
+   * v2.15.0: one-line hero status. While charging: current, power, SOC
+   * towards today's target and a main-fuse cap note. Otherwise the most
+   * specific reason the car is not charging. Returns {text, tone}.
+   */
+  _heroStatus() {
+    const isOn = (key) => this._stateObj(this._entityId(key))?.state === "on";
+    const fuse = this._stateObj(this._entityId("fuseHeadroom"));
+    const fuseState = fuse?.attributes?.state;
+    const phase = fuse?.attributes?.bottleneck_phase || "";
+    const status = this._stateObj(this._config.charger_status_entity)?.state;
+    const normStatus = status
+      ? String(status).trim().toLowerCase().replace(/[\s-]+/g, "_")
+      : "";
+
+    if (this._isDrawingNow()) {
+      const parts = [this._t("status.charging")];
+      const amps = this._measuredChargerCurrentA()
+        ?? this._numericState(this._config.current_entity);
+      const ampsText = this._formatAmps(amps);
+      if (ampsText) parts.push(ampsText);
+      const kw = this._computeChargingPowerKw();
+      if (kw != null && kw > 0) parts.push(`${kw.toFixed(1)} kW`);
+      const ev = this._numericState(this._config.ev_soc_entity);
+      const target = isOn("boostEnabled")
+        ? this._numericState(this._entityId("boostTargetSoc"))
+        : this._numericState(this._entityId("todayEvTarget"));
+      if (ev != null) {
+        parts.push(target != null
+          ? `${Math.round(ev)}% → ${Math.round(target)}%`
+          : `${Math.round(ev)}%`);
+      }
+      const allowed = Number(fuse?.state);
+      const setpoint = this._numericState(this._config.current_entity);
+      if ((fuseState === "limited" || fuseState === "ramping")
+          && Number.isFinite(allowed) && setpoint != null && setpoint >= allowed) {
+        parts.push(this._tf("status.capped_by_fuse", { phase }));
+      }
+      return { text: parts.join(" · "), tone: "charging" };
+    }
+
+    if (isOn("manualStop")) {
+      return { text: this._t("status.manual_stop"), tone: "alert" };
+    }
+    if (isNotDrawingStatus(status) && [
+      "charger_free", "available", "disconnected", "unplugged", "not_connected",
+      "no_car", "no_vehicle", "car_not_connected",
+    ].includes(normStatus)) {
+      return { text: this._t("status.no_car"), tone: "idle" };
+    }
+    if (fuseState === "invalid_data_stop") {
+      return { text: this._t("status.fuse_invalid"), tone: "alert" };
+    }
+    if (fuseState === "stopped" || fuseState === "hold") {
+      const key = phase ? `grid_current_${phase.toLowerCase()}` : null;
+      const grid = key != null ? Number(fuse?.attributes?.[key]) : NaN;
+      return {
+        text: this._tf("status.fuse_paused", {
+          phase,
+          amps: Number.isFinite(grid) ? Math.abs(grid).toFixed(1) : "?",
+          fuse: fuse?.attributes?.main_fuse_a ?? "?",
+        }),
+        tone: "alert",
+      };
+    }
+    if ([
+      "charger_end", "charged", "complete", "completed", "finished", "finishing",
+      "full", "charge_complete", "charging_complete",
+    ].includes(normStatus)) {
+      return { text: this._t("status.complete"), tone: "done" };
+    }
+    if (isOn("boostEnabled")) {
+      return { text: this._t("status.boost_starting"), tone: "idle" };
+    }
+    if (isOn("forceCharge")) {
+      return { text: this._t("status.force_waiting"), tone: "alert" };
+    }
+    const diag = this._stateObj(this._entityId("solarDiagnostic"))?.state || "";
+    if (/nighttime/i.test(diag) && isOn("nightEnabled")) {
+      const time = (this._stateObj(this._entityId("nightTime"))?.state || "").slice(0, 5);
+      if (time) {
+        return { text: this._tf("status.night_waiting", { time }), tone: "idle" };
+      }
+    }
+    if (diag && !["unknown", "unavailable"].includes(diag)) {
+      const reason = diag.replace(/^(SKIPPED|WAITING|INFO)\s*:\s*/i, "");
+      return { text: this._tf("status.waiting", { reason }), tone: "idle" };
+    }
+    return { text: this._t("status.not_charging"), tone: "idle" };
+  }
+
+  /** v2.15.0: "Charging · 16 A · 3.7 kW" for the pill under the ring. */
+  _ringPillText() {
+    const parts = [this._t("status.charging")];
+    const ampsText = this._formatAmps(
+      this._measuredChargerCurrentA() ?? this._numericState(this._config.current_entity),
+    );
+    if (ampsText) parts.push(ampsText);
+    const kw = this._computeChargingPowerKw();
+    if (kw != null && kw > 0) parts.push(`${kw.toFixed(1)} kW`);
+    return parts.join(" · ");
+  }
+
   _powerW(id) {
     // Single state-object lookup (read both .state and the unit from it).
     const obj = this._stateObj(id);
@@ -1913,6 +2115,7 @@ class EvSmartChargerDashboard extends HTMLElement {
             <div class="ring-sub" data-live="ring.sub">${sub}</div>
           </div>
         </div>
+        ${isCharging ? `<div class="hero-ring-pill"><span class="hero-ring-pill-dot"></span><span data-live="ring.pill">${this._ringPillText()}</span></div>` : ""}
         <div class="hero-ring-legend">
           <div style="color: var(--evsc-aurora-green);"><span class="ring-dot"></span><span data-live="legend.ev">${legendEvText}</span></div>
           ${legendHome}
@@ -2712,6 +2915,10 @@ class EvSmartChargerDashboard extends HTMLElement {
                   ${this._renderGridLostPill()}
                 </div>
                 <h1>${this._config.title || this._t("title.default")}</h1>
+                ${(() => {
+                  const st = this._heroStatus();
+                  return `<p class="evsc-hero-status" data-tone="${st.tone}" data-live="hero.status" data-live-attr-id="hero.statusTone" role="status" aria-live="polite">${st.text}</p>`;
+                })()}
                 <div class="evsc-metric-row">
                   ${this._renderMetric(this._t("metric.solar_power"), displayValues.solarPower, "amber", "", "metric.solarPower")}
                   ${this._renderMetric(this._t("metric.grid_import"), displayValues.gridImport, "rose", "", "metric.gridImport")}
@@ -2846,7 +3053,17 @@ class EvSmartChargerDashboard extends HTMLElement {
     // falls through to the original single-entity display path).
     const solarPower = this._phaseAwareDisplay("solar_power_entities", "solar_power_entity", this._t("fallback.solar_power_entity"));
     const gridImport = this._phaseAwareDisplay("grid_import_entities", "grid_import_entity", this._t("fallback.grid_import_entity"));
-    const chargerCurrent = this._displayValue(this._config.current_entity, this._t("fallback.current_entity"));
+    // v2.15.0: show the MEASURED charger current when the fuse-protection
+    // mapping provides it; else the configured setpoint. An OCPP session
+    // limit entity only exists during a session, so a mapped-but-missing
+    // entity reads "—" instead of the "Add current_entity" setup hint.
+    const measuredAmps = this._measuredChargerCurrentA();
+    const chargerCurrent = measuredAmps != null
+      ? this._formatAmps(measuredAmps)
+      : this._displayValue(
+        this._config.current_entity,
+        this._config.current_entity ? "—" : this._t("fallback.current_entity"),
+      );
 
     // v1.10.0: dispatch into Dashboard or Settings view depending on _view.
     // v1.11.9: include nightSessionId so the hero banner can read the
@@ -3027,6 +3244,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     const legendHomeText = homePct != null
       ? `${this._t("metric.home_battery")} ${Math.round(homePct)}%`
       : "";
+    const heroStatus = this._heroStatus();
 
     // v1.11.3: collect toggle / number / time state for live-update so
     // those interactions no longer trigger a full innerHTML rebuild.
@@ -3080,8 +3298,11 @@ class EvSmartChargerDashboard extends HTMLElement {
         "legend.ev": legendEvText,
         "legend.home": legendHomeText,
         "forecast.tomorrow": forecastValue,
+        "hero.status": heroStatus.text,
+        "ring.pill": this._ringPillText(),
       },
       attrs: {
+        "hero.statusTone": { attr: "data-tone", value: heroStatus.tone },
         "ring.evOffset": {
           attr: "stroke-dashoffset",
           value: String(cOuter * (1 - evFrac)),
@@ -3582,6 +3803,36 @@ class EvSmartChargerDashboard extends HTMLElement {
         }
         .hero-ring-legend {
           display: flex; gap: 16px; justify-content: center; margin-top: 12px;
+        }
+        /* v2.15.0: "Charging · 16 A · 3.7 kW" pill under the SOC ring. */
+        .hero-ring-pill {
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          margin: 14px auto 0; width: fit-content; max-width: 100%;
+          padding: 6px 14px; border-radius: 999px;
+          font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em;
+          text-transform: uppercase; font-variant-numeric: tabular-nums;
+          color: var(--evsc-aurora-green);
+          background: color-mix(in srgb, var(--evsc-aurora-green) 14%, transparent);
+          border: 1px solid color-mix(in srgb, var(--evsc-aurora-green) 35%, transparent);
+          box-shadow: 0 0 18px color-mix(in srgb, var(--evsc-aurora-green) 22%, transparent);
+        }
+        .hero-ring-pill-dot {
+          width: 7px; height: 7px; border-radius: 50%;
+          background: currentColor;
+          animation: evsc-pulse-slow 3.2s ease-in-out infinite;
+        }
+        /* v2.15.0: one-line hero status under the title. */
+        .evsc-hero-status {
+          margin: 0 0 14px;
+          font-size: 0.92rem; line-height: 1.4;
+          color: var(--evsc-fg-mid);
+          font-variant-numeric: tabular-nums;
+        }
+        .evsc-hero-status[data-tone="charging"] { color: var(--evsc-sys-green); }
+        .evsc-hero-status[data-tone="alert"] { color: var(--evsc-sys-red); }
+        .evsc-hero-status[data-tone="done"] { color: var(--evsc-sys-blue); }
+        @media (prefers-reduced-motion: reduce) {
+          .hero-ring-pill-dot { animation: none; }
         }
         .hero-ring-legend > div {
           display: flex; align-items: center; gap: 6px;

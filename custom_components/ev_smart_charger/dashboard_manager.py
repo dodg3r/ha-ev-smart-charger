@@ -64,6 +64,10 @@ from .const import (
     CONF_FV_PRODUCTION_L2,
     CONF_FV_PRODUCTION_L3,
     CONF_GRID_AVAILABLE,
+    CONF_FUSE_CHARGER_CURRENT,
+    CONF_FUSE_CHARGER_CURRENT_L1,
+    CONF_FUSE_CHARGER_CURRENT_L2,
+    CONF_FUSE_CHARGER_CURRENT_L3,
     CONF_GRID_IMPORT,
     CONF_GRID_IMPORT_L2,
     CONF_GRID_IMPORT_L3,
@@ -240,11 +244,27 @@ def _build_card_config(entry: ConfigEntry) -> dict[str, Any]:
         "battery_power_entity": CONF_BATTERY_POWER,
         # v2.6.0 (issue #36): optional grid-availability binary_sensor.
         "grid_available_entity": CONF_GRID_AVAILABLE,
+        # v2.15.0: measured charger current (main fuse protection mapping).
+        # A single sensor that may carry per-phase L1/L2/L3 attributes.
+        "charger_current_entity": CONF_FUSE_CHARGER_CURRENT,
     }
     for card_key, conf_key in mapping.items():
         value = data.get(conf_key)
         if value:
             config[card_key] = value
+
+    # v2.15.0: per-phase measured charger current sensors (fuse protection).
+    phase_currents = [
+        data[k]
+        for k in (
+            CONF_FUSE_CHARGER_CURRENT_L1,
+            CONF_FUSE_CHARGER_CURRENT_L2,
+            CONF_FUSE_CHARGER_CURRENT_L3,
+        )
+        if data.get(k)
+    ]
+    if phase_currents:
+        config["charger_current_entities"] = phase_currents
 
     # v2.0.0: phase mode + charger model. In three-phase, pass the per-phase
     # entity lists so the card sums them for the power tiles (and uses 690 V for

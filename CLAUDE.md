@@ -757,6 +757,32 @@ async def _set_amperage(self, target_amperage: int):
 
 ## Version History
 
+### v2.15.0 (2026-10-25) — fork dodg3r
+**FEATURE: hero status line, charging pill and measured charge current on the dashboard**
+
+The hero card only named the active mode in its banner. New, frontend-led:
+- **Status line** under the title (`_heroStatus()`, live via `data-live`
+  `hero.status` + `data-tone`): while drawing "Charging · 10 A · 6.9 kW ·
+  45% → 80%" (boost target when Boost is on, else today's EV target) plus
+  "capped by main fuse (L1)" when the fuse limiter is `limited`/`ramping` and
+  the setpoint is at the ceiling. Otherwise the most specific reason, in
+  order: manual stop, no car (disconnected status), fuse meter data invalid,
+  fuse stop/hold (bottleneck phase current vs fuse size), charge complete,
+  Boost starting, Force Charge on but not running, night charge start time
+  (Solar Surplus diagnostic says nighttime and Night Charge is on), else the
+  Solar Surplus diagnostic reason, else "Not charging".
+- **Pill under the ring**: "Charging · 10 A · 6.9 kW" while drawing.
+- **Charge Current tile** shows the MEASURED charger current (highest phase)
+  from the fuse-protection mapping (`charger_current_entity` with L1/L2/L3
+  attributes, or `charger_current_entities`), falling back to the setpoint
+  entity; a mapped-but-missing setpoint (OCPP session limit outside a
+  session) reads "—" instead of the "Add `current_entity`" setup hint.
+- `dashboard_manager` passes `charger_current_entity` /
+  `charger_current_entities`; both whitelisted in `setConfig`. New suffix
+  `fuseHeadroom`. New `status.*` strings EN/IT/NL (no Swedish locale yet).
+
+---
+
 ### v2.14.2 (2026-10-25) — fork dodg3r
 **FIX: fuse protection over-credited reactive current as export**
 
