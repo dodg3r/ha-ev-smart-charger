@@ -75,6 +75,48 @@
           "battery_power": "Optioneel. Batterijvermogen met teken in watt — NEGATIEF = ontladen, POSITIEF = laden. Laat de sonde detecteren wanneer de thuisbatterij (niet de zon) de EV dekt, om valse 'ruimte gevonden'-resultaten te voorkomen. Gebruikt je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld."
         }
       },
+      "main_fuse": {
+        "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
+        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering (Uit = functie uit) en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).",
+        "data": {
+          "main_fuse_size": "Grootte hoofdzekering",
+          "fuse_grid_current_l1": "Meterstroom L1 (A)",
+          "fuse_grid_current_l2": "Meterstroom L2 (A)",
+          "fuse_grid_current_l3": "Meterstroom L3 (A)",
+          "fuse_grid_import_l1": "Afgenomen vermogen L1 (W)",
+          "fuse_grid_import_l2": "Afgenomen vermogen L2 (W)",
+          "fuse_grid_import_l3": "Afgenomen vermogen L3 (W)",
+          "fuse_grid_export_l1": "Teruggeleverd vermogen L1 (W)",
+          "fuse_grid_export_l2": "Teruggeleverd vermogen L2 (W)",
+          "fuse_grid_export_l3": "Teruggeleverd vermogen L3 (W)",
+          "fuse_grid_voltage_l1": "Spanning L1 (V)",
+          "fuse_grid_voltage_l2": "Spanning L2 (V)",
+          "fuse_grid_voltage_l3": "Spanning L3 (V)",
+          "fuse_charger_current": "Laadstroom (A, met L1/L2/L3-attributen)",
+          "fuse_charger_current_l1": "Laadstroom L1 (A)",
+          "fuse_charger_current_l2": "Laadstroom L2 (A)",
+          "fuse_charger_current_l3": "Laadstroom L3 (A)"
+        },
+        "data_description": {
+          "main_fuse_size": "Waarde van je hoofdzekering per fase. Uit = geen bewaking.",
+          "fuse_grid_current_l1": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
+          "fuse_grid_current_l2": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
+          "fuse_grid_current_l3": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
+          "fuse_grid_import_l1": "Van het net afgenomen vermogen op deze fase (0 bij teruglevering). Geeft de richting.",
+          "fuse_grid_import_l2": "Van het net afgenomen vermogen op deze fase (0 bij teruglevering). Geeft de richting.",
+          "fuse_grid_import_l3": "Van het net afgenomen vermogen op deze fase (0 bij teruglevering). Geeft de richting.",
+          "fuse_grid_export_l1": "Teruggeleverd vermogen op deze fase (0 bij afname).",
+          "fuse_grid_export_l2": "Teruggeleverd vermogen op deze fase (0 bij afname).",
+          "fuse_grid_export_l3": "Teruggeleverd vermogen op deze fase (0 bij afname).",
+          "fuse_grid_voltage_l1": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
+          "fuse_grid_voltage_l2": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
+          "fuse_grid_voltage_l3": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
+          "fuse_charger_current": "Stroomsensor van de lader. Waarden per fase komen uit de L1/L2/L3-attributen.",
+          "fuse_charger_current_l1": "Optioneel. Sensoren per fase gaan voor op de attributen.",
+          "fuse_charger_current_l2": "Optioneel. Sensoren per fase gaan voor op de attributen.",
+          "fuse_charger_current_l3": "Optioneel. Sensoren per fase gaan voor op de attributen."
+        }
+      },
       "pv_forecast": {
         "title": "Zonneverwachting - Stap {step}/{total_steps}",
         "description": "Optionele sensor die door Night Smart Charge wordt gebruikt om te beslissen of er 's nachts vanuit de thuisbatterij of het net geladen moet worden.",
@@ -179,6 +221,48 @@
           "battery_power": "Optioneel. Batterijvermogen met teken in watt — NEGATIEF = ontladen, POSITIEF = laden. Laat de sonde detecteren wanneer de thuisbatterij (niet de zon) de EV dekt, om valse 'ruimte gevonden'-resultaten te voorkomen. Gebruikt je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld."
         }
       },
+      "reconfigure_main_fuse": {
+        "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
+        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering (Uit = functie uit) en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).",
+        "data": {
+          "main_fuse_size": "Grootte hoofdzekering",
+          "fuse_grid_current_l1": "Meterstroom L1 (A)",
+          "fuse_grid_current_l2": "Meterstroom L2 (A)",
+          "fuse_grid_current_l3": "Meterstroom L3 (A)",
+          "fuse_grid_import_l1": "Afgenomen vermogen L1 (W)",
+          "fuse_grid_import_l2": "Afgenomen vermogen L2 (W)",
+          "fuse_grid_import_l3": "Afgenomen vermogen L3 (W)",
+          "fuse_grid_export_l1": "Teruggeleverd vermogen L1 (W)",
+          "fuse_grid_export_l2": "Teruggeleverd vermogen L2 (W)",
+          "fuse_grid_export_l3": "Teruggeleverd vermogen L3 (W)",
+          "fuse_grid_voltage_l1": "Spanning L1 (V)",
+          "fuse_grid_voltage_l2": "Spanning L2 (V)",
+          "fuse_grid_voltage_l3": "Spanning L3 (V)",
+          "fuse_charger_current": "Laadstroom (A, met L1/L2/L3-attributen)",
+          "fuse_charger_current_l1": "Laadstroom L1 (A)",
+          "fuse_charger_current_l2": "Laadstroom L2 (A)",
+          "fuse_charger_current_l3": "Laadstroom L3 (A)"
+        },
+        "data_description": {
+          "main_fuse_size": "Waarde van je hoofdzekering per fase. Uit = geen bewaking.",
+          "fuse_grid_current_l1": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
+          "fuse_grid_current_l2": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
+          "fuse_grid_current_l3": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
+          "fuse_grid_import_l1": "Van het net afgenomen vermogen op deze fase (0 bij teruglevering). Geeft de richting.",
+          "fuse_grid_import_l2": "Van het net afgenomen vermogen op deze fase (0 bij teruglevering). Geeft de richting.",
+          "fuse_grid_import_l3": "Van het net afgenomen vermogen op deze fase (0 bij teruglevering). Geeft de richting.",
+          "fuse_grid_export_l1": "Teruggeleverd vermogen op deze fase (0 bij afname).",
+          "fuse_grid_export_l2": "Teruggeleverd vermogen op deze fase (0 bij afname).",
+          "fuse_grid_export_l3": "Teruggeleverd vermogen op deze fase (0 bij afname).",
+          "fuse_grid_voltage_l1": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
+          "fuse_grid_voltage_l2": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
+          "fuse_grid_voltage_l3": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
+          "fuse_charger_current": "Stroomsensor van de lader. Waarden per fase komen uit de L1/L2/L3-attributen.",
+          "fuse_charger_current_l1": "Optioneel. Sensoren per fase gaan voor op de attributen.",
+          "fuse_charger_current_l2": "Optioneel. Sensoren per fase gaan voor op de attributen.",
+          "fuse_charger_current_l3": "Optioneel. Sensoren per fase gaan voor op de attributen."
+        }
+      },
       "reconfigure_pv_forecast": {
         "title": "Zonneverwachting opnieuw configureren - Stap {step}/{total_steps}",
         "description": "Werk de optionele verwachtingssensor bij of verwijder deze voor Night Smart Charge.",
@@ -274,7 +358,9 @@
       "required": "Dit veld is verplicht.",
       "invalid_battery_capacity": "De batterijcapaciteit moet tussen 10 en 200 kWh liggen.",
       "entity_not_found": "Entiteit niet gevonden.",
-      "invalid_domain": "De entiteit moet tot het domein `number` of `input_number` behoren."
+      "invalid_domain": "De entiteit moet tot het domein `number` of `input_number` behoren.",
+      "fuse_phase_reading_required": "Koppel voor deze fase minstens de meterstroom of het afgenomen vermogen.",
+      "fuse_charger_current_required": "Koppel de laadstroom (sensor met L1/L2/L3-attributen of sensoren per fase)."
     },
     "abort": {
       "already_configured": "Een andere EV Smart Charger-configuratie gebruikt deze laderschakelaar al.",
@@ -340,6 +426,48 @@
         },
         "data_description": {
           "battery_power": "Optioneel. Batterijvermogen met teken in watt — NEGATIEF = ontladen, POSITIEF = laden. Laat de sonde detecteren wanneer de thuisbatterij (niet de zon) de EV dekt, om valse 'ruimte gevonden'-resultaten te voorkomen. Gebruikt je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld."
+        }
+      },
+      "main_fuse": {
+        "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
+        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering (Uit = functie uit) en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).",
+        "data": {
+          "main_fuse_size": "Grootte hoofdzekering",
+          "fuse_grid_current_l1": "Meterstroom L1 (A)",
+          "fuse_grid_current_l2": "Meterstroom L2 (A)",
+          "fuse_grid_current_l3": "Meterstroom L3 (A)",
+          "fuse_grid_import_l1": "Afgenomen vermogen L1 (W)",
+          "fuse_grid_import_l2": "Afgenomen vermogen L2 (W)",
+          "fuse_grid_import_l3": "Afgenomen vermogen L3 (W)",
+          "fuse_grid_export_l1": "Teruggeleverd vermogen L1 (W)",
+          "fuse_grid_export_l2": "Teruggeleverd vermogen L2 (W)",
+          "fuse_grid_export_l3": "Teruggeleverd vermogen L3 (W)",
+          "fuse_grid_voltage_l1": "Spanning L1 (V)",
+          "fuse_grid_voltage_l2": "Spanning L2 (V)",
+          "fuse_grid_voltage_l3": "Spanning L3 (V)",
+          "fuse_charger_current": "Laadstroom (A, met L1/L2/L3-attributen)",
+          "fuse_charger_current_l1": "Laadstroom L1 (A)",
+          "fuse_charger_current_l2": "Laadstroom L2 (A)",
+          "fuse_charger_current_l3": "Laadstroom L3 (A)"
+        },
+        "data_description": {
+          "main_fuse_size": "Waarde van je hoofdzekering per fase. Uit = geen bewaking.",
+          "fuse_grid_current_l1": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
+          "fuse_grid_current_l2": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
+          "fuse_grid_current_l3": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
+          "fuse_grid_import_l1": "Van het net afgenomen vermogen op deze fase (0 bij teruglevering). Geeft de richting.",
+          "fuse_grid_import_l2": "Van het net afgenomen vermogen op deze fase (0 bij teruglevering). Geeft de richting.",
+          "fuse_grid_import_l3": "Van het net afgenomen vermogen op deze fase (0 bij teruglevering). Geeft de richting.",
+          "fuse_grid_export_l1": "Teruggeleverd vermogen op deze fase (0 bij afname).",
+          "fuse_grid_export_l2": "Teruggeleverd vermogen op deze fase (0 bij afname).",
+          "fuse_grid_export_l3": "Teruggeleverd vermogen op deze fase (0 bij afname).",
+          "fuse_grid_voltage_l1": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
+          "fuse_grid_voltage_l2": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
+          "fuse_grid_voltage_l3": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
+          "fuse_charger_current": "Stroomsensor van de lader. Waarden per fase komen uit de L1/L2/L3-attributen.",
+          "fuse_charger_current_l1": "Optioneel. Sensoren per fase gaan voor op de attributen.",
+          "fuse_charger_current_l2": "Optioneel. Sensoren per fase gaan voor op de attributen.",
+          "fuse_charger_current_l3": "Optioneel. Sensoren per fase gaan voor op de attributen."
         }
       },
       "pv_forecast": {
@@ -417,7 +545,9 @@
       "required": "Dit veld is verplicht.",
       "invalid_battery_capacity": "De batterijcapaciteit moet tussen 10 en 200 kWh liggen.",
       "entity_not_found": "Entiteit niet gevonden.",
-      "invalid_domain": "De entiteit moet tot het domein `number` of `input_number` behoren."
+      "invalid_domain": "De entiteit moet tot het domein `number` of `input_number` behoren.",
+      "fuse_phase_reading_required": "Koppel voor deze fase minstens de meterstroom of het afgenomen vermogen.",
+      "fuse_charger_current_required": "Koppel de laadstroom (sensor met L1/L2/L3-attributen of sensoren per fase)."
     }
   },
   "entity": {
@@ -579,6 +709,9 @@
       },
       "evsc_max_battery_discharge_for_ev": {
         "name": "Max. batterijontlading voor EV"
+      },
+      "evsc_fuse_margin": {
+        "name": "Zekeringmarge"
       }
     },
     "select": {
@@ -611,6 +744,12 @@
       },
       "evsc_cached_ev_soc": {
         "name": "Gecachte EV-SOC"
+      },
+      "evsc_main_fuse": {
+        "name": "Hoofdzekering"
+      },
+      "evsc_fuse_headroom": {
+        "name": "Laadlimiet hoofdzekering"
       }
     },
     "time": {

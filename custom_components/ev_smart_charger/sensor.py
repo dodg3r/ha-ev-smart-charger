@@ -19,7 +19,11 @@ from .const import (
     HELPER_NIGHT_SESSION_STATE_SUFFIX,
     HYBRID_STATE_IDLE,
     NIGHT_CHARGE_MODE_IDLE,
+    HELPER_FUSE_HEADROOM_SENSOR_SUFFIX,
+    HELPER_MAIN_FUSE_SENSOR_SUFFIX,
+    get_main_fuse_size,
     has_home_battery,
+    is_fuse_protection_enabled,
 )
 from .entity_base import EVSCEntityMixin
 from .runtime import EVSCRuntimeData, get_runtime_data
@@ -112,6 +116,28 @@ async def async_setup_entry(
             )
         )
 
+    # v2.14.0: main-fuse protection sensors (only when a fuse is configured)
+    if is_fuse_protection_enabled(entry.data):
+        entities.append(
+            EVSCMainFuseSensor(
+                runtime_data,
+                entry.entry_id,
+                HELPER_MAIN_FUSE_SENSOR_SUFFIX,
+                "EVSC Main Fuse",
+                "mdi:fuse",
+                fuse_a=get_main_fuse_size(entry.data),
+            )
+        )
+        entities.append(
+            EVSCFuseHeadroomSensor(
+                runtime_data,
+                entry.entry_id,
+                HELPER_FUSE_HEADROOM_SENSOR_SUFFIX,
+                "EVSC Fuse Charging Limit",
+                "mdi:current-ac",
+            )
+        )
+
     async_add_entities(entities)
     _LOGGER.info("✅ Created %s EVSC sensors", len(entities))
 
@@ -131,7 +157,7 @@ class EVSCBaseSensor(EVSCEntityMixin, SensorEntity, RestoreEntity):
         *,
         native_value: Any = None,
         native_unit_of_measurement: str | None = None,
-        entity_category: EntityCategory = EntityCategory.DIAGNOSTIC,
+        entity_category: EntityCategory | None = EntityCategory.DIAGNOSTIC,
     ) -> None:
         """Initialize the shared sensor state."""
         self._init_evsc_entity(
@@ -550,3 +576,66 @@ class EVSCCachedEVSOCSensor(EVSCBaseSensor):
                 self._attr_native_value = None
                 _LOGGER.warning("  ⚠️ Failed to restore cached SOC from: %s", last_state.state)
             self._attr_extra_state_attributes = dict(last_state.attributes)
+
+
+class EVSCMainFuseSensor(EVSCBaseSensor):
+    """Configured main fuse size in A (v2.14.0). Static, from the config entry."""
+
+    def __init__(
+        self,
+        runtime_data: EVSCRuntimeData,
+        entry_id: str,
+        suffix: str,
+        name: str,
+        icon: str,
+        *,
+        fuse_a: int,
+    ) -> None:
+        """Initialize the main fuse sensor."""
+        super().__init__(
+            runtime_data,
+            entry_id,
+            suffix,
+            name,
+            icon,
+            native_value=fuse_a,
+            native_unit_of_measurement="A",
+        )
+
+
+class EVSCFuseHeadroomSensor(EVSCBaseSensor):
+    """Current the charger may draw per phase under the main fuse (v2.14.0).
+
+    State: the ceiling in A (0 = charging not allowed right now). Attributes
+    explain how it was computed: signed grid current, charger current, house
+    current and remaining room per phase, the bottleneck phase and the limiter
+    state (ok / limited / ramping / stopped / hold / invalid_data).
+    Published by FuseGuard.
+    """
+
+    def __init__(
+        self,
+        runtime_data: EVSCRuntimeData,
+        entry_id: str,
+        suffix: str,
+        name: str,
+        icon: str,
+    ) -> None:
+        """Initialize the headroom sensor."""
+        super().__init__(
+            runtime_data,
+            entry_id,
+            suffix,
+            name,
+            icon,
+            native_value=None,
+            native_unit_of_measurement="A",
+            entity_category=None,
+        )
+
+    def publish(self, value: Any, attributes: dict[str, Any]) -> None:
+        """Synchronously publish a new value (called from FuseGuard callbacks)."""
+        self._attr_native_value = value
+        self._attr_extra_state_attributes = dict(attributes)
+        if self.hass is not None:
+            self.async_write_ha_state()

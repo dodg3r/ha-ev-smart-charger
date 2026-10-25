@@ -75,6 +75,48 @@
           "battery_power": "Opzionale. Potenza batteria con segno in watt — NEGATIVO = in scarica, POSITIVO = in carica. Permette alla sonda di rilevare quando è la batteria di casa (non il sole) a coprire l'EV, evitando falsi risultati 'margine trovato'. Se il tuo sensore usa il segno opposto, invertilo con un sensore template che ne nega il valore — vedi il README per un esempio."
         }
       },
+      "main_fuse": {
+        "title": "Protezione interruttore generale - Passo {step}/{total_steps}",
+        "description": "Protegge l'interruttore/fusibile generale di casa: la corrente del caricatore viene limitata in modo che carico della casa + auto non superi mai il limite su nessuna fase. Vale per tutte le modalità, incluse Forza Ricarica e Boost.\n\nScegli la taglia del generale (Disattivato = funzione spenta) e mappa i sensori per fase del contatore. Ideale: corrente per fase (A) più potenza prelevata e immessa per fase (W), così si conosce la direzione della corrente. Anche solo la corrente funziona (un po' più prudente in immissione). Anche solo la potenza funziona (corrente = potenza / tensione).\n\nServe la corrente del caricatore stesso, così il suo carico non viene contato come carico della casa: un sensore con attributi L1/L2/L3 (es. OCPP current_import) oppure un sensore per fase.\n\nSe un sensore del contatore diventa non disponibile, la ricarica scende al minimo e si ferma dopo 2 minuti. Il margine di sicurezza si può cambiare dopo (EVSC Fuse Margin).",
+        "data": {
+          "main_fuse_size": "Taglia interruttore generale",
+          "fuse_grid_current_l1": "Corrente contatore L1 (A)",
+          "fuse_grid_current_l2": "Corrente contatore L2 (A)",
+          "fuse_grid_current_l3": "Corrente contatore L3 (A)",
+          "fuse_grid_import_l1": "Potenza prelevata L1 (W)",
+          "fuse_grid_import_l2": "Potenza prelevata L2 (W)",
+          "fuse_grid_import_l3": "Potenza prelevata L3 (W)",
+          "fuse_grid_export_l1": "Potenza immessa L1 (W)",
+          "fuse_grid_export_l2": "Potenza immessa L2 (W)",
+          "fuse_grid_export_l3": "Potenza immessa L3 (W)",
+          "fuse_grid_voltage_l1": "Tensione L1 (V)",
+          "fuse_grid_voltage_l2": "Tensione L2 (V)",
+          "fuse_grid_voltage_l3": "Tensione L3 (V)",
+          "fuse_charger_current": "Corrente caricatore (A, con attributi L1/L2/L3)",
+          "fuse_charger_current_l1": "Corrente caricatore L1 (A)",
+          "fuse_charger_current_l2": "Corrente caricatore L2 (A)",
+          "fuse_charger_current_l3": "Corrente caricatore L3 (A)"
+        },
+        "data_description": {
+          "main_fuse_size": "Taglia del generale per fase. Disattivato = nessuna protezione.",
+          "fuse_grid_current_l1": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
+          "fuse_grid_current_l2": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
+          "fuse_grid_current_l3": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
+          "fuse_grid_import_l1": "Potenza prelevata dalla rete su questa fase (0 in immissione). Indica la direzione.",
+          "fuse_grid_import_l2": "Potenza prelevata dalla rete su questa fase (0 in immissione). Indica la direzione.",
+          "fuse_grid_import_l3": "Potenza prelevata dalla rete su questa fase (0 in immissione). Indica la direzione.",
+          "fuse_grid_export_l1": "Potenza immessa in rete su questa fase (0 in prelievo).",
+          "fuse_grid_export_l2": "Potenza immessa in rete su questa fase (0 in prelievo).",
+          "fuse_grid_export_l3": "Potenza immessa in rete su questa fase (0 in prelievo).",
+          "fuse_grid_voltage_l1": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
+          "fuse_grid_voltage_l2": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
+          "fuse_grid_voltage_l3": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
+          "fuse_charger_current": "Sensore di corrente del caricatore. I valori per fase vengono letti dagli attributi L1/L2/L3.",
+          "fuse_charger_current_l1": "Opzionale. I sensori per fase hanno la precedenza sugli attributi.",
+          "fuse_charger_current_l2": "Opzionale. I sensori per fase hanno la precedenza sugli attributi.",
+          "fuse_charger_current_l3": "Opzionale. I sensori per fase hanno la precedenza sugli attributi."
+        }
+      },
       "pv_forecast": {
         "title": "Forecast Solare - Passo {step}/{total_steps}",
         "description": "Sensore opzionale usato da Night Smart Charge per decidere se caricare di notte dalla batteria di casa o dalla rete.",
@@ -179,6 +221,48 @@
           "battery_power": "Opzionale. Potenza batteria con segno in watt — NEGATIVO = in scarica, POSITIVO = in carica. Permette alla sonda di rilevare quando è la batteria di casa (non il sole) a coprire l'EV, evitando falsi risultati 'margine trovato'. Se il tuo sensore usa il segno opposto, invertilo con un sensore template che ne nega il valore — vedi il README per un esempio."
         }
       },
+      "reconfigure_main_fuse": {
+        "title": "Protezione interruttore generale - Passo {step}/{total_steps}",
+        "description": "Protegge l'interruttore/fusibile generale di casa: la corrente del caricatore viene limitata in modo che carico della casa + auto non superi mai il limite su nessuna fase. Vale per tutte le modalità, incluse Forza Ricarica e Boost.\n\nScegli la taglia del generale (Disattivato = funzione spenta) e mappa i sensori per fase del contatore. Ideale: corrente per fase (A) più potenza prelevata e immessa per fase (W), così si conosce la direzione della corrente. Anche solo la corrente funziona (un po' più prudente in immissione). Anche solo la potenza funziona (corrente = potenza / tensione).\n\nServe la corrente del caricatore stesso, così il suo carico non viene contato come carico della casa: un sensore con attributi L1/L2/L3 (es. OCPP current_import) oppure un sensore per fase.\n\nSe un sensore del contatore diventa non disponibile, la ricarica scende al minimo e si ferma dopo 2 minuti. Il margine di sicurezza si può cambiare dopo (EVSC Fuse Margin).",
+        "data": {
+          "main_fuse_size": "Taglia interruttore generale",
+          "fuse_grid_current_l1": "Corrente contatore L1 (A)",
+          "fuse_grid_current_l2": "Corrente contatore L2 (A)",
+          "fuse_grid_current_l3": "Corrente contatore L3 (A)",
+          "fuse_grid_import_l1": "Potenza prelevata L1 (W)",
+          "fuse_grid_import_l2": "Potenza prelevata L2 (W)",
+          "fuse_grid_import_l3": "Potenza prelevata L3 (W)",
+          "fuse_grid_export_l1": "Potenza immessa L1 (W)",
+          "fuse_grid_export_l2": "Potenza immessa L2 (W)",
+          "fuse_grid_export_l3": "Potenza immessa L3 (W)",
+          "fuse_grid_voltage_l1": "Tensione L1 (V)",
+          "fuse_grid_voltage_l2": "Tensione L2 (V)",
+          "fuse_grid_voltage_l3": "Tensione L3 (V)",
+          "fuse_charger_current": "Corrente caricatore (A, con attributi L1/L2/L3)",
+          "fuse_charger_current_l1": "Corrente caricatore L1 (A)",
+          "fuse_charger_current_l2": "Corrente caricatore L2 (A)",
+          "fuse_charger_current_l3": "Corrente caricatore L3 (A)"
+        },
+        "data_description": {
+          "main_fuse_size": "Taglia del generale per fase. Disattivato = nessuna protezione.",
+          "fuse_grid_current_l1": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
+          "fuse_grid_current_l2": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
+          "fuse_grid_current_l3": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
+          "fuse_grid_import_l1": "Potenza prelevata dalla rete su questa fase (0 in immissione). Indica la direzione.",
+          "fuse_grid_import_l2": "Potenza prelevata dalla rete su questa fase (0 in immissione). Indica la direzione.",
+          "fuse_grid_import_l3": "Potenza prelevata dalla rete su questa fase (0 in immissione). Indica la direzione.",
+          "fuse_grid_export_l1": "Potenza immessa in rete su questa fase (0 in prelievo).",
+          "fuse_grid_export_l2": "Potenza immessa in rete su questa fase (0 in prelievo).",
+          "fuse_grid_export_l3": "Potenza immessa in rete su questa fase (0 in prelievo).",
+          "fuse_grid_voltage_l1": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
+          "fuse_grid_voltage_l2": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
+          "fuse_grid_voltage_l3": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
+          "fuse_charger_current": "Sensore di corrente del caricatore. I valori per fase vengono letti dagli attributi L1/L2/L3.",
+          "fuse_charger_current_l1": "Opzionale. I sensori per fase hanno la precedenza sugli attributi.",
+          "fuse_charger_current_l2": "Opzionale. I sensori per fase hanno la precedenza sugli attributi.",
+          "fuse_charger_current_l3": "Opzionale. I sensori per fase hanno la precedenza sugli attributi."
+        }
+      },
       "reconfigure_pv_forecast": {
         "title": "Riconfigura Forecast Solare - Passo {step}/{total_steps}",
         "description": "Aggiorna o rimuovi il sensore forecast opzionale usato da Night Smart Charge.",
@@ -274,7 +358,9 @@
       "required": "Questo campo e obbligatorio.",
       "invalid_battery_capacity": "La capacita della batteria deve essere compresa tra 10 e 200 kWh.",
       "entity_not_found": "Entita non trovata.",
-      "invalid_domain": "L'entita deve appartenere al dominio `number` o `input_number`."
+      "invalid_domain": "L'entita deve appartenere al dominio `number` o `input_number`.",
+      "fuse_phase_reading_required": "Mappa almeno la corrente o la potenza prelevata del contatore per questa fase.",
+      "fuse_charger_current_required": "Mappa la corrente del caricatore (sensore con attributi L1/L2/L3 o sensori per fase)."
     },
     "abort": {
       "already_configured": "Un'altra istanza di EV Smart Charger usa gia questo charger switch.",
@@ -340,6 +426,48 @@
         },
         "data_description": {
           "battery_power": "Opzionale. Potenza batteria con segno in watt — NEGATIVO = in scarica, POSITIVO = in carica. Permette alla sonda di rilevare quando è la batteria di casa (non il sole) a coprire l'EV, evitando falsi risultati 'margine trovato'. Se il tuo sensore usa il segno opposto, invertilo con un sensore template che ne nega il valore — vedi il README per un esempio."
+        }
+      },
+      "main_fuse": {
+        "title": "Protezione interruttore generale - Passo {step}/{total_steps}",
+        "description": "Protegge l'interruttore/fusibile generale di casa: la corrente del caricatore viene limitata in modo che carico della casa + auto non superi mai il limite su nessuna fase. Vale per tutte le modalità, incluse Forza Ricarica e Boost.\n\nScegli la taglia del generale (Disattivato = funzione spenta) e mappa i sensori per fase del contatore. Ideale: corrente per fase (A) più potenza prelevata e immessa per fase (W), così si conosce la direzione della corrente. Anche solo la corrente funziona (un po' più prudente in immissione). Anche solo la potenza funziona (corrente = potenza / tensione).\n\nServe la corrente del caricatore stesso, così il suo carico non viene contato come carico della casa: un sensore con attributi L1/L2/L3 (es. OCPP current_import) oppure un sensore per fase.\n\nSe un sensore del contatore diventa non disponibile, la ricarica scende al minimo e si ferma dopo 2 minuti. Il margine di sicurezza si può cambiare dopo (EVSC Fuse Margin).",
+        "data": {
+          "main_fuse_size": "Taglia interruttore generale",
+          "fuse_grid_current_l1": "Corrente contatore L1 (A)",
+          "fuse_grid_current_l2": "Corrente contatore L2 (A)",
+          "fuse_grid_current_l3": "Corrente contatore L3 (A)",
+          "fuse_grid_import_l1": "Potenza prelevata L1 (W)",
+          "fuse_grid_import_l2": "Potenza prelevata L2 (W)",
+          "fuse_grid_import_l3": "Potenza prelevata L3 (W)",
+          "fuse_grid_export_l1": "Potenza immessa L1 (W)",
+          "fuse_grid_export_l2": "Potenza immessa L2 (W)",
+          "fuse_grid_export_l3": "Potenza immessa L3 (W)",
+          "fuse_grid_voltage_l1": "Tensione L1 (V)",
+          "fuse_grid_voltage_l2": "Tensione L2 (V)",
+          "fuse_grid_voltage_l3": "Tensione L3 (V)",
+          "fuse_charger_current": "Corrente caricatore (A, con attributi L1/L2/L3)",
+          "fuse_charger_current_l1": "Corrente caricatore L1 (A)",
+          "fuse_charger_current_l2": "Corrente caricatore L2 (A)",
+          "fuse_charger_current_l3": "Corrente caricatore L3 (A)"
+        },
+        "data_description": {
+          "main_fuse_size": "Taglia del generale per fase. Disattivato = nessuna protezione.",
+          "fuse_grid_current_l1": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
+          "fuse_grid_current_l2": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
+          "fuse_grid_current_l3": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
+          "fuse_grid_import_l1": "Potenza prelevata dalla rete su questa fase (0 in immissione). Indica la direzione.",
+          "fuse_grid_import_l2": "Potenza prelevata dalla rete su questa fase (0 in immissione). Indica la direzione.",
+          "fuse_grid_import_l3": "Potenza prelevata dalla rete su questa fase (0 in immissione). Indica la direzione.",
+          "fuse_grid_export_l1": "Potenza immessa in rete su questa fase (0 in prelievo).",
+          "fuse_grid_export_l2": "Potenza immessa in rete su questa fase (0 in prelievo).",
+          "fuse_grid_export_l3": "Potenza immessa in rete su questa fase (0 in prelievo).",
+          "fuse_grid_voltage_l1": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
+          "fuse_grid_voltage_l2": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
+          "fuse_grid_voltage_l3": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
+          "fuse_charger_current": "Sensore di corrente del caricatore. I valori per fase vengono letti dagli attributi L1/L2/L3.",
+          "fuse_charger_current_l1": "Opzionale. I sensori per fase hanno la precedenza sugli attributi.",
+          "fuse_charger_current_l2": "Opzionale. I sensori per fase hanno la precedenza sugli attributi.",
+          "fuse_charger_current_l3": "Opzionale. I sensori per fase hanno la precedenza sugli attributi."
         }
       },
       "pv_forecast": {
@@ -417,7 +545,9 @@
       "required": "Questo campo e obbligatorio.",
       "invalid_battery_capacity": "La capacita della batteria deve essere compresa tra 10 e 200 kWh.",
       "entity_not_found": "Entita non trovata.",
-      "invalid_domain": "L'entita deve appartenere al dominio `number` o `input_number`."
+      "invalid_domain": "L'entita deve appartenere al dominio `number` o `input_number`.",
+      "fuse_phase_reading_required": "Mappa almeno la corrente o la potenza prelevata del contatore per questa fase.",
+      "fuse_charger_current_required": "Mappa la corrente del caricatore (sensore con attributi L1/L2/L3 o sensori per fase)."
     }
   },
   "entity": {
@@ -579,6 +709,9 @@
       },
       "evsc_max_battery_discharge_for_ev": {
         "name": "Scarica massima batteria per EV"
+      },
+      "evsc_fuse_margin": {
+        "name": "Margine generale"
       }
     },
     "select": {
@@ -611,6 +744,12 @@
       },
       "evsc_cached_ev_soc": {
         "name": "SOC EV in cache"
+      },
+      "evsc_main_fuse": {
+        "name": "Interruttore generale"
+      },
+      "evsc_fuse_headroom": {
+        "name": "Limite di ricarica (generale)"
       }
     },
     "time": {

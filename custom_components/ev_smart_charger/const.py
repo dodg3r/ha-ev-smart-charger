@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.13.3"
+VERSION = "2.14.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -147,6 +147,69 @@ CONF_GRID_IMPORT_L3 = "grid_import_l3"
 CONF_CHARGING_POWER = "charging_power"
 CONF_CHARGING_POWER_L2 = "charging_power_l2"
 CONF_CHARGING_POWER_L3 = "charging_power_l3"
+
+# v2.14.0 — Main-fuse protection (load balancing against the house main fuse).
+# Opt-in: CONF_MAIN_FUSE_SIZE = 0 (or missing) disables the whole feature and
+# leaves every install byte-for-byte unchanged. Per-phase readings come from
+# the electricity meter; L1 is used in single-phase, L1-L3 in three-phase.
+CONF_MAIN_FUSE_SIZE = "main_fuse_size"
+# Meter current per phase (A). Often unsigned (rises on export too).
+CONF_FUSE_GRID_CURRENT_L1 = "fuse_grid_current_l1"
+CONF_FUSE_GRID_CURRENT_L2 = "fuse_grid_current_l2"
+CONF_FUSE_GRID_CURRENT_L3 = "fuse_grid_current_l3"
+# Meter import ("consumed") power per phase (W). Gives the direction of the
+# current, or the current itself (W / V) when no current sensor is mapped.
+CONF_FUSE_GRID_IMPORT_L1 = "fuse_grid_import_l1"
+CONF_FUSE_GRID_IMPORT_L2 = "fuse_grid_import_l2"
+CONF_FUSE_GRID_IMPORT_L3 = "fuse_grid_import_l3"
+# Meter export ("returned") power per phase (W).
+CONF_FUSE_GRID_EXPORT_L1 = "fuse_grid_export_l1"
+CONF_FUSE_GRID_EXPORT_L2 = "fuse_grid_export_l2"
+CONF_FUSE_GRID_EXPORT_L3 = "fuse_grid_export_l3"
+# Meter voltage per phase (V). Only used for the power-based fallback.
+CONF_FUSE_GRID_VOLTAGE_L1 = "fuse_grid_voltage_l1"
+CONF_FUSE_GRID_VOLTAGE_L2 = "fuse_grid_voltage_l2"
+CONF_FUSE_GRID_VOLTAGE_L3 = "fuse_grid_voltage_l3"
+# Charger current: one sensor whose L1/L2/L3 attributes hold the per-phase
+# values (e.g. OCPP current_import), and/or dedicated per-phase sensors which
+# take precedence when mapped.
+CONF_FUSE_CHARGER_CURRENT = "fuse_charger_current"
+CONF_FUSE_CHARGER_CURRENT_L1 = "fuse_charger_current_l1"
+CONF_FUSE_CHARGER_CURRENT_L2 = "fuse_charger_current_l2"
+CONF_FUSE_CHARGER_CURRENT_L3 = "fuse_charger_current_l3"
+
+FUSE_GRID_CURRENT_KEYS = (
+    CONF_FUSE_GRID_CURRENT_L1, CONF_FUSE_GRID_CURRENT_L2, CONF_FUSE_GRID_CURRENT_L3,
+)
+FUSE_GRID_IMPORT_KEYS = (
+    CONF_FUSE_GRID_IMPORT_L1, CONF_FUSE_GRID_IMPORT_L2, CONF_FUSE_GRID_IMPORT_L3,
+)
+FUSE_GRID_EXPORT_KEYS = (
+    CONF_FUSE_GRID_EXPORT_L1, CONF_FUSE_GRID_EXPORT_L2, CONF_FUSE_GRID_EXPORT_L3,
+)
+FUSE_GRID_VOLTAGE_KEYS = (
+    CONF_FUSE_GRID_VOLTAGE_L1, CONF_FUSE_GRID_VOLTAGE_L2, CONF_FUSE_GRID_VOLTAGE_L3,
+)
+FUSE_CHARGER_CURRENT_KEYS = (
+    CONF_FUSE_CHARGER_CURRENT_L1, CONF_FUSE_CHARGER_CURRENT_L2, CONF_FUSE_CHARGER_CURRENT_L3,
+)
+FUSE_ENTITY_KEYS = (
+    *FUSE_GRID_CURRENT_KEYS,
+    *FUSE_GRID_IMPORT_KEYS,
+    *FUSE_GRID_EXPORT_KEYS,
+    *FUSE_GRID_VOLTAGE_KEYS,
+    CONF_FUSE_CHARGER_CURRENT,
+    *FUSE_CHARGER_CURRENT_KEYS,
+)
+# Attribute names tried (in order) on CONF_FUSE_CHARGER_CURRENT for each phase.
+FUSE_CHARGER_PHASE_ATTRIBUTES = (
+    ("L1", "l1", "L1-N", "phase_1", "phase1", "current_l1"),
+    ("L2", "l2", "L2-N", "phase_2", "phase2", "current_l2"),
+    ("L3", "l3", "L3-N", "phase_3", "phase3", "current_l3"),
+)
+# Selectable main fuse sizes (A). 0 = protection disabled.
+MAIN_FUSE_SIZES = [0, 16, 20, 25, 35, 50, 63, 80]
+DEFAULT_MAIN_FUSE_SIZE = 0
 # v1.11.14: distinct from CONF_PV_FORECAST. Optional sensor that reports
 # the *next-day* solar production forecast in kWh. Consumed only by the
 # auto-dashboard "Forecast Domani" chip — Night Smart Charge stays wired
@@ -279,6 +342,10 @@ HELPER_SOLAR_MAX_AMPERAGE_SUFFIX = "evsc_solar_max_amperage"
 # while the optional `grid_available` binary_sensor reads explicitly off (the
 # inverter is islanded). Default 32 (top of CHARGER_AMP_LEVELS) = cap disabled.
 HELPER_OFFGRID_MAX_AMPERAGE_SUFFIX = "evsc_offgrid_max_amperage"
+# v2.14.0 — main-fuse protection helpers (created only when a fuse is set)
+HELPER_FUSE_MARGIN_SUFFIX = "evsc_fuse_margin"
+HELPER_MAIN_FUSE_SENSOR_SUFFIX = "evsc_main_fuse"
+HELPER_FUSE_HEADROOM_SENSOR_SUFFIX = "evsc_fuse_headroom"
 # v2.1.0 (issue #29) — max home-battery discharge (W) allowed to cover the EV
 # charging floor (deadband buffer + Hybrid Mode masking checks). 0 = feature off.
 # Battery-only helper (meaningless without a home battery).
@@ -486,6 +553,20 @@ CHARGER_AMPERAGE_STABILIZATION_DELAY = 1  # seconds after setting amperage
 # ========== TIMEOUTS ==========
 SERVICE_CALL_TIMEOUT = 10  # seconds for service calls
 
+# v2.14.0 — main-fuse protection timing
+DEFAULT_FUSE_MARGIN = 2.0  # A kept free below the main fuse on every phase
+FUSE_GUARD_INTERVAL_SECONDS = 5  # periodic re-evaluation (plus every sensor change)
+FUSE_RAMP_STEP_A = 2  # max increase per ramp interval while charging
+FUSE_RAMP_INTERVAL_SECONDS = 20
+FUSE_STOP_HOLD_SECONDS = 120  # charger stays off this long after a fuse stop
+FUSE_INVALID_STOP_SECONDS = 120  # missing meter data this long -> stop charging
+# When the charger's setpoint is unknown, measured draw above the ceiling by
+# more than this triggers an enforcement.
+FUSE_MEASURED_OVERDRAW_TOLERANCE_A = 1.0
+# Some current-control entities (OCPP session current limit) only exist while
+# a session is active: after switch.turn_on, wait this long for them.
+CHARGER_CURRENT_ENTITY_WAIT_SECONDS = 20
+
 # ========== FILE LOGGING SETTINGS (v1.4.15) ==========
 # Date-based log structure: logs/<year>/<month>/<day>.log
 # Example: logs/2025/12/29.log
@@ -555,6 +636,36 @@ TOTAL_INTEGRATION_ENTITIES = 74
 # Hybrid Mode entities are still created in PV-only mode but stay IDLE (requires soc_home).
 # v2.13.0 (issue #57): the off-grid amperage cap is NOT battery-only → +1 → 60.
 TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 60
+
+
+# v2.14.0: entities created ONLY when main-fuse protection is configured:
+# 1 number (evsc_fuse_margin) + 2 sensors (evsc_main_fuse, evsc_fuse_headroom).
+FUSE_PROTECTION_ENTITIES = 3
+
+
+def get_main_fuse_size(config: dict) -> int:
+    """Return the configured main fuse size in A (0 = protection disabled)."""
+    try:
+        return max(0, int(float(config.get(CONF_MAIN_FUSE_SIZE) or 0)))
+    except (TypeError, ValueError):
+        return 0
+
+
+def is_fuse_protection_enabled(config: dict) -> bool:
+    """Return True when main-fuse protection is configured (v2.14.0)."""
+    return get_main_fuse_size(config) > 0
+
+
+def get_expected_entity_count(config: dict) -> int:
+    """Return how many integration entities setup creates for this config."""
+    count = (
+        TOTAL_INTEGRATION_ENTITIES
+        if has_home_battery(config)
+        else TOTAL_INTEGRATION_ENTITIES_NO_BATTERY
+    )
+    if is_fuse_protection_enabled(config):
+        count += FUSE_PROTECTION_ENTITIES
+    return count
 
 
 def has_home_battery(config: dict) -> bool:

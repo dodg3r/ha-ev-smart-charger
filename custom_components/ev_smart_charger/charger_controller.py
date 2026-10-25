@@ -14,6 +14,7 @@ from homeassistant.core import HomeAssistant
 from .const import (
     CHARGER_AMPERAGE_STABILIZATION_DELAY,
     CHARGER_COMMAND_DELAY,
+    CHARGER_CURRENT_ENTITY_WAIT_SECONDS,
     CHARGER_MIN_OPERATION_INTERVAL,
     CHARGER_MODEL_TUYA,
     CHARGER_START_SEQUENCE_DELAY,
@@ -25,9 +26,14 @@ from .const import (
     get_amp_levels,
     get_charger_model,
 )
+from .fuse_math import highest_level_at_or_below
 from .runtime import EVSCRuntimeData
 from .utils.amperage_helper import AmperageCalculator
 from .utils.logging_helper import EVSCLogger
+
+
+class FuseLimitError(RuntimeError):
+    """Raised when the main-fuse guard forbids starting the charger."""
 
 
 class CurrentControlAdapter:
@@ -61,6 +67,21 @@ class CurrentControlAdapter:
             raise ValueError(
                 f"Missing Home Assistant service: {service_domain}.{service_name}"
             )
+
+    def is_available(self) -> bool:
+        """Return True when the entity exists and accepts values right now.
+
+        Some integrations (OCPP's session current limit) only expose the
+        current-control entity while a charging session is active.
+        """
+        if not self.entity_id:
+            return False
+        state = self.hass.states.get(self.entity_id)
+        return state is not None and state.state not in (
+            None,
+            "unknown",
+            "unavailable",
+        )
 
     def get_numeric_state(self) -> int | None:
         """Read a numeric value from the current control entity."""
@@ -258,13 +279,23 @@ class ChargerController:
                 await self._wait_for_rate_limit()
                 await self._refresh_state()
 
+                capped_target = None
                 if target_amps is not None:
-                    normalized_target = self._normalize_target_amps(target_amps)
-                    await self._set_amperage_internal(normalized_target)
-                    await asyncio.sleep(CHARGER_AMPERAGE_STABILIZATION_DELAY)
+                    capped_target = self._cap_to_fuse(
+                        self._normalize_target_amps(target_amps)
+                    )
+                elif self._fuse_ceiling() is not None:
+                    # No explicit target: keep the existing setpoint, but never
+                    # above what the main fuse allows right now.
+                    capped_target = self._cap_to_fuse(
+                        self._current_amperage or self._amp_levels[0]
+                    )
+                if capped_target == 0:
+                    raise FuseLimitError(
+                        "Main fuse limit: no room to start the charger"
+                    )
 
-                rejected_while_running = await self._turn_on_charger_switch()
-                await asyncio.sleep(CHARGER_START_SEQUENCE_DELAY)
+                rejected_while_running = await self._start_sequence(capped_target)
 
                 self._record_operation_time()
                 await self._refresh_state()
@@ -350,7 +381,9 @@ class ChargerController:
     async def set_amperage(self, target_amps: int, reason: str = "") -> OperationResult:
         """Set charger amperage with safe decrease handling."""
         async with self._lock:
-            normalized_target = self._normalize_target_amps(target_amps)
+            normalized_target = self._cap_to_fuse(
+                self._normalize_target_amps(target_amps)
+            )
 
             try:
                 self.logger.separator()
@@ -363,6 +396,22 @@ class ChargerController:
                 self.logger.info("Reason: %s", reason or "No reason provided")
 
                 await self._refresh_state()
+                if normalized_target == 0:
+                    # Main fuse leaves no room for the minimum current.
+                    if self._is_on:
+                        await self._stop_charger_unlocked()
+                    await self._emit_operation_diagnostic(
+                        "charger_set_amperage",
+                        "succeeded",
+                        reason_code="fuse_limit_stop",
+                        reason_detail=reason or "Main fuse limit",
+                    )
+                    return OperationResult(
+                        success=True,
+                        operation="stop",
+                        reason="Main fuse limit: stopped charger",
+                        amperage=0,
+                    )
                 if self._current_amperage == normalized_target:
                     await self._emit_operation_diagnostic(
                         "charger_set_amperage",
@@ -463,7 +512,7 @@ class ChargerController:
         reason: str = "Conditions improved",
     ) -> OperationResult:
         """Gradually recover charging amperage toward target by one level."""
-        normalized_target = self._normalize_target_amps(target_amps)
+        normalized_target = self._cap_to_fuse(self._normalize_target_amps(target_amps))
 
         async with self._lock:
             try:
@@ -474,6 +523,13 @@ class ChargerController:
                 await self._refresh_state()
 
                 current_amps = self._current_amperage or 0
+                if normalized_target == 0:
+                    return OperationResult(
+                        success=False,
+                        operation="recover_to_target",
+                        reason=reason,
+                        error_message="Main fuse limit: no room to charge",
+                    )
                 if current_amps >= normalized_target:
                     return OperationResult(
                         success=True,
@@ -519,14 +575,60 @@ class ChargerController:
 
     async def _start_charger_unlocked(self, target_amps: Optional[int]) -> None:
         """Start the charger without reacquiring the controller lock."""
-        if target_amps is not None:
-            await self._set_amperage_internal(target_amps)
-            await asyncio.sleep(CHARGER_AMPERAGE_STABILIZATION_DELAY)
-
-        await self._turn_on_charger_switch()
-        await asyncio.sleep(CHARGER_START_SEQUENCE_DELAY)
+        await self._start_sequence(target_amps)
         self._record_operation_time()
         await self._refresh_state()
+
+    async def _start_sequence(self, target_amps: Optional[int]) -> bool:
+        """Set the current (when possible) and turn the charger on.
+
+        Normally the current is set BEFORE ``switch.turn_on`` so the session
+        starts at the right level. Some integrations (OCPP's session current
+        limit) only make the current entity available once a session runs; in
+        that case the charger is turned on first and the current is applied as
+        soon as the entity appears. The main-fuse watchdog covers the short
+        window in between.
+
+        Returns True when a redundant ``turn_on`` rejection was tolerated.
+        """
+        deferred = False
+        if target_amps is not None:
+            if self._current_control.is_available():
+                await self._set_amperage_internal(target_amps)
+                await asyncio.sleep(CHARGER_AMPERAGE_STABILIZATION_DELAY)
+            else:
+                deferred = True
+                self.logger.info(
+                    "Current entity %s unavailable before start - will set %sA "
+                    "once the session is active",
+                    self._charger_current,
+                    target_amps,
+                )
+
+        rejected_while_running = await self._turn_on_charger_switch()
+        await asyncio.sleep(CHARGER_START_SEQUENCE_DELAY)
+
+        if deferred:
+            if await self._wait_for_current_entity():
+                await self._set_amperage_internal(target_amps)
+                await asyncio.sleep(CHARGER_AMPERAGE_STABILIZATION_DELAY)
+            else:
+                self.logger.warning(
+                    "Current entity %s still unavailable %ss after start - "
+                    "could not apply %sA",
+                    self._charger_current,
+                    CHARGER_CURRENT_ENTITY_WAIT_SECONDS,
+                    target_amps,
+                )
+        return rejected_while_running
+
+    async def _wait_for_current_entity(self) -> bool:
+        """Wait (bounded) for the current-control entity to become available."""
+        for _ in range(int(CHARGER_CURRENT_ENTITY_WAIT_SECONDS)):
+            if self._current_control.is_available():
+                return True
+            await asyncio.sleep(1)
+        return self._current_control.is_available()
 
     async def _turn_on_charger_switch(self) -> bool:
         """Turn the charger switch on, tolerating a redundant-command rejection.
@@ -538,7 +640,10 @@ class ChargerController:
         afterwards (issue #60).
 
         Returns True when a rejection was tolerated, False on a clean call.
+        Raises FuseLimitError when the main-fuse guard forbids charging.
         """
+        if self._fuse_ceiling() == 0:
+            raise FuseLimitError("Main fuse limit: charger must stay off")
         try:
             await self._call_service(
                 "switch",
@@ -625,7 +730,16 @@ class ChargerController:
         await self._refresh_state()
 
     async def _set_amperage_internal(self, amps: int) -> None:
-        """Set the configured charger amperage entity."""
+        """Set the configured charger amperage entity.
+
+        Last line of defence for the main fuse: whatever path got here, the
+        value sent to the charger never exceeds the current fuse ceiling.
+        """
+        ceiling = self._fuse_ceiling()
+        if ceiling is not None:
+            if ceiling == 0:
+                raise FuseLimitError("Main fuse limit: no room for the minimum current")
+            amps = min(amps, highest_level_at_or_below(ceiling, self._amp_levels))
         service_domain, service_name, data = self._current_control.build_service_call(amps)
         await self._call_service(service_domain, service_name, data)
 
@@ -651,6 +765,83 @@ class ChargerController:
         if target_amps is None:
             return self._amp_levels[0]
         return min(self._amp_levels, key=lambda value: abs(value - int(target_amps)))
+
+    # ------------------------------------------------------------------
+    # Main fuse protection (v2.14.0)
+    # ------------------------------------------------------------------
+    def _fuse_ceiling(self) -> int | None:
+        """Return the main-fuse ceiling in A, or None when not configured."""
+        if self._runtime_data is None:
+            return None
+        guard = getattr(self._runtime_data, "fuse_guard", None)
+        if guard is None or not getattr(guard, "enabled", False):
+            return None
+        return guard.max_allowed_amps()
+
+    def _cap_to_fuse(self, amps: int) -> int:
+        """Clamp a target to the fuse ceiling (0 = must not charge)."""
+        ceiling = self._fuse_ceiling()
+        if ceiling is None:
+            return amps
+        if ceiling == 0:
+            return 0
+        return min(amps, highest_level_at_or_below(ceiling, self._amp_levels))
+
+    async def async_enforce_fuse_ceiling(self, ceiling: int, reason: str) -> None:
+        """Bring a running charger down to the fuse ceiling immediately.
+
+        Called by the FuseGuard watchdog. Deliberately does NOT take the
+        controller lock or honour the operation rate limit: protecting the
+        fuse must not wait behind a 30 s rate-limit sleep or a slow sequence.
+        Any operation already in flight clamps itself in
+        ``_set_amperage_internal`` / ``_turn_on_charger_switch``, so it cannot
+        undo this reduction.
+        """
+        await self._refresh_state()
+        if not self._is_on:
+            return
+
+        if ceiling <= 0:
+            self.logger.warning("%s - stopping charger", reason)
+            await self._call_service(
+                "switch", "turn_off", {"entity_id": self._charger_switch}
+            )
+            self._record_operation_time()
+            await self._refresh_state()
+            await self._emit_operation_diagnostic(
+                "charger_stop",
+                "succeeded",
+                reason_code="fuse_limit_stop",
+                reason_detail=reason,
+            )
+            return
+
+        target = highest_level_at_or_below(ceiling, self._amp_levels)
+        current = self._current_amperage
+        if current is not None and current <= target:
+            return
+        if not self._current_control.is_available():
+            self.logger.warning(
+                "%s - current entity unavailable, cannot reduce; stopping charger",
+                reason,
+            )
+            await self.async_enforce_fuse_ceiling(0, reason)
+            return
+
+        self.logger.warning("%s - reducing %sA -> %sA", reason, current, target)
+        if self._charger_model == CHARGER_MODEL_TUYA:
+            await self._decrease_amperage_unlocked(target)
+        else:
+            await self._set_amperage_internal(target)
+            self._record_operation_time()
+            await self._refresh_state()
+        await self._emit_operation_diagnostic(
+            "charger_set_amperage",
+            "succeeded",
+            reason_code="fuse_limit_reduce",
+            reason_detail=reason,
+            target_amps=target,
+        )
 
     async def _call_service(
         self,

@@ -9,6 +9,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.ev_smart_charger.config_flow import EVSCConfigFlow, EVSCOptionsFlow
 from custom_components.ev_smart_charger.const import (
+    CONF_MAIN_FUSE_SIZE,
     CONF_BATTERY_CAPACITY,
     CONF_BATTERY_POWER,
     CONF_CAR_OWNER,
@@ -78,6 +79,8 @@ async def _init_flow_to_external_connectors(hass) -> str:
     result = await hass.config_entries.flow.async_configure(result["flow_id"], entities_payload)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], sensors_payload)
     # v2.1.0 (issue #29): hybrid_inverter step between sensors and pv_forecast
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    # v2.14.0: main_fuse step (defaults to off)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     result = await hass.config_entries.flow.async_configure(result["flow_id"], pv_payload)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], notifications_payload)
@@ -196,6 +199,9 @@ async def test_options_flow_updates_entry_data(hass) -> None:
     result = await flow.async_step_hybrid_inverter(
         {CONF_BATTERY_POWER: "sensor.new_battery_power"}
     )
+    # v2.14.0: main_fuse step
+    assert result["step_id"] == "main_fuse"
+    result = await flow.async_step_main_fuse({CONF_MAIN_FUSE_SIZE: "0"})
     assert result["step_id"] == "pv_forecast"
 
     result = await flow.async_step_pv_forecast({CONF_PV_FORECAST: "sensor.new_forecast"})
@@ -359,6 +365,9 @@ async def test_reconfigure_flow_updates_entry_data(hass) -> None:
     result = await flow.async_step_reconfigure_hybrid_inverter(
         {CONF_BATTERY_POWER: "sensor.new_battery_power"}
     )
+    # v2.14.0: reconfigure_main_fuse step
+    assert result["step_id"] == "reconfigure_main_fuse"
+    result = await flow.async_step_reconfigure_main_fuse({CONF_MAIN_FUSE_SIZE: "0"})
     assert result["step_id"] == "reconfigure_pv_forecast"
 
     result = await flow.async_step_reconfigure_pv_forecast(

@@ -6,6 +6,7 @@ from homeassistant.const import CONF_NAME
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.ev_smart_charger.const import (
+    CONF_MAIN_FUSE_SIZE,
     DOMAIN,
     DEFAULT_BATTERY_CAPACITY,
     CONF_CHARGER_MODEL,
@@ -107,6 +108,11 @@ async def test_form(hass: HomeAssistant):
         {CONF_HYBRID_INVERTER_MODE: True, CONF_BATTERY_POWER: "sensor.battery_power"},
     )
     assert result5b["type"] == data_entry_flow.FlowResultType.FORM
+    # v2.14.0: main_fuse step between hybrid_inverter and pv_forecast
+    assert result5b["step_id"] == "main_fuse"
+    result5b = await hass.config_entries.flow.async_configure(
+        result5b["flow_id"], {CONF_MAIN_FUSE_SIZE: "0"}
+    )
     assert result5b["step_id"] == "pv_forecast"
 
     # Step 7: PV Forecast → notifications
@@ -231,6 +237,9 @@ async def test_external_connectors_validates_energy_target_entity_exists(hass: H
         result["flow_id"],
         {},
     )
+    # v2.14.0: main_fuse step (defaults to off)
+    assert result["step_id"] == "main_fuse"
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
@@ -328,6 +337,8 @@ async def test_three_phase_generic_flow(hass: HomeAssistant):
     # v2.1.0 (issue #29): hybrid_inverter step (battery_power stays single, not per-phase)
     assert result["step_id"] == "hybrid_inverter"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result["step_id"] == "main_fuse"
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     assert result["step_id"] == "pv_forecast"
 
     result = await hass.config_entries.flow.async_configure(
@@ -404,6 +415,8 @@ async def test_status_optional_and_charging_power_roundtrip(hass: HomeAssistant)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_HYBRID_INVERTER_MODE: False}
     )
+    assert result["step_id"] == "main_fuse"
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     assert result["step_id"] == "pv_forecast"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     assert result["step_id"] == "notifications"

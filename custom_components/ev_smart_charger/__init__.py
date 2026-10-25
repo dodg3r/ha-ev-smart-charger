@@ -29,9 +29,8 @@ from .const import (
     FRONTEND_URL_BASE,
     PLATFORMS,
     TELEMETRY_PING_INTERVAL_HOURS,
-    TOTAL_INTEGRATION_ENTITIES,
-    TOTAL_INTEGRATION_ENTITIES_NO_BATTERY,
     VERSION,
+    get_expected_entity_count,
     has_home_battery,
 )
 from .dashboard_manager import (
@@ -41,6 +40,7 @@ from .dashboard_manager import (
 from .automation_coordinator import AutomationCoordinator
 from .charger_controller import ChargerController
 from .ev_soc_monitor import EVSOCMonitor
+from .fuse_guard import FuseGuard
 from .priority_balancer import PriorityBalancer
 from .night_smart_charge import NightSmartCharge
 from .boost_charge import BoostCharge
@@ -101,6 +101,7 @@ async def _async_cleanup_partial_setup(runtime_data: EVSCRuntimeData) -> None:
         ("diagnostic_manager", "Diagnostic Manager"),
         ("log_manager", "Log Manager"),
         ("ev_soc_monitor", "EV SOC Monitor"),
+        ("fuse_guard", "Main Fuse Guard"),
     ]
 
     for attr_name, label in cleanup_order:
@@ -262,11 +263,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_register_frontend(hass)
     # v1.7.0: PV-only mode uses a smaller entity count (no home battery helpers).
     battery_configured = has_home_battery(entry.data)
-    expected_entities = (
-        TOTAL_INTEGRATION_ENTITIES
-        if battery_configured
-        else TOTAL_INTEGRATION_ENTITIES_NO_BATTERY
-    )
+    # v2.14.0: main-fuse protection adds its own entities when configured.
+    expected_entities = get_expected_entity_count(entry.data)
     runtime_data = EVSCRuntimeData(
         config=dict(entry.data),
         expected_entity_count=expected_entities,
@@ -318,6 +316,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.error(f"❌ Failed to set up Charger Controller: {e}")
             _LOGGER.exception("Charger Controller setup error details:")
             raise
+
+        # ========== PHASE 2.1: MAIN FUSE GUARD (v2.14.0) ==========
+        # Created right after the controller and BEFORE any automation, so the
+        # very first start request is already capped. Opt-in: a no-op when no
+        # main fuse size is configured. A configured guard that fails to set up
+        # aborts setup — running unprotected would defeat its purpose.
+        fuse_guard = FuseGuard(
+            hass, entry.entry_id, entry.data, runtime_data, charger_controller
+        )
+        runtime_data.fuse_guard = fuse_guard
+        await fuse_guard.async_setup()
+        _LOGGER.info(
+            "✅ Main fuse guard: %s",
+            "active" if fuse_guard.enabled else "not configured",
+        )
 
         # ========== PHASE 2.5: CREATE EV SOC MONITOR (Cache Reliability Layer) ==========
         _LOGGER.info("⏳ Phase 2.5: Creating EV SOC Monitor (cache reliability)")
@@ -738,6 +751,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if ev_soc_monitor:
         _LOGGER.info("🗑️  Removing EV SOC Monitor")
         await ev_soc_monitor.async_remove()
+
+    fuse_guard = runtime_data.fuse_guard
+    if fuse_guard:
+        _LOGGER.info("🗑️  Removing Main Fuse Guard")
+        await fuse_guard.async_remove()
 
     charger_controller = runtime_data.charger_controller
     if charger_controller:

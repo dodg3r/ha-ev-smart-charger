@@ -47,6 +47,9 @@ from .const import (
     HELPER_HYBRID_PROBE_DURATION_SUFFIX,
     HELPER_HYBRID_MAX_IMPORT_DURATION_SUFFIX,
     HELPER_HYBRID_MAX_FAILED_PROBES_SUFFIX,
+    DEFAULT_FUSE_MARGIN,
+    HELPER_FUSE_MARGIN_SUFFIX,
+    is_fuse_protection_enabled,
 )
 from .entity_base import EVSCEntityMixin
 from .runtime import get_runtime_data
@@ -178,6 +181,21 @@ async def async_setup_entry(
                     default_value=DEFAULT_HOME_MIN_SOC, unit="%",
                 )
             )
+
+    # v2.14.0: main-fuse safety margin, only when fuse protection is set up.
+    # Kept at 0.5 A steps regardless of charger model (it is a margin, not a
+    # charger level).
+    if is_fuse_protection_enabled(entry.data):
+        entities.append(
+            EVSCNumber(
+                runtime_data, entry.entry_id,
+                HELPER_FUSE_MARGIN_SUFFIX,
+                "EVSC Fuse Margin",
+                "mdi:fuse-alert",
+                min_value=0, max_value=10, step=0.5,
+                default_value=DEFAULT_FUSE_MARGIN, unit="A",
+            )
+        )
 
     async_add_entities(entities)
     _LOGGER.info(f"✅ Created {len(entities)} EVSC number entities")

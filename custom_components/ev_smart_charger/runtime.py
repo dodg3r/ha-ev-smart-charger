@@ -51,6 +51,7 @@ class EVSCRuntimeData:
     log_manager: Any | None = None
     diagnostic_manager: Any | None = None
     power_model: Any | None = None  # ChargingModel (phase mode + charger model, v2.0.0)
+    fuse_guard: Any | None = None  # Main fuse protection (v2.14.0)
     # Lifecycle + throttle of the shared EV charging Live Activity (v2.12.0)
     live_activity: LiveActivityState = field(default_factory=LiveActivityState)
 
