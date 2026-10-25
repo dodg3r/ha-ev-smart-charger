@@ -621,7 +621,7 @@ async def test_fuse_entities_created_only_when_enabled(hass):
 
         if expected:
             margin = number_keys[HELPER_FUSE_MARGIN_SUFFIX]
-            assert margin.native_step == 0.5  # not rewritten to 1 A on generic
+            assert margin._attr_native_step == 0.5  # not rewritten to 1 A on generic
             assert margin.native_value == 2.0
             assert sensor_keys[HELPER_MAIN_FUSE_SENSOR_SUFFIX].native_value == 25
             headroom = sensor_keys[HELPER_FUSE_HEADROOM_SENSOR_SUFFIX]
