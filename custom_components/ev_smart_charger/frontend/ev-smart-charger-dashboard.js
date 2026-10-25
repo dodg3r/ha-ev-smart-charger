@@ -58,6 +58,27 @@ const VOLTAGE_EU = 230;
 // Mirrors const.py:CHARGING_POWER_DRAWING_FLOOR_W — only rejects EVSE standby /
 // CT noise; far below the ~1380 W single-phase minimum session.
 const CHARGING_POWER_DRAWING_FLOOR_W = 200;
+// v2.14.1: statuses that mean "not drawing power". Mirrors the backend
+// classifiers in power_model.py (_DISCONNECTED_STATUSES /
+// _CHARGE_COMPLETE_STATUSES) plus the transitional / paused states, so an
+// OCPP wallbox reporting "Available" no longer shows "EV charging".
+// Compared case-insensitively, with spaces/dashes folded to underscores.
+const NOT_DRAWING_STATUSES = new Set([
+  // disconnected
+  "charger_free", "available", "disconnected", "unplugged", "not_connected",
+  "no_car", "no_vehicle", "car_not_connected",
+  // complete
+  "charger_end", "charged", "complete", "completed", "finished", "finishing",
+  "full", "charge_complete", "charging_complete",
+  // waiting / paused / fault (OCPP 1.6 vocabulary included)
+  "charger_wait", "preparing", "suspendedev", "suspendedevse", "suspended_ev",
+  "suspended_evse", "faulted", "reserved", "idle", "standby", "paused",
+]);
+function isNotDrawingStatus(status) {
+  if (status == null) return false;
+  const norm = String(status).trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return NOT_DRAWING_STATUSES.has(norm);
+}
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const DAY_INITIALS_BY_LOCALE = {
   en: ["M", "T", "W", "T", "F", "S", "S"],
@@ -1672,8 +1693,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       if (status == null || status === "unknown" || status === "unavailable") {
         result = false;
       } else {
-        const IDLE_STATUSES = new Set(["charger_free", "charger_end", "charger_wait"]);
-        result = !IDLE_STATUSES.has(status);
+        result = !isNotDrawingStatus(status);
       }
     }
     this._logChargingState(w, result);
@@ -1732,9 +1752,8 @@ class EvSmartChargerDashboard extends HTMLElement {
     //       the amperage instead of bailing.
     //   (b) amperage states reported as strings like "6 A", "6.0A", "6,0".
     //       Fix: strip non-numeric characters before parsing.
-    const IDLE_STATUSES = new Set(["charger_free", "charger_end", "charger_wait"]);
     const chargerStatus = this._stateObj(this._config.charger_status_entity)?.state;
-    if (chargerStatus && IDLE_STATUSES.has(chargerStatus)) return null;
+    if (chargerStatus && isNotDrawingStatus(chargerStatus)) return null;
     const ampsRaw = this._stateObj(this._config.current_entity)?.state;
     if (ampsRaw == null || ampsRaw === "unknown" || ampsRaw === "unavailable") {
       // eslint-disable-next-line no-console

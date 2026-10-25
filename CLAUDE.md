@@ -757,6 +757,19 @@ async def _set_amperage(self, target_amperage: int):
 
 ## Version History
 
+### v2.14.1 (2026-10-25) — fork dodg3r
+**FIX: dashboard showed "EV charging" with no car plugged in (OCPP `Available`)**
+
+The bundled card's status fallback (used by `_isDrawingNow()` whenever no
+charging-power reading is available, and by `_computeChargingPowerKw()`)
+treated only the Tuya strings `charger_free` / `charger_end` / `charger_wait`
+as idle, so an OCPP wallbox reporting `Available` lit the green banner. New
+module-level `isNotDrawingStatus()` (case-insensitive, spaces/dashes folded)
+mirrors the backend classifiers in `power_model.py` plus OCPP `Preparing`,
+`SuspendedEV`, `SuspendedEVSE`, `Faulted`, `Reserved`. Frontend only.
+
+---
+
 ### v2.14.0 (2026-10-25) — fork dodg3r
 **FEATURE: Main fuse protection (load balancing against the house main fuse, opt-in)**
 
