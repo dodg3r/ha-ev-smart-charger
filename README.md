@@ -681,6 +681,51 @@ All diagnostic sensors are **read-only**. They are updated continuously by the i
 
 ---
 
+## Main Fuse Protection (v2.14.0)
+
+Optional load balancing against your **house main fuse**. When enabled, the
+charger current is limited so that house load + EV never exceeds the fuse on
+any phase — in every charging mode, including Force Charge and Boost.
+
+**Setup** — the *Main fuse protection* step in the config / reconfigure flow:
+
+| Field | What to map |
+|---|---|
+| Main fuse size | Your main fuse rating per phase (16–80 A). *Off* disables the feature. |
+| Meter current L1–L3 (A) | Current through the main fuse per phase. May be unsigned. |
+| Meter import / export power L1–L3 (W) | Gives the direction of the current (recommended). |
+| Meter voltage L1–L3 (V) | Optional; only used when no current sensor is mapped. |
+| Charger current | One sensor with `L1`/`L2`/`L3` attributes (e.g. OCPP `current_import`) **or** one sensor per phase. |
+
+**How the limit is computed** (per phase, the weakest phase wins):
+
+```
+room = fuse − margin − (grid current − charger current)
+```
+
+- Unsigned meter current is treated as import, so the estimate is never too
+  optimistic; with import/export power the direction is exact and export gives
+  extra room.
+- The charger's contribution is the lower of its measured and commanded
+  current, so lagging charger data cannot hide house load.
+- **Down at once, up slowly**: reductions apply immediately (bypassing the
+  controller's 30 s rate limit), increases are ramped +2 A per 20 s.
+- **Below 6 A the charger stops** and stays off for 120 s; afterwards it is
+  restarted and the current restored towards what the active automation asked
+  for (unless the charger was stopped on purpose in the meantime).
+- **Missing meter data** drops charging to the minimum current at once and stops
+  it after 2 minutes. A missing sensor is never read as 0 W.
+
+**Entities** (only when enabled): `sensor.…_evsc_main_fuse` (configured size),
+`sensor.…_evsc_fuse_headroom` *Fuse charging limit* (current ceiling in A, with
+per-phase grid / charger / house current, room, bottleneck phase and limiter
+state as attributes) and `number.…_evsc_fuse_margin` (safety margin, default
+2 A).
+
+Chargers whose current entity only exists during a session (OCPP
+`session_current_limit`) are supported: the charger is turned on first and the
+current applied as soon as the entity appears.
+
 ## Automation Details
 
 ### Solar Surplus

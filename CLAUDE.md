@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.13.3
+**Current Version:** 2.14.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -756,6 +756,55 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.14.0 (2026-10-25) — fork dodg3r
+**FEATURE: Main fuse protection (load balancing against the house main fuse, opt-in)**
+
+New config step `main_fuse` (initial 10→**11** steps, reconfigure/options
+9→**10**) between `hybrid_inverter` and `pv_forecast`: main fuse size
+(`CONF_MAIN_FUSE_SIZE`, 0 = off) plus per-phase meter current / import /
+export / voltage and the charger current (`CONF_FUSE_CHARGER_CURRENT` with
+`L1`/`L2`/`L3` attributes, or per-phase sensors). Empty fields are written as
+`None` so clearing a mapping on reconfigure really removes it.
+
+- `fuse_math.py` (pure, no HA imports): `compute_fuse_limit` (signed grid
+  current: meter current with direction from import/export power, unsigned →
+  import, power/voltage fallback; charger contribution = min(measured,
+  commanded); room = fuse − margin − house per phase; any phase without a
+  reading → invalid) and `FuseLimiter` (decrease at once, ramp up
+  `FUSE_RAMP_STEP_A` per `FUSE_RAMP_INTERVAL_SECONDS` while charging, stop
+  below the minimum level with a `FUSE_STOP_HOLD_SECONDS` hold, invalid data →
+  minimum level then stop after `FUSE_INVALID_STOP_SECONDS`).
+- `fuse_guard.py` (`FuseGuard`, Phase 2.1, right after the controller and
+  before any automation): re-evaluates on every tracked sensor change and every
+  `FUSE_GUARD_INTERVAL_SECONDS`, publishes `sensor.evsc_fuse_headroom`
+  (throttled to 30 s for attribute-only changes) and enforces / restores via
+  the controller. No-op when no fuse size is set.
+- `charger_controller.py`: every start / set / recover is clamped to
+  `FuseGuard.max_allowed_amps()` (snapped DOWN to a charger level);
+  `_set_amperage_internal` and `_turn_on_charger_switch` re-check the ceiling as
+  a last line of defence (`FuseLimitError`). `async_enforce_fuse_ceiling` is
+  lock-free and ignores the 30 s rate limit. The controller remembers the
+  automation's pre-cap request (`_requested_amps`) and whether the guard reduced
+  (`_fuse_reduced`) or stopped (`_fuse_stopped`) charging;
+  `async_restore_after_fuse` restores towards the request / restarts after the
+  hold. A deliberate stop (`_stop_charger_unlocked`) cancels a pending restart.
+  New `_start_sequence`: when the current entity is unavailable before start
+  (OCPP session current limit) the charger is turned on first and the current
+  applied once the entity appears (`CHARGER_CURRENT_ENTITY_WAIT_SECONDS`).
+- Night Smart Charge grid monitor skips its "still charging?" checks while
+  `charger_controller.is_fuse_paused()`.
+- Entities only when enabled (`FUSE_PROTECTION_ENTITIES = 3`):
+  `number.evsc_fuse_margin` (0–10 A, 0.5 A steps, default 2),
+  `sensor.evsc_main_fuse`, `sensor.evsc_fuse_headroom`. The registration
+  barrier uses `get_expected_entity_count(config)`.
+- Tests: NEW `tests/test_fuse_math.py` (37, pure), NEW
+  `tests/test_v2140_fuse_protection.py` (controller cap / enforcement / OCPP
+  start order / restore, guard against real HA states, config flow, platforms);
+  config-flow tests updated for the new step. CI prints failures as check-run
+  annotations.
+
+---
 
 ### v2.13.3 (2026-09-28)
 **FIX: charging frozen at 10 A under curtailment — Hybrid Inverter Mode now adopts a running session**
