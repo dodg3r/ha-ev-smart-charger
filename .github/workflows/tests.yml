@@ -18,4 +18,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements_test.txt
       - name: Run pytest
-        run: pytest
+        run: |
+          set -o pipefail
+          pytest -rfE --tb=short 2>&1 | tee pytest.log
+      - name: Report failures as annotations
+        if: failure()
+        run: |
+          python - <<'PY'
+          import re
+          log = open("pytest.log", encoding="utf-8", errors="replace").read()
+          summary = [l for l in log.splitlines() if re.match(r"^(FAILED|ERROR) ", l)]
+          details = [l for l in log.splitlines() if l.startswith("E ") or "Error" in l][:120]
+          def emit(title, lines, size=12):
+              chunks = [lines[i:i + size] for i in range(0, len(lines), size)][:4]
+              for n, chunk in enumerate(chunks, 1):
+                  body = "%0A".join(x.replace("%", "%25")[:300] for x in chunk)
+                  print(f"::error title={title} {n}::{body}")
+          emit("pytest failures", summary)
+          emit("pytest details", details)
+          PY
