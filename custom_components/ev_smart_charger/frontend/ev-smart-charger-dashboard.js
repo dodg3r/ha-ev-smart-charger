@@ -168,6 +168,8 @@ const DOMAIN_SUFFIXES = {
   // v1.11.9: runtime state of Night Smart Charge (`idle` | `battery` | `grid`).
   // Drives the blue-violet hero banner when a session is running.
   nightSession: ["sensor", "evsc_night_session_state"],
+  // v2.20.0: cheapest hours + charge plan of Night Smart Charge.
+  nightPlan: ["sensor", "evsc_night_charge_plan"],
   // v2.15.0: main fuse protection (only exists when a fuse size is set).
   fuseHeadroom: ["sensor", "evsc_fuse_headroom"],
 };
@@ -177,6 +179,8 @@ for (const day of DAYS) {
   DOMAIN_SUFFIXES[`carReady_${day}`] = ["switch", `evsc_car_ready_${day}`];
   DOMAIN_SUFFIXES[`evMinSoc_${day}`] = ["number", `evsc_ev_min_soc_${day}`];
   DOMAIN_SUFFIXES[`homeMinSoc_${day}`] = ["number", `evsc_home_min_soc_${day}`];
+  // v2.20.0: car-ready time per weekday (replaces the Home target row).
+  DOMAIN_SUFFIXES[`carReadyTime_${day}`] = ["time", `evsc_car_ready_time_${day}`];
 }
 
 // =====================================================================
@@ -257,9 +261,9 @@ const SETTINGS_CATALOG = [
     id: "night", iconClass: "moon", icon: "🌙",
     name: { en: "Night Smart Charge", it: "Night Smart Charge", nl: "Slim nachtelijk laden" },
     desc: {
-      en: "Overnight charging strategy driven by next-day PV forecast",
-      it: "Strategia di ricarica notturna basata sul forecast PV del giorno successivo",
-      nl: "Strategie voor nachtelijk laden op basis van PV-voorspelling voor morgen",
+      en: "Charges in the cheapest hours before the car-ready time",
+      it: "Ricarica nelle ore più economiche prima dell'orario auto pronta",
+      nl: "Laadt in de goedkoopste uren vóór de auto-klaar-tijd",
     },
     items: [
       { entityKey: "nightEnabled", kind: "toggle",
@@ -270,46 +274,14 @@ const SETTINGS_CATALOG = [
           nl: "Hoofdschakelaar voor de nachtelijke laadlogica.",
         },
         hint: { en: "Default on", it: "Default on", nl: "Standaard aan" } },
-      { entityKey: "nightTime", kind: "time",
-        name: { en: "Night Charge Start Time", it: "Ora di avvio Night Charge", nl: "Starttijd nachtelijk laden" },
-        desc: {
-          en: "Time at which the nightly recharge begins. After this hour, if conditions are met, Night Charge takes control.",
-          it: "Ora di inizio della ricarica notturna. Dopo questa ora, se le condizioni sono soddisfatte, Night Charge prende il controllo del wallbox.",
-          nl: "Tijdstip waarop nachtelijk laden begint. Na dit uur neemt Night Charge de controle over indien aan de voorwaarden is voldaan.",
-        },
-        hint: { en: "Default 01:00", it: "Default 01:00", nl: "Standaard 01:00" } },
-      { entityKey: "carReadyTime", kind: "time",
-        name: { en: "Car Ready Deadline", it: "Deadline auto pronta", nl: "Auto-klaar deadline" },
-        desc: {
-          en: "Latest hour by which the car must be ready on days with the Car Ready flag enabled. After this time charging stops.",
-          it: "Ora entro la quale l'auto deve essere pronta nei giorni con flag Car Ready attivo. Oltre questa ora la ricarica si ferma.",
-          nl: "Uiterste tijd waarop de auto klaar moet zijn op dagen met Car Ready aan. Daarna stopt het laden.",
-        },
-        hint: { en: "Default 08:00", it: "Default 08:00", nl: "Standaard 08:00" } },
-      { entityKey: "minSolarForecast", kind: "stepper",
-        name: { en: "Min Solar Forecast", it: "Forecast solare minimo", nl: "Min. PV-voorspelling" },
-        desc: {
-          en: "Next-day PV forecast below which Night Charge switches to GRID mode instead of waiting for sun.",
-          it: "Forecast PV del giorno successivo sotto cui Night Charge passa in modalita GRID anziche aspettare il sole.",
-          nl: "PV-voorspelling van morgen waaronder Night Charge naar GRID schakelt in plaats van op de zon te wachten.",
-        },
-        hint: { en: "Default 20 kWh", it: "Default 20 kWh", nl: "Standaard 20 kWh" } },
       { entityKey: "nightAmperage", kind: "stepper",
         name: { en: "Night Charge Amperage", it: "Amperaggio Night Charge", nl: "Nachtelijke stroom" },
         desc: {
-          en: "Fixed current during nighttime charging in BATTERY or GRID mode.",
-          it: "Corrente fissa durante la ricarica notturna in modalita BATTERY o GRID.",
-          nl: "Vaste stroom tijdens nachtelijk laden in BATTERY- of GRID-modus.",
+          en: "Current used in the planned night hours. The charge plan uses it to work out how many hours are needed.",
+          it: "Corrente usata nelle ore notturne pianificate. Il piano la usa per calcolare quante ore servono.",
+          nl: "Stroom in de geplande nachturen. Het laadplan gebruikt deze om te berekenen hoeveel uur nodig is.",
         },
         hint: { en: "Default 16 A", it: "Default 16 A", nl: "Standaard 16 A" } },
-      { entityKey: "nightPvHandoff", kind: "stepper",
-        name: { en: "PV Handoff Threshold", it: "Soglia FV per handoff diurno", nl: "PV-drempel voor dagoverdracht" },
-        desc: {
-          en: "Only for days the car is NOT marked ready. Night Charge normally stops at astronomical sunrise, which at high latitudes can be hours before real solar output. Set above 0 W to keep charging past sunrise and hand off to Solar Surplus only once PV production stays above this value for 5 minutes. Stops no later than the Car Ready time on overcast days.",
-          it: "Solo per i giorni in cui l'auto NON e impostata come pronta. Di norma Night Charge si ferma all'alba astronomica, che ad alte latitudini puo precedere di ore la produzione solare reale. Imposta un valore sopra 0 W per proseguire oltre l'alba e passare a Solar Surplus solo quando la produzione FV resta sopra questo valore per 5 minuti. Nei giorni coperti si ferma comunque entro l'orario Auto pronta.",
-          nl: "Alleen voor dagen dat de auto NIET als klaar is gemarkeerd. Night Charge stopt normaal bij astronomische zonsopkomst, wat op hoge breedtegraden uren voor de echte zonneopbrengst kan zijn. Zet boven 0 W om door te laden na zonsopkomst en pas over te dragen aan Solar Surplus zodra de PV-productie 5 minuten boven deze waarde blijft. Stopt op bewolkte dagen uiterlijk op de Auto-klaar-tijd.",
-        },
-        hint: { en: "Default 0 W = off (stop at sunrise). Suggested ~200 W", it: "Default 0 W = disattivato (stop all'alba). Consigliato ~200 W", nl: "Standaard 0 W = uit (stop bij zonsopkomst). Aanbevolen ~200 W" } },
       { entityKey: "nighttimeSunsetOffset", kind: "stepper",
         name: { en: "Nighttime Sunset Offset", it: "Offset notte prima del tramonto", nl: "Nacht-offset vóór zonsondergang" },
         desc: {
@@ -326,14 +298,6 @@ const SETTINGS_CATALOG = [
           nl: "Verleng het nachtvenster LATER: behandel het als nacht zoveel minuten na zonsopkomst, waardoor Solar Surplus later hervat.",
         },
         hint: { en: "Default 0 min = astronomical sunrise · Range 0–120", it: "Default 0 min = alba astronomica · Range 0–120", nl: "Standaard 0 min = astronomische zonsopkomst · Bereik 0–120" } },
-      { entityKey: "preserveHomeBattery", kind: "toggle",
-        name: { en: "Preserve Home Battery", it: "Preserva batteria di casa", nl: "Thuisbatterij sparen" },
-        desc: {
-          en: "Skip overnight charging when the car does not need to be ready by morning, preserving home battery for daytime.",
-          it: "Salta la ricarica notturna quando l'auto non deve essere pronta al mattino, preservando la batteria di casa per il giorno.",
-          nl: "Sla nachtelijk laden over wanneer de auto 's ochtends niet klaar hoeft te zijn, om de thuisbatterij overdag te sparen.",
-        },
-        hint: { en: "Default off", it: "Default off", nl: "Standaard uit" } },
     ],
   },
   {
@@ -600,12 +564,12 @@ const STATIC_LABELS = {
   en: {
     nav_dashboard: "Dashboard", nav_settings: "Settings",
     settings_title: "Settings", settings_intro: "Automation module configuration. Click a category to expand its parameters.",
-    weekly_title: "Weekly Planner", weekly_desc: "Daily SOC targets · Car ready toggle per day",
-    weekly_ev: "EV target", weekly_home: "Home target", weekly_car: "Car ready",
+    weekly_title: "Weekly Planner", weekly_desc: "EV target and ready time per day · Car ready toggle",
+    weekly_ev: "EV target", weekly_home: "Home target", weekly_car: "Car ready", weekly_ready_time: "Ready by",
     weekly_car_ready_label: "Ready ☀️?",
     weekly_today_badge: "Today",
-    weekly_info: "When active, Night Smart Charge falls back to grid if the home battery is insufficient. When inactive, charging is skipped pending solar surplus.",
-    night_start: "Start", night_car_ready: "Car Ready", night_enabled: "Enabled", night_card_title: "Night Smart Charge", night_card_sub: "Forecast driven",
+    weekly_info: "Car ready on: Night Smart Charge charges in the cheapest hours before the ready time, up to the EV target. Off: no night charging — the car charges on solar surplus only.",
+    night_start: "Start", night_car_ready: "Car Ready", night_enabled: "Enabled", night_card_title: "Night Smart Charge", night_card_sub: "Cheapest hours",
     hero_ev: "EV", hero_charging: "CHARGING",
     profile_label: "Charging Profile", profile_hint: "Strategy mode selection",
     override_title: "Override & Boost", override_hint: "Manual intervention — bypass automations",
@@ -613,12 +577,12 @@ const STATIC_LABELS = {
   it: {
     nav_dashboard: "Dashboard", nav_settings: "Impostazioni",
     settings_title: "Impostazioni", settings_intro: "Configurazione dei moduli di automazione. Clicca su una categoria per espandere i parametri.",
-    weekly_title: "Pianificatore settimanale", weekly_desc: "Target SOC giornalieri · Toggle Car Ready per giorno",
-    weekly_ev: "Target EV", weekly_home: "Target casa", weekly_car: "Car ready",
+    weekly_title: "Pianificatore settimanale", weekly_desc: "Target EV e orario pronta per giorno · Toggle Car Ready",
+    weekly_ev: "Target EV", weekly_home: "Target casa", weekly_car: "Car ready", weekly_ready_time: "Pronta alle",
     weekly_car_ready_label: "Ready ☀️?",
     weekly_today_badge: "Oggi",
-    weekly_info: "Quando attivo, Night Smart Charge fa fallback su rete se la batteria di casa non basta. Quando inattivo la ricarica viene saltata in attesa del surplus solare.",
-    night_start: "Inizio", night_car_ready: "Auto pronta", night_enabled: "Attivo", night_card_title: "Night Smart Charge", night_card_sub: "Guidato dal forecast",
+    weekly_info: "Car ready attivo: Night Smart Charge ricarica nelle ore più economiche prima dell'orario pronta, fino al target EV. Disattivo: nessuna ricarica notturna — solo surplus solare.",
+    night_start: "Inizio", night_car_ready: "Auto pronta", night_enabled: "Attivo", night_card_title: "Night Smart Charge", night_card_sub: "Ore più economiche",
     hero_ev: "EV", hero_charging: "IN CARICA",
     profile_label: "Profilo di ricarica", profile_hint: "Selezione strategia",
     override_title: "Override e Boost", override_hint: "Intervento manuale — bypass automazioni",
@@ -626,12 +590,12 @@ const STATIC_LABELS = {
   nl: {
     nav_dashboard: "Dashboard", nav_settings: "Instellingen",
     settings_title: "Instellingen", settings_intro: "Configuratie van de automatiseringsmodules. Klik op een categorie om de parameters uit te vouwen.",
-    weekly_title: "Weekplanner", weekly_desc: "Dagelijkse SOC-doelen · Car Ready-schakelaar per dag",
-    weekly_ev: "EV-doel", weekly_home: "Thuisdoel", weekly_car: "Auto klaar",
+    weekly_title: "Weekplanner", weekly_desc: "EV-doel en klaar-tijd per dag · Car Ready-schakelaar",
+    weekly_ev: "EV-doel", weekly_home: "Thuisdoel", weekly_car: "Auto klaar", weekly_ready_time: "Klaar om",
     weekly_car_ready_label: "Ready ☀️?",
     weekly_today_badge: "Vandaag",
-    weekly_info: "Indien actief schakelt Night Smart Charge naar het net als de thuisbatterij onvoldoende is. Indien inactief wordt het laden overgeslagen in afwachting van zonneoverschot.",
-    night_start: "Start", night_car_ready: "Auto klaar", night_enabled: "Actief", night_card_title: "Slim nachtelijk laden", night_card_sub: "Op verwachting gestuurd",
+    weekly_info: "Car ready aan: Night Smart Charge laadt in de goedkoopste uren vóór de klaar-tijd, tot het EV-doel. Uit: geen nachtladen — alleen zonneoverschot.",
+    night_start: "Start", night_car_ready: "Auto klaar", night_enabled: "Actief", night_card_title: "Slim nachtelijk laden", night_card_sub: "Goedkoopste uren",
     hero_ev: "EV", hero_charging: "LADEN",
     profile_label: "Laadprofiel", profile_hint: "Strategiekeuze",
     override_title: "Override & Boost", override_hint: "Handmatige interventie — automatiseringen overslaan",
@@ -661,6 +625,26 @@ const FRONTEND_LOCALES = {
     "status.boost_starting": "Boost is starting…",
     "status.force_waiting": "Force Charge is on · charger is not running",
     "status.night_waiting": "Night charge starts at {time}",
+    "status.night_planned": "Night charge planned at {time}",
+    "night.status.planned": "Plan ready",
+    "night.status.charging": "Charging now",
+    "night.status.waiting_for_car": "Plug in the car to plan",
+    "night.status.car_ready_off": "Car ready off · solar only",
+    "night.status.target_reached": "EV target reached",
+    "night.status.no_prices": "No prices yet",
+    "night.status.disabled": "Off",
+    "night.status.waiting": "Waiting for the first plan",
+    "night.cheapest": "5 cheapest hours",
+    "night.avg": "avg {price}",
+    "night.plan": "Charge plan",
+    "night.plan_detail": "{hours} h · {kwh} kWh",
+    "night.ready_by": "Ready {day} {time}",
+    "night.next": "Next {time}",
+    "night.no_hours": "No charging needed",
+    "night.no_price_sensor": "Map a price sensor in the integration options (Nord Pool).",
+    "night.legend_cheap": "Cheapest",
+    "night.legend_plan": "Planned",
+    "night.soc_to_target": "{soc}% → {target}%",
     "status.waiting": "Waiting · {reason}",
     "status.not_charging": "Not charging",
     "hero.forecast_tomorrow": "Tomorrow Forecast",
@@ -825,6 +809,26 @@ const FRONTEND_LOCALES = {
     "status.boost_starting": "Avvio Boost…",
     "status.force_waiting": "Forza ricarica attiva · il caricatore non è in funzione",
     "status.night_waiting": "La ricarica notturna inizia alle {time}",
+    "status.night_planned": "Ricarica notturna pianificata alle {time}",
+    "night.status.planned": "Piano pronto",
+    "night.status.charging": "In ricarica",
+    "night.status.waiting_for_car": "Collega l'auto per pianificare",
+    "night.status.car_ready_off": "Car ready off · solo solare",
+    "night.status.target_reached": "Target EV raggiunto",
+    "night.status.no_prices": "Prezzi non ancora disponibili",
+    "night.status.disabled": "Off",
+    "night.status.waiting": "In attesa del primo piano",
+    "night.cheapest": "5 ore più economiche",
+    "night.avg": "media {price}",
+    "night.plan": "Piano di ricarica",
+    "night.plan_detail": "{hours} h · {kwh} kWh",
+    "night.ready_by": "Pronta {day} {time}",
+    "night.next": "Prossima {time}",
+    "night.no_hours": "Nessuna ricarica necessaria",
+    "night.no_price_sensor": "Mappa un sensore prezzi nelle opzioni dell'integrazione (Nord Pool).",
+    "night.legend_cheap": "Più economiche",
+    "night.legend_plan": "Pianificate",
+    "night.soc_to_target": "{soc}% → {target}%",
     "status.waiting": "In attesa · {reason}",
     "status.not_charging": "Non in carica",
     "hero.forecast_tomorrow": "Forecast Domani",
@@ -989,6 +993,26 @@ const FRONTEND_LOCALES = {
     "status.boost_starting": "Boost wordt gestart…",
     "status.force_waiting": "Laden forceren staat aan · lader is niet actief",
     "status.night_waiting": "Nachtladen start om {time}",
+    "status.night_planned": "Nachtladen gepland om {time}",
+    "night.status.planned": "Plan klaar",
+    "night.status.charging": "Laadt nu",
+    "night.status.waiting_for_car": "Sluit de auto aan om te plannen",
+    "night.status.car_ready_off": "Car ready uit · alleen zon",
+    "night.status.target_reached": "EV-doel bereikt",
+    "night.status.no_prices": "Nog geen prijzen",
+    "night.status.disabled": "Uit",
+    "night.status.waiting": "Wacht op het eerste plan",
+    "night.cheapest": "5 goedkoopste uren",
+    "night.avg": "gem. {price}",
+    "night.plan": "Laadplan",
+    "night.plan_detail": "{hours} u · {kwh} kWh",
+    "night.ready_by": "Klaar {day} {time}",
+    "night.next": "Volgende {time}",
+    "night.no_hours": "Geen laden nodig",
+    "night.no_price_sensor": "Koppel een prijssensor in de integratie-opties (Nord Pool).",
+    "night.legend_cheap": "Goedkoopst",
+    "night.legend_plan": "Gepland",
+    "night.soc_to_target": "{soc}% → {target}%",
     "status.waiting": "Wachten · {reason}",
     "status.not_charging": "Laadt niet",
     "hero.forecast_tomorrow": "Verwachting morgen",
@@ -1887,10 +1911,14 @@ class EvSmartChargerDashboard extends HTMLElement {
       return { text: this._t("status.force_waiting"), tone: "alert" };
     }
     const diag = this._stateObj(this._entityId("solarDiagnostic"))?.state || "";
-    if (/nighttime/i.test(diag) && isOn("nightEnabled")) {
-      const time = (this._stateObj(this._entityId("nightTime"))?.state || "").slice(0, 5);
-      if (time) {
-        return { text: this._tf("status.night_waiting", { time }), tone: "idle" };
+    if (isOn("nightEnabled")) {
+      const next = this._nightPlanData()?.next;
+      if (next) {
+        const d = new Date(next);
+        if (!Number.isNaN(d.getTime())) {
+          const time = `${String(d.getHours()).padStart(2, "0")}:00`;
+          return { text: this._tf("status.night_planned", { time }), tone: "idle" };
+        }
       }
     }
     if (diag && !["unknown", "unavailable"].includes(diag)) {
@@ -2658,36 +2686,165 @@ class EvSmartChargerDashboard extends HTMLElement {
   }
 
   /**
-   * Bento-style Night Smart Charge card with crescent illustration,
-   * two time pills and the enable toggle. Replaces the verbose
-   * 6-row module from the original dashboard.
+   * v2.20.0: Night Smart Charge card — hourly prices of tonight's window
+   * as bars, the 5 cheapest hours and the charge plan computed when the
+   * car is plugged in. Data comes from sensor.evsc_night_charge_plan.
    */
+  _nightPlanData() {
+    const st = this._stateObj(this._entityId("nightPlan"));
+    if (!st) return null;
+    const a = st.attributes || {};
+    return {
+      status: st.state,
+      prices: Array.isArray(a.prices) ? a.prices : [],
+      cheapest: Array.isArray(a.cheapest) ? a.cheapest : [],
+      planned: Array.isArray(a.planned) ? a.planned : [],
+      cheapestAvg: a.cheapest_average,
+      unit: a.price_unit || "",
+      deadline: a.deadline,
+      neededHours: a.needed_hours,
+      neededKwh: a.needed_kwh,
+      soc: a.soc,
+      target: a.target_soc,
+      next: a.next_charge,
+      priceSensor: a.price_sensor,
+    };
+  }
+
+  _hourLabel(iso) {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? "--" : String(d.getHours()).padStart(2, "0");
+  }
+
+  _hourRanges(isoList) {
+    // ["01:00", "02:00", "05:00"] -> "01–03, 05–06"
+    const starts = isoList
+      .map((iso) => new Date(iso).getTime())
+      .filter((t) => Number.isFinite(t))
+      .sort((x, y) => x - y);
+    const ranges = [];
+    for (const t of starts) {
+      const last = ranges[ranges.length - 1];
+      if (last && t - last.end === 0) last.end = t + 3600000;
+      else ranges.push({ start: t, end: t + 3600000 });
+    }
+    return ranges
+      .map((r) => `${this._hourLabel(r.start)}–${this._hourLabel(r.end)}`)
+      .join(", ");
+  }
+
+  _formatPrice(value, unit) {
+    if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
+    const v = Number(value);
+    const digits = Math.abs(v) >= 10 ? 1 : 2;
+    return `${v.toFixed(digits)}${unit ? ` ${unit}` : ""}`;
+  }
+
   _renderNightCardV2() {
     const enabledId = this._entityId("nightEnabled");
-    const nightTimeId = this._entityId("nightTime");
-    const carReadyTimeId = this._entityId("carReadyTime");
     const enabled = this._isOn(enabledId);
-    const startTime = (this._stateObj(nightTimeId)?.state || "01:00").slice(0, 5);
-    const carReadyTime = (this._stateObj(carReadyTimeId)?.state || "08:00").slice(0, 5);
-    const forecast = this._displayValue(this._config.pv_forecast_entity, "");
+    const plan = this._nightPlanData();
+    const status = plan?.status || "waiting";
+    const statusKey = `night.status.${status}`;
+    const statusText = this._t(statusKey) !== statusKey ? this._t(statusKey) : status;
+
+    let readyText = "";
+    if (plan?.deadline) {
+      const d = new Date(plan.deadline);
+      if (!Number.isNaN(d.getTime())) {
+        const day = d.toLocaleDateString(this._language(), { weekday: "short" });
+        const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        readyText = this._tf("night.ready_by", { day, time });
+      }
+    }
+
+    const prices = plan?.prices || [];
+    const known = prices.map((p) => p.price).filter((v) => Number.isFinite(Number(v))).map(Number);
+    let chart = "";
+    if (known.length) {
+      const min = Math.min(...known);
+      const max = Math.max(...known);
+      const cheap = new Set(plan.cheapest);
+      const planned = new Set(plan.planned);
+      const nowHour = new Date();
+      nowHour.setMinutes(0, 0, 0);
+      const bars = prices.map((p, idx) => {
+        const has = Number.isFinite(Number(p.price));
+        const ratio = has && max > min ? (Number(p.price) - min) / (max - min) : 0.5;
+        const h = has ? Math.round(18 + ratio * 82) : 6;
+        const cls = [
+          "evsc-np-bar",
+          cheap.has(p.start) ? "cheap" : "",
+          planned.has(p.start) ? "plan" : "",
+          has ? "" : "unknown",
+          new Date(p.start).getTime() === nowHour.getTime() ? "now" : "",
+        ].filter(Boolean).join(" ");
+        const label = idx % 3 === 0 ? this._hourLabel(p.start) : "";
+        const title = `${this._hourLabel(p.start)}:00 · ${this._formatPrice(p.price, plan.unit)}`;
+        return `
+          <div class="evsc-np-col" title="${title}">
+            <div class="${cls}" style="height:${h}%"></div>
+            <span class="evsc-np-tick">${label}</span>
+          </div>`;
+      }).join("");
+      chart = `
+        <div class="evsc-np-chart" role="img" aria-label="${this._t("night.cheapest")}">${bars}</div>
+        <div class="evsc-np-legend">
+          <span><i class="dot cheap"></i>${this._t("night.legend_cheap")}</span>
+          <span><i class="dot plan"></i>${this._t("night.legend_plan")}</span>
+        </div>`;
+    } else {
+      chart = `
+        <div class="evsc-night-illu" aria-hidden="true"><div class="evsc-night-moon"></div></div>
+        ${plan && !plan.priceSensor ? `<div class="evsc-np-note">${this._t("night.no_price_sensor")}</div>` : ""}`;
+    }
+
+    const cheapestText = plan?.cheapest?.length ? this._hourRanges(plan.cheapest) : "—";
+    const avgText = plan && plan.cheapestAvg !== null && plan.cheapestAvg !== undefined
+      ? this._tf("night.avg", { price: this._formatPrice(plan.cheapestAvg, plan.unit) })
+      : "";
+
+    let planValue = "—";
+    let planSub = statusText;
+    if (plan && plan.planned.length) {
+      planValue = this._hourRanges(plan.planned);
+      const parts = [];
+      if (plan.neededHours !== null && plan.neededHours !== undefined) {
+        parts.push(this._tf("night.plan_detail", {
+          hours: plan.neededHours,
+          kwh: Number(plan.neededKwh ?? 0).toFixed(1),
+        }));
+      }
+      if (plan.soc !== null && plan.soc !== undefined) {
+        parts.push(this._tf("night.soc_to_target", {
+          soc: Math.round(plan.soc), target: Math.round(plan.target),
+        }));
+      }
+      planSub = parts.join(" · ") || statusText;
+    } else if (status === "target_reached" || plan?.neededHours === 0) {
+      planValue = this._t("night.no_hours");
+    }
 
     return `
       <section class="evsc-night-card">
         <div class="evsc-night-head">
-          <span class="evsc-night-eyebrow">${this._label("night_card_title")}</span>
-          <span class="evsc-night-sub">${this._label("night_card_sub")}</span>
+          <div>
+            <span class="evsc-night-eyebrow">${this._label("night_card_title")}</span>
+            <span class="evsc-night-sub">${this._label("night_card_sub")}${readyText ? ` · ${readyText}` : ""}</span>
+          </div>
+          <span class="evsc-np-status s-${status}">${statusText}</span>
         </div>
-        <div class="evsc-night-illu" aria-hidden="true">
-          <div class="evsc-night-moon"></div>
-        </div>
+        ${chart}
         <div class="evsc-night-times">
           <div class="evsc-night-time">
-            <div class="lbl">${this._label("night_start")}</div>
-            <div class="vv" data-live-time="${nightTimeId}">${startTime}</div>
+            <div class="lbl">${this._t("night.cheapest")}</div>
+            <div class="vv small">${cheapestText}</div>
+            <div class="sub">${avgText}</div>
           </div>
-          <div class="evsc-night-time">
-            <div class="lbl">${this._label("night_car_ready")}</div>
-            <div class="vv" data-live-time="${carReadyTimeId}">${carReadyTime}</div>
+          <div class="evsc-night-time plan">
+            <div class="lbl">${this._t("night.plan")}</div>
+            <div class="vv small">${planValue}</div>
+            <div class="sub">${planSub}</div>
           </div>
         </div>
         <div class="evsc-night-enable">
@@ -2698,7 +2855,7 @@ class EvSmartChargerDashboard extends HTMLElement {
   }
 
   /**
-   * Weekly planner — 7 columns × 3 rows (EV target, Home target, Car ready).
+   * Weekly planner — 7 columns × 3 rows (EV target, Car ready, Ready time).
    * Inline stepper controls for SOC targets, mini iOS toggle for car-ready.
    * Today's column is highlighted with a blue tint.
    */
@@ -2725,15 +2882,16 @@ class EvSmartChargerDashboard extends HTMLElement {
       `;
     }).join("");
 
-    const homeRow = DAYS.map((day, i) => {
-      const ent = this._entityId(`homeMinSoc_${day}`);
-      const v = this._stateObj(ent)?.state ?? "—";
+    // v2.20.0: car-ready time per day (replaces the Home target row).
+    const readyRow = DAYS.map((day, i) => {
+      const ent = this._entityId(`carReadyTime_${day}`);
+      const v = (this._stateObj(ent)?.state || "--:--").slice(0, 5);
       return `
         <div class="evsc-wp-cell ${i === todayIdx ? "today" : ""}">
           <div class="evsc-wp-soc-row">
-            <button class="evsc-wp-mini" data-number="${ent}" data-direction="-1">−</button>
-            <span class="evsc-wp-soc home" data-live-number="${ent}">${v}<small>%</small></span>
-            <button class="evsc-wp-mini" data-number="${ent}" data-direction="1">+</button>
+            <button class="evsc-wp-mini" data-time="${ent}" data-minutes="-15">−</button>
+            <span class="evsc-wp-soc time" data-live-time="${ent}">${v}</span>
+            <button class="evsc-wp-mini" data-time="${ent}" data-minutes="15">+</button>
           </div>
         </div>
       `;
@@ -2758,10 +2916,10 @@ class EvSmartChargerDashboard extends HTMLElement {
     const dayFullNames = DAY_FULL_NAMES_BY_LOCALE[locale] || DAY_FULL_NAMES_BY_LOCALE[DEFAULT_LOCALE];
     const dayCards = DAYS.map((day, i) => {
       const evEnt = this._entityId(`evMinSoc_${day}`);
-      const homeEnt = this._entityId(`homeMinSoc_${day}`);
+      const timeEnt = this._entityId(`carReadyTime_${day}`);
       const carEnt = this._entityId(`carReady_${day}`);
       const evV = this._stateObj(evEnt)?.state ?? "—";
-      const homeV = this._stateObj(homeEnt)?.state ?? "—";
+      const timeV = (this._stateObj(timeEnt)?.state || "--:--").slice(0, 5);
       const carOn = this._isOn(carEnt);
       const isToday = i === todayIdx;
       const todayBadge = isToday
@@ -2791,11 +2949,11 @@ class EvSmartChargerDashboard extends HTMLElement {
               </div>
             </div>
             <div class="evsc-wp-day-row">
-              <span class="evsc-wp-day-kind evsc-wp-kind-home">${this._label("weekly_home")}</span>
+              <span class="evsc-wp-day-kind evsc-wp-kind-time">${this._label("weekly_ready_time")}</span>
               <div class="evsc-wp-soc-row">
-                <button class="evsc-wp-mini" data-number="${homeEnt}" data-direction="-1">−</button>
-                <span class="evsc-wp-soc home" data-live-number="${homeEnt}">${homeV}<small>%</small></span>
-                <button class="evsc-wp-mini" data-number="${homeEnt}" data-direction="1">+</button>
+                <button class="evsc-wp-mini" data-time="${timeEnt}" data-minutes="-15">−</button>
+                <span class="evsc-wp-soc time" data-live-time="${timeEnt}">${timeV}</span>
+                <button class="evsc-wp-mini" data-time="${timeEnt}" data-minutes="15">+</button>
               </div>
             </div>
           </div>
@@ -2814,8 +2972,8 @@ class EvSmartChargerDashboard extends HTMLElement {
         <div class="evsc-wp-grid">
           <div></div>${headers}
           <div class="evsc-wp-row-label">${this._label("weekly_ev")}</div>${evRow}
-          <div class="evsc-wp-row-label">${this._label("weekly_home")}</div>${homeRow}
           <div class="evsc-wp-row-label">${this._label("weekly_car")}</div>${carRow}
+          <div class="evsc-wp-row-label">${this._label("weekly_ready_time")}</div>${readyRow}
         </div>
         <div class="evsc-wp-mobile">${dayCards}</div>
         <div class="evsc-wp-info">${this._label("weekly_info")}</div>
@@ -3262,6 +3420,13 @@ class EvSmartChargerDashboard extends HTMLElement {
     // v2.6.0 (issue #36): the grid-lost pill appears/disappears, so it is
     // structural — include it so a transition triggers exactly one rebuild.
     const gridLost = this._gridAvailable() === false;
+    // v2.20.0: the night card is rebuilt when the plan changes (new prices,
+    // car plugged in, hour passed). Changes are rare, so a rebuild is fine.
+    const np = this._nightPlanData();
+    const nightPlanKey = np
+      ? [np.status, np.prices.map((p) => p.price).join(","), np.cheapest.join(","),
+        np.planned.join(","), np.neededHours, np.deadline, new Date().getHours()].join("|")
+      : "";
 
     return JSON.stringify({
       view: this._view,
@@ -3278,6 +3443,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       ni: nightOn,
       ch: chargingOnForKey,
       gl: gridLost,
+      np: nightPlanKey,
     });
   }
 
@@ -5345,6 +5511,7 @@ class EvSmartChargerDashboard extends HTMLElement {
         }
         .evsc-wp-day-row .evsc-wp-kind-ev   { color: var(--evsc-sys-blue);  }
         .evsc-wp-day-row .evsc-wp-kind-home { color: var(--evsc-sys-green); }
+        .evsc-wp-day-row .evsc-wp-kind-time { color: var(--evsc-sys-purple); }
         .evsc-wp-soc-row {
           display: flex;
           align-items: center;
@@ -5360,6 +5527,7 @@ class EvSmartChargerDashboard extends HTMLElement {
         }
         .evsc-wp-soc.ev { color: var(--evsc-sys-blue); }
         .evsc-wp-soc.home { color: var(--evsc-sys-green); }
+        .evsc-wp-soc.time { color: var(--evsc-sys-purple); min-width: 38px; }
         .evsc-wp-soc small {
           font-size: 9px;
           color: var(--evsc-fg-low);
@@ -5478,7 +5646,13 @@ class EvSmartChargerDashboard extends HTMLElement {
           box-shadow: var(--evsc-shadow-soft);
           padding: 22px;
         }
-        .evsc-night-head { margin-bottom: 16px; }
+        .evsc-night-head {
+          margin-bottom: 14px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 10px;
+        }
         .evsc-night-eyebrow {
           display: block;
           font-size: 13px;
@@ -5571,6 +5745,106 @@ class EvSmartChargerDashboard extends HTMLElement {
           background: color-mix(in srgb, var(--evsc-fg) 5%, transparent);
           border: 1px solid var(--evsc-stroke);
           border-radius: 12px;
+        }
+
+        /* v2.20.0: Night Smart Charge price plan */
+        .evsc-np-status {
+          flex: 0 0 auto;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 4px 10px;
+          border-radius: 999px;
+          color: var(--evsc-fg-mid);
+          background: color-mix(in srgb, var(--evsc-fg) 7%, transparent);
+          white-space: nowrap;
+        }
+        .evsc-np-status.s-planned,
+        .evsc-np-status.s-charging {
+          color: var(--evsc-sys-purple);
+          background: color-mix(in srgb, var(--evsc-sys-purple) 14%, transparent);
+        }
+        .evsc-np-status.s-target_reached {
+          color: var(--evsc-sys-green);
+          background: color-mix(in srgb, var(--evsc-sys-green) 14%, transparent);
+        }
+        .evsc-np-chart {
+          display: flex;
+          align-items: flex-end;
+          gap: 3px;
+          height: 96px;
+          padding: 8px 6px 18px;
+          margin-bottom: 6px;
+          border-radius: 14px;
+          background: radial-gradient(60% 100% at 50% 100%, color-mix(in srgb, var(--evsc-sys-purple) 18%, transparent), transparent 75%);
+        }
+        .evsc-np-col {
+          flex: 1 1 0;
+          min-width: 0;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-end;
+          position: relative;
+        }
+        .evsc-np-bar {
+          width: 100%;
+          border-radius: 4px 4px 2px 2px;
+          background: color-mix(in srgb, var(--evsc-fg) 16%, transparent);
+          transition: height 280ms var(--evsc-ease, ease);
+        }
+        .evsc-np-bar.cheap {
+          background: color-mix(in srgb, var(--evsc-sys-purple) 45%, transparent);
+        }
+        .evsc-np-bar.plan {
+          background: linear-gradient(180deg, var(--evsc-sys-purple), var(--evsc-sys-indigo));
+          box-shadow: 0 0 10px color-mix(in srgb, var(--evsc-sys-purple) 45%, transparent);
+        }
+        .evsc-np-bar.unknown { opacity: 0.4; }
+        .evsc-np-bar.now { outline: 2px solid var(--evsc-fg); outline-offset: 1px; }
+        .evsc-np-tick {
+          position: absolute;
+          bottom: -16px;
+          left: 0;
+          font-size: 9px;
+          font-weight: 600;
+          color: var(--evsc-fg-low);
+          font-variant-numeric: tabular-nums;
+        }
+        .evsc-np-legend {
+          display: flex;
+          gap: 14px;
+          font-size: 10px;
+          color: var(--evsc-fg-low);
+          margin-bottom: 12px;
+          padding-left: 6px;
+        }
+        .evsc-np-legend .dot {
+          display: inline-block;
+          width: 8px;
+          height: 8px;
+          border-radius: 2px;
+          margin-right: 5px;
+          vertical-align: -1px;
+        }
+        .evsc-np-legend .dot.cheap { background: color-mix(in srgb, var(--evsc-sys-purple) 45%, transparent); }
+        .evsc-np-legend .dot.plan { background: var(--evsc-sys-purple); }
+        .evsc-np-note {
+          font-size: 11px;
+          color: var(--evsc-fg-low);
+          margin: -6px 0 12px;
+        }
+        .evsc-night-time .vv.small {
+          font-size: 16px;
+          line-height: 1.25;
+          overflow-wrap: anywhere;
+        }
+        .evsc-night-time .sub {
+          font-size: 11px;
+          color: var(--evsc-fg-low);
+          margin-top: 3px;
+        }
+        .evsc-night-time.plan {
+          border-color: color-mix(in srgb, var(--evsc-sys-purple) 35%, var(--evsc-stroke));
         }
 
         /* Settings view — hero + accordion list */

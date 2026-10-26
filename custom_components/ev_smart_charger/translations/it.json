@@ -150,11 +150,13 @@
         "description": "Configura le integrazioni opzionali usate per pubblicare il target energetico della ricarica notturna.",
         "data": {
           "battery_capacity": "Capacita batteria EV (kWh)",
-          "energy_forecast_target": "Helper target energy forecast"
+          "energy_forecast_target": "Helper target energy forecast",
+          "price_sensor": "Sensore prezzo elettricità (Night Smart Charge)"
         },
         "data_description": {
           "battery_capacity": "Capacita batteria usata per calcolare l'energia necessaria a raggiungere il target EV configurato.",
-          "energy_forecast_target": "Helper opzionale in cui viene scritto il target calcolato. Domini supportati: `number`, `input_number`."
+          "energy_forecast_target": "Helper opzionale in cui viene scritto il target calcolato. Domini supportati: `number`, `input_number`.",
+          "price_sensor": "Opzionale. Sensore Nord Pool (core o HACS) o qualsiasi sensore con attributi raw_today/raw_tomorrow. Night Smart Charge ricarica nelle ore più economiche prima dell'orario auto pronta."
         }
       },
       "dashboard": {
@@ -296,11 +298,13 @@
         "description": "Aggiorna i connettori opzionali del target energetico notturno.",
         "data": {
           "battery_capacity": "Capacita batteria EV (kWh)",
-          "energy_forecast_target": "Helper target energy forecast"
+          "energy_forecast_target": "Helper target energy forecast",
+          "price_sensor": "Sensore prezzo elettricità (Night Smart Charge)"
         },
         "data_description": {
           "battery_capacity": "Capacita batteria usata per calcolare l'energia necessaria a raggiungere il target EV configurato.",
-          "energy_forecast_target": "Helper opzionale in cui viene scritto il target calcolato. Domini supportati: `number`, `input_number`."
+          "energy_forecast_target": "Helper opzionale in cui viene scritto il target calcolato. Domini supportati: `number`, `input_number`.",
+          "price_sensor": "Opzionale. Sensore Nord Pool (core o HACS) o qualsiasi sensore con attributi raw_today/raw_tomorrow. Night Smart Charge ricarica nelle ore più economiche prima dell'orario auto pronta."
         }
       },
       "reconfigure_dashboard": {
@@ -536,11 +540,13 @@
         "description": "Aggiorna i connettori opzionali del target energetico notturno.",
         "data": {
           "battery_capacity": "Capacita batteria EV (kWh)",
-          "energy_forecast_target": "Helper target energy forecast"
+          "energy_forecast_target": "Helper target energy forecast",
+          "price_sensor": "Sensore prezzo elettricità (Night Smart Charge)"
         },
         "data_description": {
           "battery_capacity": "Capacita batteria usata per calcolare l'energia necessaria a raggiungere il target EV configurato.",
-          "energy_forecast_target": "Helper opzionale in cui viene scritto il target calcolato. Domini supportati: `number`, `input_number`."
+          "energy_forecast_target": "Helper opzionale in cui viene scritto il target calcolato. Domini supportati: `number`, `input_number`.",
+          "price_sensor": "Opzionale. Sensore Nord Pool (core o HACS) o qualsiasi sensore con attributi raw_today/raw_tomorrow. Night Smart Charge ricarica nelle ore più economiche prima dell'orario auto pronta."
         }
       },
       "dashboard": {
@@ -809,6 +815,9 @@
       },
       "evsc_fuse_headroom": {
         "name": "Limite di ricarica (generale)"
+      },
+      "evsc_night_charge_plan": {
+        "name": "Piano ricarica notturna"
       }
     },
     "time": {
@@ -817,6 +826,27 @@
       },
       "evsc_car_ready_time": {
         "name": "Ora auto pronta"
+      },
+      "evsc_car_ready_time_monday": {
+        "name": "Orario auto pronta lunedì"
+      },
+      "evsc_car_ready_time_tuesday": {
+        "name": "Orario auto pronta martedì"
+      },
+      "evsc_car_ready_time_wednesday": {
+        "name": "Orario auto pronta mercoledì"
+      },
+      "evsc_car_ready_time_thursday": {
+        "name": "Orario auto pronta giovedì"
+      },
+      "evsc_car_ready_time_friday": {
+        "name": "Orario auto pronta venerdì"
+      },
+      "evsc_car_ready_time_saturday": {
+        "name": "Orario auto pronta sabato"
+      },
+      "evsc_car_ready_time_sunday": {
+        "name": "Orario auto pronta domenica"
       }
     }
   },

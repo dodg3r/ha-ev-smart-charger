@@ -539,7 +539,15 @@ class SmartChargerBlocker:
             night_charge_enabled = self._is_night_charge_enabled()
             night_charge_time = None
 
-            if night_charge_enabled:
+            # v2.20.0: planned night charging has no start time. The car may
+            # charge only in the planned hours (Night Smart Charge is active
+            # then and is allowed before this check), so block the whole
+            # night: sunset -> sunrise.
+            if night_charge_enabled and (
+                getattr(self.night_smart_charge, "uses_price_plan", False) is True
+            ):
+                night_charge_enabled = False
+            elif night_charge_enabled:
                 night_charge_time = await self._get_night_charge_datetime(now)
 
             # Use AstralTimeService to determine blocking window

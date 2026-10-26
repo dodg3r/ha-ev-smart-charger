@@ -16,6 +16,8 @@ from .const import (
     DEFAULT_CAR_READY_TIME,
     DEFAULT_BOOST_SCHEDULE_START_TIME,
     DEFAULT_BOOST_SCHEDULE_END_TIME,
+    CAR_READY_TIME_DAY_SUFFIX_PREFIX,
+    WEEKDAY_KEYS,
 )
 from .entity_base import EVSCEntityMixin
 from .runtime import get_runtime_data
@@ -55,6 +57,19 @@ async def async_setup_entry(
             DEFAULT_CAR_READY_TIME,
         )
     )
+
+    # v2.20.0: one car-ready time per weekday (shown in the weekly planner)
+    for day in WEEKDAY_KEYS:
+        entities.append(
+            EVSCTime(
+                runtime_data,
+                entry.entry_id,
+                f"{CAR_READY_TIME_DAY_SUFFIX_PREFIX}{day}",
+                f"Car Ready Time {day.capitalize()}",
+                "mdi:clock-check-outline",
+                DEFAULT_CAR_READY_TIME,
+            )
+        )
 
     # Boost Schedule Start/End Times
     entities.append(

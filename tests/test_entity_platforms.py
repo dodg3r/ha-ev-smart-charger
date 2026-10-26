@@ -204,8 +204,9 @@ async def test_time_platform_restore_invalid_restore_and_set_value(hass, runtime
 
     await time_platform.async_setup_entry(hass, entry, async_add_entities)
 
-    # night_charge_time, car_ready_time, boost_schedule_{start,end}_time.
-    assert len(entities) == 4
+    # night_charge_time, car_ready_time, 7 per-day car-ready times (v2.20.0),
+    # boost_schedule_{start,end}_time.
+    assert len(entities) == 11
 
     restored_time = entities[0]
     default_time = entities[1]
@@ -242,8 +243,9 @@ async def test_sensor_platform_setup_publish_restore_and_log_manager(hass, runti
 
     await sensor_platform.async_setup_entry(hass, entry, async_add_entities)
 
-    # 8 always-created + 1 home-battery-only sensor (today_home_target).
-    assert len(entities) == 9
+    # 9 always-created (v2.20.0: + night charge plan) + 1 home-battery-only
+    # sensor (today_home_target).
+    assert len(entities) == 10
 
     diagnostic = next(entity for entity in entities if entity.entity_id.endswith("evsc_diagnostic"))
     priority = next(

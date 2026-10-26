@@ -18,6 +18,7 @@ from .const import (
     CONF_CHARGING_POWER_L3,
     CONF_CREATE_DASHBOARD,
     CONF_ENERGY_FORECAST_TARGET,
+    CONF_PRICE_SENSOR,
     CONF_EV_CHARGER_CURRENT,
     CONF_EV_CHARGER_STATUS,
     CONF_EV_CHARGER_START_BUTTON,
@@ -589,6 +590,12 @@ def _external_connectors_schema(current_data: dict[str, Any] | None = None) -> v
                 CONF_ENERGY_FORECAST_TARGET,
                 **_field_config(current_data.get(CONF_ENERGY_FORECAST_TARGET)),
             ): _entity_selector(ENERGY_TARGET_DOMAINS),
+            # v2.20.0: electricity price sensor for planned night charging
+            # (Nord Pool core or HACS, or any sensor with raw_today/raw_tomorrow).
+            vol.Optional(
+                CONF_PRICE_SENSOR,
+                **_field_config(current_data.get(CONF_PRICE_SENSOR)),
+            ): _entity_selector("sensor"),
         }
     )
 
@@ -1007,6 +1014,8 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             errors = _validate_external_connectors(self.hass, user_input)
             if not errors:
+                # Write a cleared price sensor as None so it is really removed.
+                user_input.setdefault(CONF_PRICE_SENSOR, None)
                 self.external_info = user_input
                 return await self._go_next("external")
 
@@ -1222,6 +1231,8 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             errors = _validate_external_connectors(self.hass, user_input)
             if not errors:
+                # Write a cleared price sensor as None so it is really removed.
+                user_input.setdefault(CONF_PRICE_SENSOR, None)
                 self.external_info = user_input
                 return await self._go_next("external")
 
@@ -1444,6 +1455,8 @@ class EVSCOptionsFlow(_StepNavigator, config_entries.OptionsFlowWithConfigEntry)
         if user_input is not None:
             errors = _validate_external_connectors(self.hass, user_input)
             if not errors:
+                # Write a cleared price sensor as None so it is really removed.
+                user_input.setdefault(CONF_PRICE_SENSOR, None)
                 self.external_info = user_input
                 return await self._go_next("external")
 

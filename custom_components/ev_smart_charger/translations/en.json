@@ -150,11 +150,13 @@
         "description": "Configure optional integrations used to publish the nightly energy forecast target.",
         "data": {
           "battery_capacity": "EV battery capacity (kWh)",
-          "energy_forecast_target": "Energy forecast target helper"
+          "energy_forecast_target": "Energy forecast target helper",
+          "price_sensor": "Electricity price sensor (Night Smart Charge)"
         },
         "data_description": {
           "battery_capacity": "Battery capacity used to calculate the energy needed to reach the configured EV target.",
-          "energy_forecast_target": "Optional helper entity where the calculated target is written. Supported domains: `number`, `input_number`."
+          "energy_forecast_target": "Optional helper entity where the calculated target is written. Supported domains: `number`, `input_number`.",
+          "price_sensor": "Optional. Nord Pool sensor (core or HACS) or any sensor with raw_today/raw_tomorrow attributes. Night Smart Charge charges in the cheapest hours before the car-ready time."
         }
       },
       "dashboard": {
@@ -296,11 +298,13 @@
         "description": "Update the optional nightly energy forecast connectors.",
         "data": {
           "battery_capacity": "EV battery capacity (kWh)",
-          "energy_forecast_target": "Energy forecast target helper"
+          "energy_forecast_target": "Energy forecast target helper",
+          "price_sensor": "Electricity price sensor (Night Smart Charge)"
         },
         "data_description": {
           "battery_capacity": "Battery capacity used to calculate the energy needed to reach the configured EV target.",
-          "energy_forecast_target": "Optional helper entity where the calculated target is written. Supported domains: `number`, `input_number`."
+          "energy_forecast_target": "Optional helper entity where the calculated target is written. Supported domains: `number`, `input_number`.",
+          "price_sensor": "Optional. Nord Pool sensor (core or HACS) or any sensor with raw_today/raw_tomorrow attributes. Night Smart Charge charges in the cheapest hours before the car-ready time."
         }
       },
       "reconfigure_dashboard": {
@@ -536,11 +540,13 @@
         "description": "Update the optional nightly energy forecast connectors.",
         "data": {
           "battery_capacity": "EV battery capacity (kWh)",
-          "energy_forecast_target": "Energy forecast target helper"
+          "energy_forecast_target": "Energy forecast target helper",
+          "price_sensor": "Electricity price sensor (Night Smart Charge)"
         },
         "data_description": {
           "battery_capacity": "Battery capacity used to calculate the energy needed to reach the configured EV target.",
-          "energy_forecast_target": "Optional helper entity where the calculated target is written. Supported domains: `number`, `input_number`."
+          "energy_forecast_target": "Optional helper entity where the calculated target is written. Supported domains: `number`, `input_number`.",
+          "price_sensor": "Optional. Nord Pool sensor (core or HACS) or any sensor with raw_today/raw_tomorrow attributes. Night Smart Charge charges in the cheapest hours before the car-ready time."
         }
       },
       "dashboard": {
@@ -809,6 +815,9 @@
       },
       "evsc_fuse_headroom": {
         "name": "Fuse charging limit"
+      },
+      "evsc_night_charge_plan": {
+        "name": "Night charge plan"
       }
     },
     "time": {
@@ -817,6 +826,27 @@
       },
       "evsc_car_ready_time": {
         "name": "Car ready time"
+      },
+      "evsc_car_ready_time_monday": {
+        "name": "Car ready time Monday"
+      },
+      "evsc_car_ready_time_tuesday": {
+        "name": "Car ready time Tuesday"
+      },
+      "evsc_car_ready_time_wednesday": {
+        "name": "Car ready time Wednesday"
+      },
+      "evsc_car_ready_time_thursday": {
+        "name": "Car ready time Thursday"
+      },
+      "evsc_car_ready_time_friday": {
+        "name": "Car ready time Friday"
+      },
+      "evsc_car_ready_time_saturday": {
+        "name": "Car ready time Saturday"
+      },
+      "evsc_car_ready_time_sunday": {
+        "name": "Car ready time Sunday"
       }
     }
   },

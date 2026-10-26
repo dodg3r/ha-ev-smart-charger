@@ -150,11 +150,13 @@
         "description": "Configureer optionele integraties die worden gebruikt om het nachtelijke energieverwachtingsdoel te publiceren.",
         "data": {
           "battery_capacity": "EV-batterijcapaciteit (kWh)",
-          "energy_forecast_target": "Helper energieverwachtingsdoel"
+          "energy_forecast_target": "Helper energieverwachtingsdoel",
+          "price_sensor": "Elektriciteitsprijssensor (Night Smart Charge)"
         },
         "data_description": {
           "battery_capacity": "Batterijcapaciteit die wordt gebruikt om de energie te berekenen die nodig is om het geconfigureerde EV-doel te bereiken.",
-          "energy_forecast_target": "Optionele helper-entiteit waarin het berekende doel wordt geschreven. Ondersteunde domeinen: `number`, `input_number`."
+          "energy_forecast_target": "Optionele helper-entiteit waarin het berekende doel wordt geschreven. Ondersteunde domeinen: `number`, `input_number`.",
+          "price_sensor": "Optioneel. Nord Pool-sensor (core of HACS) of elke sensor met raw_today/raw_tomorrow-attributen. Night Smart Charge laadt in de goedkoopste uren vóór de auto-klaar-tijd."
         }
       },
       "dashboard": {
@@ -296,11 +298,13 @@
         "description": "Werk de optionele nachtelijke energieverwachtingskoppelingen bij.",
         "data": {
           "battery_capacity": "EV-batterijcapaciteit (kWh)",
-          "energy_forecast_target": "Helper energieverwachtingsdoel"
+          "energy_forecast_target": "Helper energieverwachtingsdoel",
+          "price_sensor": "Elektriciteitsprijssensor (Night Smart Charge)"
         },
         "data_description": {
           "battery_capacity": "Batterijcapaciteit die wordt gebruikt om de energie te berekenen die nodig is om het geconfigureerde EV-doel te bereiken.",
-          "energy_forecast_target": "Optionele helper-entiteit waarin het berekende doel wordt geschreven. Ondersteunde domeinen: `number`, `input_number`."
+          "energy_forecast_target": "Optionele helper-entiteit waarin het berekende doel wordt geschreven. Ondersteunde domeinen: `number`, `input_number`.",
+          "price_sensor": "Optioneel. Nord Pool-sensor (core of HACS) of elke sensor met raw_today/raw_tomorrow-attributen. Night Smart Charge laadt in de goedkoopste uren vóór de auto-klaar-tijd."
         }
       },
       "reconfigure_dashboard": {
@@ -536,11 +540,13 @@
         "description": "Werk de optionele nachtelijke energieverwachtingskoppelingen bij.",
         "data": {
           "battery_capacity": "EV-batterijcapaciteit (kWh)",
-          "energy_forecast_target": "Helper energieverwachtingsdoel"
+          "energy_forecast_target": "Helper energieverwachtingsdoel",
+          "price_sensor": "Elektriciteitsprijssensor (Night Smart Charge)"
         },
         "data_description": {
           "battery_capacity": "Batterijcapaciteit die wordt gebruikt om de energie te berekenen die nodig is om het geconfigureerde EV-doel te bereiken.",
-          "energy_forecast_target": "Optionele helper-entiteit waarin het berekende doel wordt geschreven. Ondersteunde domeinen: `number`, `input_number`."
+          "energy_forecast_target": "Optionele helper-entiteit waarin het berekende doel wordt geschreven. Ondersteunde domeinen: `number`, `input_number`.",
+          "price_sensor": "Optioneel. Nord Pool-sensor (core of HACS) of elke sensor met raw_today/raw_tomorrow-attributen. Night Smart Charge laadt in de goedkoopste uren vóór de auto-klaar-tijd."
         }
       },
       "dashboard": {
@@ -809,6 +815,9 @@
       },
       "evsc_fuse_headroom": {
         "name": "Laadlimiet hoofdzekering"
+      },
+      "evsc_night_charge_plan": {
+        "name": "Nachtlaadplan"
       }
     },
     "time": {
@@ -817,6 +826,27 @@
       },
       "evsc_car_ready_time": {
         "name": "Tijd auto klaar"
+      },
+      "evsc_car_ready_time_monday": {
+        "name": "Auto klaar tijd maandag"
+      },
+      "evsc_car_ready_time_tuesday": {
+        "name": "Auto klaar tijd dinsdag"
+      },
+      "evsc_car_ready_time_wednesday": {
+        "name": "Auto klaar tijd woensdag"
+      },
+      "evsc_car_ready_time_thursday": {
+        "name": "Auto klaar tijd donderdag"
+      },
+      "evsc_car_ready_time_friday": {
+        "name": "Auto klaar tijd vrijdag"
+      },
+      "evsc_car_ready_time_saturday": {
+        "name": "Auto klaar tijd zaterdag"
+      },
+      "evsc_car_ready_time_sunday": {
+        "name": "Auto klaar tijd zondag"
       }
     }
   },

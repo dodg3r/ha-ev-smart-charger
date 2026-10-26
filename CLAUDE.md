@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.19.0
+**Current Version:** 2.20.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,54 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.20.0 (2026-10-26) — fork dodg3r
+**Night Smart Charge plans the cheapest hours before the car-ready time**
+
+Requested by the maintainer: the weekly planner shows a car-ready time per
+day instead of the home target; car ready OFF = solar surplus only (past the
+EV target); Night Smart Charge computes the 5 cheapest hours when new prices
+are released and, when the car is plugged in, plans the hours needed from
+the current SOC to the target before the car-ready time.
+- NEW `price_source.py`: hourly prices for today/tomorrow from
+  `raw_today`/`raw_tomorrow` (HACS Nord Pool, Energi Data Service style),
+  plain `today`/`tomorrow` lists (24 or 96 values), or the core Nord Pool
+  service `nordpool.get_prices_for_date` (per MWh → per kWh, config entry
+  from the entity registry). 15-minute prices averaged per hour.
+- NEW `charge_planner.py` (pure): `window_hours`, `pick_cheapest` (unknown
+  prices last, ties → earlier, `required` hours kept), `energy_needed_kwh`
+  (capacity × missing % / 0.9), `hours_needed`, `build_plan` (`earliest`
+  filters past hours, `committed` keeps the running hour).
+- NEW `planned_night_charge.py` (`PlannedNightCharge`, same public interface
+  as `NightSmartCharge`, `uses_price_plan = True`), set up in Phase 5 under
+  the old name (`from .planned_night_charge import PlannedNightCharge as
+  NightSmartCharge`); `night_smart_charge.py` is kept but no longer set up.
+  Deadline = next per-day car-ready time (`evsc_car_ready_time_<day>`, global
+  `evsc_car_ready_time` as fallback); window = sunset before the deadline →
+  deadline. Ticks every minute, at :00:02, and on price / status / SOC /
+  helper changes; prices are re-read every 10 min or on a price-sensor
+  change. Charges at `evsc_night_charge_amperage` only when enabled, car
+  connected, car ready ON for the deadline day, target not reached and the
+  current hour is planned; stops otherwise. Target reached latches per
+  deadline (no restart on a 1 % drop). Unknown SOC → the cheapest 5 hours.
+  `_last_completion_time` stays None (no Solar Surplus cooldown).
+- NEW sensor `evsc_night_charge_plan` (status + prices / cheapest / planned /
+  needed_kwh / needed_hours / deadline / next_charge / price_unit).
+- NEW 7 time entities `evsc_car_ready_time_<day>` (default 08:00).
+  `TOTAL_INTEGRATION_ENTITIES` 74 → 82, `_NO_BATTERY` 60 → 68.
+- Config flow: optional `CONF_PRICE_SENSOR` in the external-connectors step
+  (all three flows; cleared → None).
+- Smart Blocker: with the planned night charge the window is sunset → sunrise
+  (no start time); planned hours pass because Night Smart Charge is active.
+- Dashboard: weekly planner rows EV target / Car ready / Ready time (±15 min);
+  the night card shows the price bars of the window (cheapest tinted,
+  planned solid, current hour outlined), the 5 cheapest hours with their
+  average, the charge plan and its status; start / car-ready pills removed;
+  obsolete night settings (start time, car-ready deadline, min forecast, PV
+  handoff, preserve battery) removed; status line shows the next planned hour.
+- Tests: NEW `tests/test_v2200_planned_night_charge.py`; entity counts updated.
+
+---
 
 ### v2.19.0 (2026-10-26) — fork dodg3r
 **Main fuse protection acts on the meter: no pre-emptive cap, settle window after a reduction, hard limit**

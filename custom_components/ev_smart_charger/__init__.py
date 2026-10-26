@@ -42,7 +42,10 @@ from .charger_controller import ChargerController
 from .ev_soc_monitor import EVSOCMonitor
 from .fuse_guard import FuseGuard
 from .priority_balancer import PriorityBalancer
-from .night_smart_charge import NightSmartCharge
+# v2.20.0: Night Smart Charge plans the cheapest hours before the car-ready
+# time. The old start-time based module (night_smart_charge.py) is kept for
+# reference and its tests, but is no longer set up.
+from .planned_night_charge import PlannedNightCharge as NightSmartCharge
 from .boost_charge import BoostCharge
 from .automations import SmartChargerBlocker
 from .hybrid_inverter_mode import HybridInverterMode
@@ -443,6 +446,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await boost_charge.async_setup()
             _LOGGER.info("✅ Boost Charge setup complete")
             runtime_data.boost_charge = boost_charge
+            if night_smart_charge is not None:
+                night_smart_charge._boost_charge = boost_charge
         except Exception as e:
             _LOGGER.error(f"❌ Failed to set up Boost Charge: {e}")
             _LOGGER.exception("Boost Charge setup error details:")

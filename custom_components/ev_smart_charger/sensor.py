@@ -17,6 +17,7 @@ from .const import (
     CONF_SOC_CAR,
     HELPER_HYBRID_DIAGNOSTIC_SUFFIX,
     HELPER_NIGHT_SESSION_STATE_SUFFIX,
+    HELPER_NIGHT_CHARGE_PLAN_SUFFIX,
     HYBRID_STATE_IDLE,
     NIGHT_CHARGE_MODE_IDLE,
     HELPER_FUSE_HEADROOM_SENSOR_SUFFIX,
@@ -100,6 +101,13 @@ async def async_setup_entry(
             HELPER_NIGHT_SESSION_STATE_SUFFIX,
             "EVSC Night Session State",
             "mdi:weather-night",
+        ),
+        EVSCNightChargePlanSensor(
+            runtime_data,
+            entry.entry_id,
+            HELPER_NIGHT_CHARGE_PLAN_SUFFIX,
+            "EVSC Night Charge Plan",
+            "mdi:calendar-clock",
         ),
     ]
 
@@ -296,6 +304,34 @@ class EVSCNightSessionStateSensor(EVSCBaseSensor):
         if (last_state := await self.async_get_last_state()) is not None:
             self._attr_native_value = last_state.state
             self._attr_extra_state_attributes = dict(last_state.attributes)
+
+
+class EVSCNightChargePlanSensor(EVSCBaseSensor):
+    """Cheapest hours and charge plan of Night Smart Charge (v2.20.0).
+
+    Published by planned_night_charge.py. State is the plan status
+    (planned / charging / waiting_for_car / car_ready_off / ...); the
+    attributes carry the hourly prices, the cheapest hours and the plan.
+    """
+
+    def __init__(
+        self,
+        runtime_data: EVSCRuntimeData,
+        entry_id: str,
+        suffix: str,
+        name: str,
+        icon: str,
+    ) -> None:
+        """Initialize the plan sensor."""
+        super().__init__(
+            runtime_data,
+            entry_id,
+            suffix,
+            name,
+            icon,
+            native_value="waiting",
+            entity_category=None,
+        )
 
 
 class EVSCSolarSurplusDiagnosticSensor(EVSCBaseSensor):

@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.19.0"
+VERSION = "2.20.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -451,6 +451,18 @@ HELPER_CHARGING_PROFILE_SUFFIX = "evsc_charging_profile"
 # Time
 HELPER_NIGHT_CHARGE_TIME_SUFFIX = "evsc_night_charge_time"
 HELPER_CAR_READY_TIME_SUFFIX = "evsc_car_ready_time"
+# v2.20.0: one car-ready time per weekday (evsc_car_ready_time_monday ...).
+# The global evsc_car_ready_time stays as the default for a missing day.
+CAR_READY_TIME_DAY_SUFFIX_PREFIX = "evsc_car_ready_time_"
+WEEKDAY_KEYS = (
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+)
 
 # Sensors
 HELPER_DIAGNOSTIC_SENSOR_SUFFIX = "evsc_diagnostic"
@@ -461,6 +473,13 @@ HELPER_TODAY_EV_TARGET_SUFFIX = "evsc_today_ev_target"  # v1.3.26
 HELPER_TODAY_HOME_TARGET_SUFFIX = "evsc_today_home_target"  # v1.3.26
 HELPER_CACHED_EV_SOC_SUFFIX = "evsc_cached_ev_soc"  # v1.4.0
 HELPER_NIGHT_SESSION_STATE_SUFFIX = "evsc_night_session_state"  # v1.11.9 — runtime session state for hero banner
+HELPER_NIGHT_CHARGE_PLAN_SUFFIX = "evsc_night_charge_plan"  # v2.20.0 — cheapest hours + charge plan
+
+# v2.20.0: planned night charging from electricity prices
+CONF_PRICE_SENSOR = "price_sensor"
+NIGHT_PLAN_CHEAPEST_HOURS = 5
+NIGHT_PLAN_CHARGE_EFFICIENCY = 0.9
+NIGHT_PLAN_PRICE_REFRESH_SECONDS = 600
 
 # Hybrid Inverter Mode (v1.8.0 — issue #20)
 HELPER_HYBRID_INVERTER_MODE_SUFFIX = "evsc_hybrid_inverter_mode"
@@ -655,7 +674,8 @@ HYBRID_STATE_HARD_EXIT = "HARD_EXIT"
 # reality (cf. v1.6.20), a single user-disabled entity turns the tolerant
 # startup path back into a hard ConfigEntryNotReady. Keep this in sync.
 # v2.13.0 adds 1 always-created number (evsc_offgrid_max_amperage) → 74.
-TOTAL_INTEGRATION_ENTITIES = 74
+# v2.20.0 adds 7 per-day car-ready times + 1 night charge plan sensor → 82.
+TOTAL_INTEGRATION_ENTITIES = 82
 # Verified count (v2.3.0): 53 entities when running in PV-only mode.
 # Unchanged in v2.1.0: the discharge number is battery-only (skipped in PV-only mode).
 # v2.3.0 (issue #32): evsc_night_pv_handoff_threshold is NOT battery-only → +1 → 53.
@@ -669,7 +689,8 @@ TOTAL_INTEGRATION_ENTITIES = 74
 # 7 daily home min SOC numbers (Monday–Sunday), 1 sensor (today_home_target).
 # Hybrid Mode entities are still created in PV-only mode but stay IDLE (requires soc_home).
 # v2.13.0 (issue #57): the off-grid amperage cap is NOT battery-only → +1 → 60.
-TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 60
+# v2.20.0: 7 per-day car-ready times + plan sensor are NOT battery-only → 68.
+TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 68
 
 
 def uses_charger_buttons(config: dict) -> bool:

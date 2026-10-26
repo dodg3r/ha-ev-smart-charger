@@ -906,6 +906,34 @@ When the balancer is **disabled** (the default), Solar Surplus treats the charge
 
 ### Night Smart Charge
 
+> **v2.20.0 (fork dodg3r): Night Smart Charge now follows electricity prices.**
+> Map a price sensor in the integration options (*External connectors* →
+> *Electricity price sensor*): the core Nord Pool integration, the HACS
+> Nord Pool sensor, or any sensor with `raw_today` / `raw_tomorrow`
+> attributes. 15-minute prices are averaged into hourly prices.
+>
+> - Each weekday has its own **car-ready time** (`time.evsc_car_ready_time_<day>`,
+>   set in the weekly planner, which no longer shows the home target).
+> - The night window runs from the sunset before the car-ready time to the
+>   car-ready time. The **5 cheapest hours** of that window are shown in the
+>   Night Smart Charge card as soon as the prices are known.
+> - When the car is plugged in, the energy needed to reach that day's EV
+>   target (`battery capacity × (target − SOC) / 0.9`) is turned into hours
+>   at `evsc_night_charge_amperage`, and the **cheapest hours before the
+>   car-ready time** are planned. The charger runs only in those hours and
+>   stops when the target is reached.
+> - **Car ready OFF** for a day means no night charging: the car charges on
+>   solar surplus only (profile `solar_surplus`), past the EV target.
+> - The plan is published in `sensor.evsc_night_charge_plan` (state:
+>   `planned`, `charging`, `waiting_for_car`, `car_ready_off`,
+>   `target_reached`, `no_prices`, `disabled`; attributes: hourly `prices`,
+>   `cheapest`, `planned`, `needed_kwh`, `needed_hours`, `deadline`).
+> - The Smart Charger Blocker blocks the whole night (sunset → sunrise)
+>   outside the planned hours. Night charge time, minimum solar forecast,
+>   PV handoff and battery mode are no longer used.
+>
+> The description below is for the previous, start-time based version.
+
 Night Smart Charge activates at `evsc_night_charge_time` (default `01:00`) and runs until the EV reaches its daily SOC target or sunrise, whichever comes first.
 
 **Mode selection** (evaluated at activation):
