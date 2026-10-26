@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import (
     CHARGER_AMPERAGE_STABILIZATION_DELAY,
+    CHARGER_BUTTON_STATE_SETTLE_SECONDS,
     CHARGER_COMMAND_DELAY,
     CHARGER_CURRENT_ENTITY_WAIT_SECONDS,
     CHARGER_MIN_OPERATION_INTERVAL,
@@ -21,10 +22,14 @@ from .const import (
     CHARGER_STOP_SEQUENCE_DELAY,
     CHARGING_POWER_DRAWING_FLOOR_W,
     CONF_EV_CHARGER_CURRENT,
+    CONF_EV_CHARGER_START_BUTTON,
+    CONF_EV_CHARGER_STATUS,
+    CONF_EV_CHARGER_STOP_BUTTON,
     CONF_EV_CHARGER_SWITCH,
     SERVICE_CALL_TIMEOUT,
     get_amp_levels,
     get_charger_model,
+    uses_charger_buttons,
 )
 from .fuse_math import highest_level_at_or_below
 from .runtime import EVSCRuntimeData
@@ -173,6 +178,13 @@ class ChargerController:
         self.logger = EVSCLogger("CHARGER CONTROLLER")
 
         self._charger_switch = config.get(CONF_EV_CHARGER_SWITCH)
+        # v2.14.0 (issue #65): start/stop buttons instead of a switch. The
+        # buttons carry no state, so the controller remembers what it commanded.
+        self._start_button = config.get(CONF_EV_CHARGER_START_BUTTON)
+        self._stop_button = config.get(CONF_EV_CHARGER_STOP_BUTTON)
+        self._uses_buttons = uses_charger_buttons(config)
+        self._commanded_on: Optional[bool] = None
+        self._last_command_time: Optional[datetime] = None
         self._charger_current = config.get(CONF_EV_CHARGER_CURRENT)
         self._current_control = CurrentControlAdapter(hass, self._charger_current)
 
@@ -198,7 +210,11 @@ class ChargerController:
 
         self.logger.info(
             "Initialized ChargerController - Switch: %s, Current: %s, Model: %s",
-            self._charger_switch,
+            (
+                f"buttons {self._start_button} / {self._stop_button}"
+                if self._uses_buttons
+                else self._charger_switch
+            ),
             self._charger_current,
             self._charger_model,
         )
@@ -237,6 +253,11 @@ class ChargerController:
                     else None
                 ),
                 "charger_switch": self._charger_switch,
+                "charger_buttons": (
+                    [self._start_button, self._stop_button]
+                    if self._uses_buttons
+                    else None
+                ),
                 "current_entity": self._charger_current,
                 "error_message": error_message,
             },
@@ -262,14 +283,59 @@ class ChargerController:
         also caches the measured charging power for the operation DIAGNOSTIC only
         (it does not gate any control path); None when no power sensor is mapped.
         """
-        charger_state = self.hass.states.get(self._charger_switch)
-        if charger_state:
-            self._is_on = charger_state.state == "on"
+        if not self._uses_buttons:
+            charger_state = self.hass.states.get(self._charger_switch)
+            if charger_state:
+                self._is_on = charger_state.state == "on"
         self._current_amperage = self._current_control.get_numeric_state()
         if self._runtime_data is not None and self._runtime_data.power_model is not None:
             self._measured_power_w = self._runtime_data.power_model.read_charging_power(
                 self.hass
             )
+        if self._uses_buttons:
+            self._is_on = self._button_mode_is_on()
+
+    def _button_mode_is_on(self) -> Optional[bool]:
+        """Resolve the on/off state of a button-controlled charger (issue #65).
+
+        Right after a press the charger needs a few seconds to start or stop
+        drawing, so the commanded state is trusted for
+        ``CHARGER_BUTTON_STATE_SETTLE_SECONDS``. After that the measured state
+        wins, which also picks up sessions started or stopped outside the
+        integration (wallbox app, auto-start on plug-in). With neither a power
+        nor a status sensor mapped, the commanded state is the only signal.
+        """
+        if self._commanded_on is not None and self._last_command_time is not None:
+            elapsed = (dt_util.now() - self._last_command_time).total_seconds()
+            if elapsed < CHARGER_BUTTON_STATE_SETTLE_SECONDS:
+                return self._commanded_on
+
+        power_model = (
+            self._runtime_data.power_model if self._runtime_data is not None else None
+        )
+        has_signal = self._measured_power_w is not None or bool(
+            self.config.get(CONF_EV_CHARGER_STATUS)
+        )
+        if power_model is not None and has_signal:
+            return power_model.is_charging(self.hass)
+        return self._commanded_on
+
+    def button_charger_on(self) -> bool:
+        """Synchronous on/off answer for a button-controlled charger.
+
+        Used by the main fuse guard, which has no switch to read when the
+        charger is driven by start/stop buttons.
+        """
+        if self._runtime_data is not None and self._runtime_data.power_model is not None:
+            self._measured_power_w = self._runtime_data.power_model.read_charging_power(
+                self.hass
+            )
+        return bool(self._button_mode_is_on())
+
+    def _record_command(self, on: bool) -> None:
+        """Remember the last on/off command sent to a button-controlled charger."""
+        self._commanded_on = on
+        self._last_command_time = dt_util.now()
 
     async def start_charger(
         self,
@@ -655,12 +721,21 @@ class ChargerController:
         if self._fuse_ceiling() == 0:
             raise FuseLimitError("Main fuse limit: charger must stay off")
         try:
-            await self._call_service(
-                "switch",
-                "turn_on",
-                {"entity_id": self._charger_switch},
-                log_failure=False,
-            )
+            if self._uses_buttons:
+                await self._call_service(
+                    "button",
+                    "press",
+                    {"entity_id": self._start_button},
+                    log_failure=False,
+                )
+                self._record_command(True)
+            else:
+                await self._call_service(
+                    "switch",
+                    "turn_on",
+                    {"entity_id": self._charger_switch},
+                    log_failure=False,
+                )
             return False
         except Exception as ex:
             await self._refresh_state()
@@ -671,8 +746,28 @@ class ChargerController:
                     ex,
                 )
                 return True
-            self.logger.error("Service call failed: switch.turn_on - %s", ex)
+            self.logger.error(
+                "Service call failed: %s - %s",
+                "button.press" if self._uses_buttons else "switch.turn_on",
+                ex,
+            )
             raise
+
+    async def _turn_off_charger_switch(self) -> None:
+        """Turn the charger off through its switch or its stop button."""
+        if self._uses_buttons:
+            await self._call_service(
+                "button",
+                "press",
+                {"entity_id": self._stop_button},
+            )
+            self._record_command(False)
+            return
+        await self._call_service(
+            "switch",
+            "turn_off",
+            {"entity_id": self._charger_switch},
+        )
 
     def _charger_already_running(self) -> bool:
         """Return True when the charger is on, by switch echo or measured draw.
@@ -693,11 +788,7 @@ class ChargerController:
         # A deliberate stop: the fuse guard must not restart the charger later.
         self._fuse_stopped = False
         self._fuse_reduced = False
-        await self._call_service(
-            "switch",
-            "turn_off",
-            {"entity_id": self._charger_switch},
-        )
+        await self._turn_off_charger_switch()
         await asyncio.sleep(CHARGER_COMMAND_DELAY)
         self._record_operation_time()
         await self._refresh_state()
@@ -731,11 +822,7 @@ class ChargerController:
         self, target_amps: int, *, fuse_action: bool = False
     ) -> None:
         """Decrease amperage using the safe stop/set/start sequence."""
-        await self._call_service(
-            "switch",
-            "turn_off",
-            {"entity_id": self._charger_switch},
-        )
+        await self._turn_off_charger_switch()
         await asyncio.sleep(CHARGER_STOP_SEQUENCE_DELAY)
         await self._set_amperage_internal(target_amps, fuse_action=fuse_action)
         await asyncio.sleep(CHARGER_AMPERAGE_STABILIZATION_DELAY)
@@ -828,9 +915,7 @@ class ChargerController:
             self.logger.warning("%s - stopping charger", reason)
             if self._requested_amps is None and self._current_amperage:
                 self._requested_amps = self._current_amperage
-            await self._call_service(
-                "switch", "turn_off", {"entity_id": self._charger_switch}
-            )
+            await self._turn_off_charger_switch()
             self._fuse_stopped = True
             self._record_operation_time()
             await self._refresh_state()

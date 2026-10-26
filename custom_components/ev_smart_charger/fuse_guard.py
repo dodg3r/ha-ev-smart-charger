@@ -33,6 +33,10 @@ from homeassistant.helpers.event import (
 
 from .const import (
     CONF_EV_CHARGER_CURRENT,
+    CONF_CHARGING_POWER,
+    CONF_CHARGING_POWER_L2,
+    CONF_CHARGING_POWER_L3,
+    CONF_EV_CHARGER_STATUS,
     CONF_EV_CHARGER_SWITCH,
     CONF_FUSE_CHARGER_CURRENT,
     DEFAULT_FUSE_MARGIN,
@@ -54,6 +58,7 @@ from .const import (
     get_amp_levels,
     get_main_fuse_size,
     get_phase_count,
+    uses_charger_buttons,
 )
 from .fuse_math import (
     FuseLimit,
@@ -195,6 +200,16 @@ class FuseGuard:
     def _tracked_entities(self) -> list[str]:
         entities = [self.config.get(key) for key in FUSE_ENTITY_KEYS]
         entities += [self._switch_entity, self._current_entity]
+        if uses_charger_buttons(self.config):
+            entities += [
+                self.config.get(key)
+                for key in (
+                    CONF_CHARGING_POWER,
+                    CONF_CHARGING_POWER_L2,
+                    CONF_CHARGING_POWER_L3,
+                    CONF_EV_CHARGER_STATUS,
+                )
+            ]
         return sorted({e for e in entities if e})
 
     def _read_entity(self, entity_id: str | None) -> float | None:
@@ -304,7 +319,10 @@ class FuseGuard:
 
     def _charger_on(self) -> bool:
         if not self._switch_entity:
-            return False
+            # Start/stop button chargers (Growatt THOR): no switch to read,
+            # ask the controller (commanded state, then measured draw).
+            check = getattr(self._controller, "button_charger_on", None)
+            return bool(check()) if callable(check) and uses_charger_buttons(self.config) else False
         state = self.hass.states.get(self._switch_entity)
         return state is not None and state.state == "on"
 
