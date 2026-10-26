@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.18.0
+**Current Version:** 2.19.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,39 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.19.0 (2026-10-26) — fork dodg3r
+**Main fuse protection acts on the meter: no pre-emptive cap, settle window after a reduction, hard limit**
+
+Reviewed with the maintainer: "as long as grid current is below the fuse,
+everything is fine". Three changes:
+- **No pre-emptive cap / stop** (`FuseLimiter.update`): while charging and no
+  phase is above fuse − margin (`FuseLimit.overloaded`), the ceiling is not
+  lowered (and the charger not stopped) just because the car *could* draw
+  more than it does now. The first value is seeded from the running setpoint
+  (`current_a`), later values from the previous ceiling, so a lagging setpoint
+  entity cannot undo a reduction. With the charger off the room is exact and
+  still caps a start.
+- **Settle window** (`FUSE_SETTLE_SECONDS = 15`, `FuseGuard`): right after a
+  reduction the car still draws the old current for a few seconds while the
+  meter already shows it. During the window the charger is counted at the
+  previous setpoint (`_settle_commanded`), no increase is made
+  (`allow_increase=False`) and only a lower ceiling or a stop is enforced
+  (`_settled_enough`). Before this, a reduction was often followed by an
+  unneeded stop + 120 s hold (the new low setpoint was subtracted from a meter
+  value that still included the old draw).
+- **Hard limit**: a phase above fuse + `number.evsc_fuse_hard_trip` (default
+  10 A, 1–30) stops the charger at once (`STATE_HARD_TRIP`, with the normal
+  hold), also during the settle window. `FUSE_PROTECTION_ENTITIES` 3 → 4.
+- A reduction still goes in one step to the highest level that fits; increases
+  stay at 2 A per 20 s. The headroom sensor gains `overloaded`,
+  `hard_limit_a`, `settling`; the dashboard shows a hard trip as a fuse pause.
+- Tests: `tests/test_fuse_math.py` (+7, `_limit` defaults to an overload),
+  NEW `tests/test_v2190_fuse_settle.py` (4, real HA states),
+  `test_guard_zero_total_ignores_stale_attributes` now expects no pre-emptive
+  cap.
+
+---
 
 ### v2.18.0 (2026-10-26) — fork dodg3r
 **FEATURE: grid import, charging power and home consumption computed by the integration**

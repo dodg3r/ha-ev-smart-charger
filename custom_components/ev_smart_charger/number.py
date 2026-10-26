@@ -47,7 +47,9 @@ from .const import (
     HELPER_HYBRID_PROBE_DURATION_SUFFIX,
     HELPER_HYBRID_MAX_IMPORT_DURATION_SUFFIX,
     HELPER_HYBRID_MAX_FAILED_PROBES_SUFFIX,
+    DEFAULT_FUSE_HARD_TRIP,
     DEFAULT_FUSE_MARGIN,
+    HELPER_FUSE_HARD_TRIP_SUFFIX,
     HELPER_FUSE_MARGIN_SUFFIX,
     is_fuse_protection_enabled,
 )
@@ -194,6 +196,17 @@ async def async_setup_entry(
                 "mdi:fuse-alert",
                 min_value=0, max_value=10, step=0.5,
                 default_value=DEFAULT_FUSE_MARGIN, unit="A",
+            )
+        )
+        # v2.19.0: hard limit above the fuse (stop at once).
+        entities.append(
+            EVSCNumber(
+                runtime_data, entry.entry_id,
+                HELPER_FUSE_HARD_TRIP_SUFFIX,
+                "EVSC Fuse Hard Trip",
+                "mdi:flash-alert",
+                min_value=1, max_value=30, step=1,
+                default_value=DEFAULT_FUSE_HARD_TRIP, unit="A",
             )
         )
 

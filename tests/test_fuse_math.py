@@ -261,8 +261,11 @@ def test_levels_snap_down():
 # --------------------------------------------------------------------------
 
 
-def _limit(amps):
-    return FuseLimit(True, amps, 1, [], "test")
+def _limit(amps, overloaded=True, hard_trip=False):
+    """A valid limit. Defaults to an overload so decreases apply (v2.19.0)."""
+    return FuseLimit(
+        True, amps, 1, [], "test", overloaded=overloaded, hard_trip=hard_trip
+    )
 
 
 INVALID = FuseLimit(False, None, None, [], "no reading for L1")
@@ -354,3 +357,81 @@ def test_limiter_recovers_after_invalid_period():
     assert recovered.allowed_a == 8
     # The invalid timer was reset: a new short gap does not stop charging.
     assert limiter.update(INVALID, now=200, charging=True).allowed_a == 6
+
+
+# --------------------------------------------------------------------------
+# v2.19.0: meter flags, no pre-emptive cap, hard limit, settle
+# --------------------------------------------------------------------------
+
+
+def test_limit_flags_overload_and_hard_trip():
+    readings = [
+        PhaseReading(grid_current_a=24.0),
+        PhaseReading(grid_current_a=10.0),
+        PhaseReading(grid_current_a=10.0),
+    ]
+    limit = compute_fuse_limit(readings, 20, 2, hard_limit_a=30)
+    assert limit.overloaded is True  # 24 > 20 - 2
+    assert limit.hard_trip is False
+    assert limit.max_grid_a == 24
+
+    readings[0] = PhaseReading(grid_current_a=31.0)
+    assert compute_fuse_limit(readings, 20, 2, hard_limit_a=30).hard_trip is True
+
+    readings[0] = PhaseReading(grid_current_a=17.0)
+    calm = compute_fuse_limit(readings, 20, 2, hard_limit_a=30)
+    assert calm.overloaded is False and calm.hard_trip is False
+
+
+def test_limiter_no_preemptive_cap_while_meter_is_fine():
+    """Car draws less than its setpoint: the meter is fine, nothing changes."""
+    limiter = FuseLimiter(GENERIC, max_a=16)
+    limiter.update(_limit(16), now=0, charging=True)
+    decision = limiter.update(_limit(11, overloaded=False), now=1, charging=True)
+    assert decision.allowed_a == 16
+    assert decision.target_a == 11
+
+
+def test_limiter_no_preemptive_stop_while_meter_is_fine():
+    limiter = FuseLimiter(GENERIC, max_a=16)
+    limiter.update(_limit(16), now=0, charging=True)
+    decision = limiter.update(_limit(3, overloaded=False), now=1, charging=True)
+    assert decision.allowed_a == 16
+    assert decision.state != FuseLimiter.STATE_STOPPED
+
+
+def test_limiter_first_value_keeps_running_setpoint_without_overload():
+    limiter = FuseLimiter(GENERIC, max_a=32)
+    decision = limiter.update(
+        _limit(11, overloaded=False), now=0, charging=True, current_a=16
+    )
+    assert decision.allowed_a == 16
+
+
+def test_limiter_not_charging_uses_room_directly():
+    """Charger off: the room is exact, so a start is capped by it."""
+    limiter = FuseLimiter(GENERIC, max_a=16)
+    limiter.update(_limit(16), now=0, charging=True)
+    decision = limiter.update(_limit(11, overloaded=False), now=1, charging=False)
+    assert decision.allowed_a == 11
+
+
+def test_limiter_hard_trip_stops_and_holds():
+    limiter = FuseLimiter(GENERIC, max_a=16, stop_hold_s=120)
+    limiter.update(_limit(16), now=0, charging=True)
+    decision = limiter.update(_limit(10, hard_trip=True), now=1, charging=True)
+    assert decision.allowed_a == 0
+    assert decision.state == FuseLimiter.STATE_HARD_TRIP
+    assert limiter.update(_limit(16, overloaded=False), now=60, charging=False).allowed_a == 0
+    assert limiter.update(_limit(16, overloaded=False), now=122, charging=False).allowed_a == 16
+
+
+def test_limiter_no_increase_while_settling():
+    limiter = FuseLimiter(GENERIC, max_a=16, ramp_step_a=2, ramp_interval_s=20)
+    limiter.update(_limit(16), now=0, charging=True)
+    limiter.update(_limit(8), now=1, charging=True)
+    held = limiter.update(
+        _limit(16, overloaded=False), now=30, charging=True, allow_increase=False
+    )
+    assert held.allowed_a == 8
+    assert limiter.update(_limit(16, overloaded=False), now=31, charging=True).allowed_a == 10

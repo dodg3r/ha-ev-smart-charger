@@ -38,6 +38,7 @@ from .const import (
     CONF_CHARGING_POWER_L3,
     CONF_EV_CHARGER_STATUS,
     CONF_EV_CHARGER_SWITCH,
+    DEFAULT_FUSE_HARD_TRIP,
     DEFAULT_FUSE_MARGIN,
     FUSE_ENTITY_KEYS,
     FUSE_GRID_CURRENT_KEYS,
@@ -49,7 +50,9 @@ from .const import (
     FUSE_MEASURED_OVERDRAW_TOLERANCE_A,
     FUSE_RAMP_INTERVAL_SECONDS,
     FUSE_RAMP_STEP_A,
+    FUSE_SETTLE_SECONDS,
     FUSE_STOP_HOLD_SECONDS,
+    HELPER_FUSE_HARD_TRIP_SUFFIX,
     HELPER_FUSE_HEADROOM_SENSOR_SUFFIX,
     HELPER_FUSE_MARGIN_SUFFIX,
     get_amp_levels,
@@ -112,6 +115,10 @@ class FuseGuard:
         self._last_published: tuple | None = None
         self._enforce_task: asyncio.Task | None = None
         self._unsubs: list = []
+        # v2.19.0: settle window after a reduction (see FUSE_SETTLE_SECONDS).
+        self._settle_until: float = 0.0
+        self._settle_commanded: float | None = None
+        self._settle_ceiling: int | None = None
 
     # ------------------------------------------------------------------
     # lifecycle
@@ -246,6 +253,14 @@ class FuseGuard:
         value = self._read_entity(entity_id)
         return DEFAULT_FUSE_MARGIN if value is None else max(0.0, value)
 
+    def _hard_limit_a(self) -> float:
+        entity_id = None
+        if self._runtime_data is not None:
+            entity_id = self._runtime_data.get_entity_id(HELPER_FUSE_HARD_TRIP_SUFFIX)
+        value = self._read_entity(entity_id)
+        extra = DEFAULT_FUSE_HARD_TRIP if value is None else max(0.0, value)
+        return self.fuse_a + extra
+
     def _charger_on(self) -> bool:
         if not self._switch_entity:
             # Start/stop button chargers (Growatt THOR): no switch to read,
@@ -266,15 +281,34 @@ class FuseGuard:
         setpoint = self._setpoint_a()
         readings = self._build_readings()
         margin = self._margin_a()
+        now = time.monotonic()
+
+        # v2.19.0: right after a reduction the car still draws the old current
+        # for a few seconds while the meter already reflects it. Count the
+        # charger at its previous setpoint until it has had time to follow, so
+        # the same overload does not trigger a second reduction or a stop.
+        settling = charger_on and now < self._settle_until
+        commanded = setpoint
+        if settling and self._settle_commanded is not None:
+            commanded = self._settle_commanded
+        elif not settling:
+            self._clear_settle()
 
         limit = compute_fuse_limit(
             readings,
             self.fuse_a,
             margin,
-            commanded_a=setpoint,
+            commanded_a=commanded,
             charger_on=charger_on,
+            hard_limit_a=self._hard_limit_a(),
         )
-        decision = self._limiter.update(limit, time.monotonic(), charging=charger_on)
+        decision = self._limiter.update(
+            limit,
+            now,
+            charging=charger_on,
+            allow_increase=not settling,
+            current_a=setpoint,
+        )
         self._last_limit = limit
         self._last_decision = decision
 
@@ -283,10 +317,27 @@ class FuseGuard:
 
         if enforce:
             if charger_on and self._needs_enforcement(decision, setpoint, readings):
-                self._start_enforcement(decision)
+                if self._settled_enough(decision, settling):
+                    self._start_enforcement(decision, setpoint, now)
             elif decision.allowed_a > 0 and self._restore_pending():
                 self._start_restore(decision)
         return decision
+
+    def _clear_settle(self) -> None:
+        self._settle_until = 0.0
+        self._settle_commanded = None
+        self._settle_ceiling = None
+
+    def _settled_enough(self, decision: LimiterDecision, settling: bool) -> bool:
+        """During the settle window only act on a lower ceiling or a stop.
+
+        The setpoint entity of some chargers (OCPP) lags behind the command,
+        so it can still read the old value; that alone must not repeat the
+        same reduction.
+        """
+        if not settling or decision.allowed_a == 0 or self._settle_ceiling is None:
+            return True
+        return decision.allowed_a < self._settle_ceiling
 
     def _restore_pending(self) -> bool:
         check = getattr(self._controller, "fuse_restore_pending", None)
@@ -322,9 +373,25 @@ class FuseGuard:
             return False
         return max(measured) > allowed + FUSE_MEASURED_OVERDRAW_TOLERANCE_A
 
-    def _start_enforcement(self, decision: LimiterDecision) -> None:
+    def _start_enforcement(
+        self,
+        decision: LimiterDecision,
+        setpoint: float | None = None,
+        now: float | None = None,
+    ) -> None:
         if self._enforce_task is not None and not self._enforce_task.done():
             return
+        if decision.allowed_a > 0 and setpoint is not None and setpoint > decision.allowed_a:
+            # A reduction: count the charger at the higher of the old setpoint
+            # and any setpoint already being settled from.
+            previous = self._settle_commanded or 0.0
+            self._settle_commanded = max(float(setpoint), previous)
+            self._settle_ceiling = decision.allowed_a
+            self._settle_until = (now if now is not None else time.monotonic()) + (
+                FUSE_SETTLE_SECONDS
+            )
+        elif decision.allowed_a == 0:
+            self._clear_settle()
         reason = (
             f"Main fuse protection: {decision.state} "
             f"(ceiling {decision.allowed_a}A, {decision.reason})"
@@ -389,6 +456,10 @@ class FuseGuard:
             "bottleneck_phase": (
                 f"L{limit.bottleneck_phase}" if limit.bottleneck_phase else None
             ),
+            # v2.19.0
+            "overloaded": limit.overloaded,
+            "hard_limit_a": round(self._hard_limit_a(), 1),
+            "settling": time.monotonic() < self._settle_until,
         }
         for result in limit.phases:
             suffix = f"l{result.phase}"

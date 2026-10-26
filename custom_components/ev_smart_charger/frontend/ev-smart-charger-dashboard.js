@@ -1862,7 +1862,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     if (fuseState === "invalid_data_stop") {
       return { text: this._t("status.fuse_invalid"), tone: "alert" };
     }
-    if (fuseState === "stopped" || fuseState === "hold") {
+    if (fuseState === "stopped" || fuseState === "hold" || fuseState === "hard_trip") {
       const key = phase ? `grid_current_${phase.toLowerCase()}` : null;
       const grid = key != null ? Number(fuse?.attributes?.[key]) : NaN;
       return {

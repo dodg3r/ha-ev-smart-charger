@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.18.0"
+VERSION = "2.19.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -371,6 +371,7 @@ HELPER_SOLAR_MAX_AMPERAGE_SUFFIX = "evsc_solar_max_amperage"
 HELPER_OFFGRID_MAX_AMPERAGE_SUFFIX = "evsc_offgrid_max_amperage"
 # v2.14.0 — main-fuse protection helpers (created only when a fuse is set)
 HELPER_FUSE_MARGIN_SUFFIX = "evsc_fuse_margin"
+HELPER_FUSE_HARD_TRIP_SUFFIX = "evsc_fuse_hard_trip"  # v2.19.0
 HELPER_MAIN_FUSE_SENSOR_SUFFIX = "evsc_main_fuse"
 HELPER_FUSE_HEADROOM_SENSOR_SUFFIX = "evsc_fuse_headroom"
 # v2.1.0 (issue #29) — max home-battery discharge (W) allowed to cover the EV
@@ -587,6 +588,12 @@ FUSE_RAMP_STEP_A = 2  # max increase per ramp interval while charging
 FUSE_RAMP_INTERVAL_SECONDS = 20
 FUSE_STOP_HOLD_SECONDS = 120  # charger stays off this long after a fuse stop
 FUSE_INVALID_STOP_SECONDS = 120  # missing meter data this long -> stop charging
+# v2.19.0: after a reduction the car needs a few seconds to follow. During this
+# window the charger is still counted at its previous setpoint (no extra
+# reduction or stop on the same overload) and no increase is made.
+FUSE_SETTLE_SECONDS = 15
+# v2.19.0: a phase above main fuse + this many A stops the charger at once.
+DEFAULT_FUSE_HARD_TRIP = 10.0
 # When the charger's setpoint is unknown, measured draw above the ceiling by
 # more than this triggers an enforcement.
 FUSE_MEASURED_OVERDRAW_TOLERANCE_A = 1.0
@@ -677,8 +684,9 @@ def uses_charger_buttons(config: dict) -> bool:
 
 
 # v2.14.0: entities created ONLY when main-fuse protection is configured:
-# 1 number (evsc_fuse_margin) + 2 sensors (evsc_main_fuse, evsc_fuse_headroom).
-FUSE_PROTECTION_ENTITIES = 3
+# 2 numbers (evsc_fuse_margin, evsc_fuse_hard_trip since v2.19.0)
+# + 2 sensors (evsc_main_fuse, evsc_fuse_headroom).
+FUSE_PROTECTION_ENTITIES = 4
 
 
 def get_main_fuse_size(config: dict) -> int:

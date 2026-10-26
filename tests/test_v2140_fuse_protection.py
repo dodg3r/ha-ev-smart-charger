@@ -490,7 +490,10 @@ async def test_guard_zero_total_ignores_stale_attributes(hass):
     guard, _ = await _guard(hass)
 
     # Charger contributes 0 A (not 16), so the house is 10 A -> room 13 A.
-    assert guard.max_allowed_amps() == 13
+    assert guard.last_limit.limit_a == 13
+    # v2.19.0: the meter is fine (10 A < 23 A), so the running 16 A setpoint
+    # is not capped pre-emptively.
+    assert guard.max_allowed_amps() == 16
     await guard.async_remove()
 
 

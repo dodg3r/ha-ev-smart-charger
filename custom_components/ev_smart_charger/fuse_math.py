@@ -77,6 +77,12 @@ class FuseLimit:
     bottleneck_phase: int | None
     phases: list[PhaseResult] = field(default_factory=list)
     reason: str = ""
+    # v2.19.0: what the meter says right now, independent of the charger
+    # estimate. ``overloaded``: some phase is above fuse − margin.
+    # ``hard_trip``: some phase is above the hard limit (fuse + X).
+    max_grid_a: float | None = None
+    overloaded: bool = False
+    hard_trip: bool = False
 
 
 def _plausible_voltage(voltage: float | None) -> float:
@@ -157,6 +163,7 @@ def compute_fuse_limit(
     *,
     commanded_a: float | None = None,
     charger_on: bool = False,
+    hard_limit_a: float | None = None,
 ) -> FuseLimit:
     """Compute the per-phase charger limit against the main fuse.
 
@@ -195,12 +202,21 @@ def compute_fuse_limit(
         return FuseLimit(False, None, None, results, f"no reading for {phases}")
 
     bottleneck = min(results, key=lambda r: r.room_a)
+    max_grid = max(r.grid_current_a for r in results)
+    overloaded = max_grid > fuse_a - margin + 1e-6
+    hard_trip = hard_limit_a is not None and max_grid > hard_limit_a + 1e-6
+    reason = f"bottleneck L{bottleneck.phase}"
+    if hard_trip:
+        reason = f"L{max(results, key=lambda r: r.grid_current_a).phase} above hard limit"
     return FuseLimit(
         True,
         max(0.0, bottleneck.room_a),
         bottleneck.phase,
         results,
-        f"bottleneck L{bottleneck.phase}",
+        reason,
+        max_grid_a=max_grid,
+        overloaded=overloaded,
+        hard_trip=hard_trip,
     )
 
 
@@ -228,7 +244,12 @@ class FuseLimiter:
 
     Behaviour (mirrors the proven Node-RED flow, plus a fail-safe):
 
-    * **Decrease immediately.** A lower limit applies on the next update.
+    * **Decrease immediately when the meter shows an overload** (some phase
+      above fuse − margin). While charging without an overload the ceiling is
+      left alone (v2.19.0): no pre-emptive cap because the car *could* draw
+      more than it does now.
+    * **Hard limit** (v2.19.0): a phase above fuse + X stops the charger at
+      once, whatever the charger estimate says.
     * **Increase slowly** while charging: at most one step (``ramp_step_a`` or
       one charger level, whichever is larger) every ``ramp_interval_s``.
       Charger and meter data lag, so a fast climb would overshoot.
@@ -250,6 +271,7 @@ class FuseLimiter:
     STATE_HOLD = "hold"
     STATE_INVALID = "invalid_data"
     STATE_INVALID_STOP = "invalid_data_stop"
+    STATE_HARD_TRIP = "hard_trip"
 
     def __init__(
         self,
@@ -283,7 +305,15 @@ class FuseLimiter:
         by_amps = highest_level_at_or_below(current + self._ramp_step_a, self._levels)
         return max(next_level, by_amps)
 
-    def update(self, limit: FuseLimit, now: float, charging: bool) -> LimiterDecision:
+    def update(
+        self,
+        limit: FuseLimit,
+        now: float,
+        charging: bool,
+        *,
+        allow_increase: bool = True,
+        current_a: float | None = None,
+    ) -> LimiterDecision:
         """Return the ceiling for the charger given the latest limit."""
         # ---- invalid data: fail safe -------------------------------------
         if not limit.valid:
@@ -303,6 +333,36 @@ class FuseLimiter:
         target = highest_level_at_or_below(
             min(limit.limit_a or 0.0, float(self._max_a)), self._levels
         )
+
+        # ---- hard limit: a phase far above the fuse -> stop at once --------
+        if limit.hard_trip:
+            self._hold_until = now + self._stop_hold_s
+            self.allowed_a = 0
+            return LimiterDecision(0, 0, self.STATE_HARD_TRIP, limit.reason)
+
+        # ---- v2.19.0: no pre-emptive cap -----------------------------------
+        # While charging and no phase is above fuse − margin the meter says
+        # everything is fine: keep the ceiling where it is instead of lowering
+        # it (or stopping) because the car *could* draw more. A real overload
+        # shows up on the meter within a second and is handled below.
+        # ``current_a`` (the charger's setpoint) only seeds the first value, so
+        # a lagging setpoint entity can never undo a reduction later.
+        previous = self.allowed_a
+        floor = previous if previous else None
+        if floor is None and current_a:
+            floor = highest_level_at_or_below(
+                min(float(current_a), float(self._max_a)), self._levels
+            ) or None
+        if (
+            charging
+            and not limit.overloaded
+            and floor is not None
+            and target < floor
+            and now >= self._hold_until
+        ):
+            self.allowed_a = floor
+            state = self.STATE_LIMITED if floor < self._max_a else self.STATE_OK
+            return LimiterDecision(floor, target, state, limit.reason)
 
         # ---- below minimum: stop and hold ---------------------------------
         if target == 0:
@@ -328,6 +388,11 @@ class FuseLimiter:
             return LimiterDecision(target, target, state, limit.reason)
 
         # ---- increase while charging: ramp --------------------------------
+        # v2.19.0: no increase while the charger is still settling after a
+        # reduction (the estimate is deliberately generous then).
+        if not allow_increase:
+            state = self.STATE_LIMITED if previous < self._max_a else self.STATE_OK
+            return LimiterDecision(previous, target, state, limit.reason)
         if (
             self._last_increase_at is not None
             and now - self._last_increase_at < self._ramp_interval_s
