@@ -253,3 +253,21 @@ async def test_target_reached_stops_and_stays_stopped(hass):
     hass.states.async_set("sensor.soc", "79")
     await night._evaluate(_at(base, 4, 0))
     controller.start_charger.assert_awaited_once()
+
+
+async def test_raising_the_target_reopens_the_plan(hass):
+    """v2.20.1: a latch set at a low target must not survive a higher target."""
+    base = _base()
+    night, controller = await _component(hass, base)
+    day = WEEKDAY_KEYS[base.weekday()]
+    hass.states.async_set(f"number.target_{day}", "50")
+
+    await night._evaluate(_at(base, 1, 30))
+    assert night.get_plan().planned == []  # 60 % >= 50 %: target reached
+
+    hass.states.async_set(f"number.target_{day}", "80")
+    await night._evaluate(_at(base, 1, 40))
+    assert night.get_plan().planned == [_at(base, 3), _at(base, 4)]
+
+    await night._evaluate(_at(base, 3, 0))
+    controller.start_charger.assert_awaited_once()

@@ -2824,6 +2824,17 @@ class EvSmartChargerDashboard extends HTMLElement {
     } else if (status === "target_reached" || plan?.neededHours === 0) {
       planValue = this._t("night.no_hours");
     }
+    // Show which target the plan is measured against (the car-ready day's
+    // target, not today's), so "target reached" is never a mystery.
+    if (plan && !plan.planned.length && plan.soc !== null && plan.soc !== undefined
+        && plan.target !== null && plan.target !== undefined) {
+      const dayName = plan.deadline
+        ? new Date(plan.deadline).toLocaleDateString(this._language(), { weekday: "short" })
+        : "";
+      planSub = `${statusText} · ${this._tf("night.soc_to_target", {
+        soc: Math.round(plan.soc), target: Math.round(plan.target),
+      })}${dayName ? ` (${dayName})` : ""}`;
+    }
 
     return `
       <section class="evsc-night-card">

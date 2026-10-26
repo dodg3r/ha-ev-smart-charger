@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.20.0
+**Current Version:** 2.20.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,21 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.20.1 (2026-10-26) — fork dodg3r
+**FIX: "EV target reached" stuck after raising the target**
+
+`PlannedNightCharge` latched "target reached" per deadline and kept it when
+the target was raised, so a car at 63 % showed "EV target reached" with the
+target at 80 % (latched earlier at a lower target, e.g. the 50 % weekday
+default of the car-ready day). The latch now remembers its target
+(`_completed_target`) and re-opens when the target goes up; a 1 % SOC drop
+after a finished charge still does not restart. The night card shows the SOC,
+the target and the car-ready day next to the status when nothing is planned,
+so it is clear which day's target counts (the car-ready day's, not today's).
+Test: `test_raising_the_target_reopens_the_plan`.
+
+---
 
 ### v2.20.0 (2026-10-26) — fork dodg3r
 **Night Smart Charge plans the cheapest hours before the car-ready time**

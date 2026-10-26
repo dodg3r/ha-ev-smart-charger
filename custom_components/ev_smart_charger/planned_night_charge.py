@@ -126,6 +126,8 @@ class PlannedNightCharge:
         self._committed: set[datetime] = set()
         self._plan_deadline: datetime | None = None
         self._completed_deadline: datetime | None = None
+        # Target the latch was set for: raising the target re-opens the plan.
+        self._completed_target: float | None = None
         self._was_connected = False
         self._last_plan: NightPlan | None = None
         self._tick_running = False
@@ -461,10 +463,18 @@ class PlannedNightCharge:
         self._was_connected = connected
 
         current_hour = hour_start(now)
+        # The latch only holds for the target it was set for: raising the
+        # target re-opens the plan, a 1 % drop after a finished charge does not.
+        if self._completed_deadline == deadline and (
+            self._completed_target is None or target > self._completed_target
+        ):
+            self._completed_deadline = None
+            self._completed_target = None
         if soc is not None and soc >= target:
             if self._completed_deadline != deadline and connected:
                 self.logger.info(f"EV target reached ({soc:.0f}% >= {target:.0f}%)")
             self._completed_deadline = deadline
+            self._completed_target = target
         completed = self._completed_deadline == deadline
 
         needed_kwh = None
