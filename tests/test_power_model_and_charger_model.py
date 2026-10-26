@@ -166,6 +166,35 @@ async def test_read_production_single_phase_unchanged(hass):
 # ----------------------------------------------------------------------------
 
 
+async def test_read_production_three_phase_total_only(hass):
+    """v2.16.1: three-phase with only a TOTAL sensor in the L1 field."""
+    config = {
+        CONF_PHASE_MODE: PHASE_MODE_THREE,
+        CONF_FV_PRODUCTION: "sensor.pv_total",
+        CONF_FV_PRODUCTION_L2: None,
+        CONF_FV_PRODUCTION_L3: None,
+    }
+    model = ChargingModel.from_config(config)
+    assert model.production_entities() == ["sensor.pv_total"]
+    hass.states.async_set("sensor.pv_total", "4200")
+    assert model.read_production(hass) == pytest.approx(4200.0)
+    # amperage conversion still uses three phases
+    assert model.watts_to_amps(4200) == pytest.approx(4200 / 690)
+
+
+def test_normalize_sensor_input_clears_missing_phases():
+    """Cleared optional L2/L3 fields are written as None (reconfigure)."""
+    from custom_components.ev_smart_charger.config_flow import _normalize_sensor_input
+
+    data = _normalize_sensor_input(
+        {CONF_FV_PRODUCTION: "sensor.pv_total", CONF_GRID_IMPORT_L2: "sensor.g2"}
+    )
+    assert data[CONF_FV_PRODUCTION] == "sensor.pv_total"
+    assert data[CONF_FV_PRODUCTION_L2] is None
+    assert data[CONF_FV_PRODUCTION_L3] is None
+    assert data[CONF_GRID_IMPORT_L2] == "sensor.g2"
+
+
 def test_read_battery_discharge_none_when_unconfigured():
     """No battery sensor mapped → None (distinct from a real 0 W reading)."""
     model = ChargingModel.from_config(SINGLE_CONFIG)

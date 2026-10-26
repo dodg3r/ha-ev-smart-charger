@@ -147,6 +147,28 @@ def _normalize_charger_input(
     return data, {"base": "charger_control_required"}
 
 
+_OPTIONAL_PHASE_POWER_KEYS = (
+    CONF_FV_PRODUCTION_L2,
+    CONF_FV_PRODUCTION_L3,
+    CONF_HOME_CONSUMPTION_L2,
+    CONF_HOME_CONSUMPTION_L3,
+    CONF_GRID_IMPORT_L2,
+    CONF_GRID_IMPORT_L3,
+)
+
+
+def _normalize_sensor_input(user_input: dict[str, Any]) -> dict[str, Any]:
+    """Write cleared optional L2/L3 power sensors as None (v2.16.1).
+
+    An empty optional field is absent from ``user_input``; without this the
+    reconfigure merge would keep the previously mapped phase sensor.
+    """
+    data = dict(user_input)
+    for key in _OPTIONAL_PHASE_POWER_KEYS:
+        data[key] = data.get(key) or None
+    return data
+
+
 def _merge_entry_data(base_data: dict[str, Any], *sections: dict[str, Any]) -> dict[str, Any]:
     """Merge config sections into a single payload."""
     merged = dict(base_data)
@@ -302,8 +324,11 @@ def _sensor_schema(
     ):
         fields[vol.Required(l1, **_field_config(current_data.get(l1)))] = _entity_selector("sensor")
         if three_phase:
-            fields[vol.Required(l2, **_field_config(current_data.get(l2)))] = _entity_selector("sensor")
-            fields[vol.Required(l3, **_field_config(current_data.get(l3)))] = _entity_selector("sensor")
+            # v2.16.1: L2/L3 optional. Only the sum is ever used, so an install
+            # with a single total sensor (e.g. an inverter that reports PV
+            # production as a total plus VA per phase) maps the total to L1.
+            fields[vol.Optional(l2, **_field_config(current_data.get(l2)))] = _entity_selector("sensor")
+            fields[vol.Optional(l3, **_field_config(current_data.get(l3)))] = _entity_selector("sensor")
 
     # v2.2.0: measured EV charging power — the SSOT for "is the car drawing now".
     # Optional (most installs lack a charger CT; the switch echo + status string
@@ -643,7 +668,7 @@ class EVSCConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_sensors(self, user_input: dict[str, Any] | None = None):
         """Handle sensor entity selection step."""
         if user_input is not None:
-            self.sensor_info = user_input
+            self.sensor_info = _normalize_sensor_input(user_input)
             return await self.async_step_hybrid_inverter()
 
         return self.async_show_form(
@@ -812,7 +837,7 @@ class EVSCConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure_sensors(self, user_input: dict[str, Any] | None = None):
         """Handle sensor remapping during reconfigure."""
         if user_input is not None:
-            self.sensor_info = user_input
+            self.sensor_info = _normalize_sensor_input(user_input)
             return await self.async_step_reconfigure_hybrid_inverter()
 
         return self.async_show_form(
@@ -1016,7 +1041,7 @@ class EVSCOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
     async def async_step_sensors(self, user_input: dict[str, Any] | None = None):
         """Manage sensor entities options."""
         if user_input is not None:
-            self.sensor_info = user_input
+            self.sensor_info = _normalize_sensor_input(user_input)
             return await self.async_step_hybrid_inverter()
 
         return self.async_show_form(

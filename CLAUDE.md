@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.16.0
+**Current Version:** 2.16.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,21 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.16.1 (2026-10-26) — fork dodg3r
+**Three-phase installs with only a TOTAL power sensor (PV production, home consumption or grid import)**
+
+Some inverters (Dahlbergs: Growatt) report PV production only as a total plus
+VA per phase. The integration only ever SUMS L1+L2+L3 (`ChargingModel.read_*`,
+dashboard `*_entities`), so per-phase sensors are not needed. In three-phase
+mode the L2/L3 fields of the sensors step are now `vol.Optional`; leave them
+empty and map the total to the L1 field. `_normalize_sensor_input()` writes
+cleared L2/L3 keys as `None` in all three flows so a reconfigure really drops
+a previously mapped phase sensor. Amperage conversion still uses 690 V.
+Field descriptions updated EN/IT/NL. Tests: total-only three-phase read +
+input normalization.
+
+---
 
 ### v2.16.0 (2026-10-26) — fork dodg3r
 **MERGE: upstream v2.14.0 (start/stop button charger control #65, car-ready deadline fix #63) into the fuse-protection fork**
