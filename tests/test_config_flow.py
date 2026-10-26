@@ -403,7 +403,14 @@ async def test_status_optional_and_charging_power_roundtrip(hass: HomeAssistant)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_NAME: "No Status Charger"}
     )
-    result = await _advance_mode_steps(hass, result["flow_id"])
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_PHASE_MODE: PHASE_MODE_SINGLE}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_CHARGER_MODEL: CHARGER_MODEL_TUYA}
+    )
+    # PV-only install: no home battery.
+    result = await _submit_features(hass, result["flow_id"], battery=False)
     assert result["step_id"] == "entities"
 
     # Entities step WITHOUT a status sensor → must be accepted (was Required).
