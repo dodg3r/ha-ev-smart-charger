@@ -9,6 +9,10 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.ev_smart_charger.config_flow import EVSCConfigFlow, EVSCOptionsFlow
 from custom_components.ev_smart_charger.const import (
+    CONF_HAS_HOME_BATTERY,
+    CONF_HAS_SOLAR,
+    CONF_LOAD_BALANCING,
+    LOAD_BALANCING_NONE,
     CONF_MAIN_FUSE_SIZE,
     CONF_BATTERY_CAPACITY,
     CONF_BATTERY_POWER,
@@ -76,11 +80,13 @@ async def _init_flow_to_external_connectors(hass) -> str:
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_CHARGER_MODEL: CHARGER_MODEL_TUYA}
     )
+    # v2.17.0: "What do you have?" step
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_HAS_SOLAR: True, CONF_HAS_HOME_BATTERY: True, CONF_LOAD_BALANCING: LOAD_BALANCING_NONE}
+    )
     result = await hass.config_entries.flow.async_configure(result["flow_id"], entities_payload)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], sensors_payload)
     # v2.1.0 (issue #29): hybrid_inverter step between sensors and pv_forecast
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
-    # v2.14.0: main_fuse step (defaults to off)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     result = await hass.config_entries.flow.async_configure(result["flow_id"], pv_payload)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], notifications_payload)
@@ -173,6 +179,8 @@ async def test_options_flow_updates_entry_data(hass) -> None:
     assert result["step_id"] == "charger_model"
 
     result = await flow.async_step_charger_model({CONF_CHARGER_MODEL: CHARGER_MODEL_TUYA})
+    assert result["step_id"] == "features"
+    result = await flow.async_step_features({CONF_HAS_SOLAR: True, CONF_HAS_HOME_BATTERY: True, CONF_LOAD_BALANCING: LOAD_BALANCING_NONE})
     assert result["step_id"] == "entities"
 
     result = await flow.async_step_entities(
@@ -199,9 +207,6 @@ async def test_options_flow_updates_entry_data(hass) -> None:
     result = await flow.async_step_hybrid_inverter(
         {CONF_BATTERY_POWER: "sensor.new_battery_power"}
     )
-    # v2.14.0: main_fuse step
-    assert result["step_id"] == "main_fuse"
-    result = await flow.async_step_main_fuse({CONF_MAIN_FUSE_SIZE: "0"})
     assert result["step_id"] == "pv_forecast"
 
     result = await flow.async_step_pv_forecast({CONF_PV_FORECAST: "sensor.new_forecast"})
@@ -339,6 +344,8 @@ async def test_reconfigure_flow_updates_entry_data(hass) -> None:
     result = await flow.async_step_reconfigure_charger_model(
         {CONF_CHARGER_MODEL: CHARGER_MODEL_TUYA}
     )
+    assert result["step_id"] == "reconfigure_features"
+    result = await flow.async_step_reconfigure_features({CONF_HAS_SOLAR: True, CONF_HAS_HOME_BATTERY: True, CONF_LOAD_BALANCING: LOAD_BALANCING_NONE})
     assert result["step_id"] == "reconfigure_entities"
 
     result = await flow.async_step_reconfigure_entities(
@@ -365,9 +372,6 @@ async def test_reconfigure_flow_updates_entry_data(hass) -> None:
     result = await flow.async_step_reconfigure_hybrid_inverter(
         {CONF_BATTERY_POWER: "sensor.new_battery_power"}
     )
-    # v2.14.0: reconfigure_main_fuse step
-    assert result["step_id"] == "reconfigure_main_fuse"
-    result = await flow.async_step_reconfigure_main_fuse({CONF_MAIN_FUSE_SIZE: "0"})
     assert result["step_id"] == "reconfigure_pv_forecast"
 
     result = await flow.async_step_reconfigure_pv_forecast(
@@ -429,6 +433,7 @@ async def test_reconfigure_flow_rejects_duplicate_switch(hass) -> None:
     # reached after the phase_mode + charger_model steps.
     await flow.async_step_reconfigure({CONF_PHASE_MODE: PHASE_MODE_SINGLE})
     await flow.async_step_reconfigure_charger_model({CONF_CHARGER_MODEL: CHARGER_MODEL_TUYA})
+    await flow.async_step_reconfigure_features({CONF_HAS_SOLAR: True, CONF_HAS_HOME_BATTERY: True, CONF_LOAD_BALANCING: LOAD_BALANCING_NONE})
     result = await flow.async_step_reconfigure_entities(
         {
             CONF_EV_CHARGER_SWITCH: "switch.duplicate",

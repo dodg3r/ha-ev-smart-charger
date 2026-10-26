@@ -51,7 +51,7 @@
         },
         "data_description": {
           "soc_car": "Sensore con lo stato di carica EV in percentuale.",
-          "soc_home": "Sensore con lo stato di carica della batteria di casa in percentuale.",
+          "soc_home": "Sensore con lo stato di carica della batteria domestica in percentuale. Mostrato perché hai indicato di avere una batteria domestica; rispondi no nel primo passo per rimuoverla.",
           "fv_production": "Sensore con la produzione FV corrente in watt.",
           "home_consumption": "Sensore con il consumo di casa in watt, preferibilmente senza includere la ricarica EV.",
           "grid_import": "Sensore con la potenza importata dalla rete in watt. Valori positivi indicano import.",
@@ -81,7 +81,7 @@
       },
       "main_fuse": {
         "title": "Protezione interruttore generale - Passo {step}/{total_steps}",
-        "description": "Protegge l'interruttore/fusibile generale di casa: la corrente del caricatore viene limitata in modo che carico della casa + auto non superi mai il limite su nessuna fase. Vale per tutte le modalità, incluse Forza Ricarica e Boost.\n\nScegli la taglia del generale (Disattivato = funzione spenta) e mappa i sensori per fase del contatore. Ideale: corrente per fase (A) più potenza prelevata e immessa per fase (W), così si conosce la direzione della corrente. Anche solo la corrente funziona (un po' più prudente in immissione). Anche solo la potenza funziona (corrente = potenza / tensione).\n\nServe la corrente del caricatore stesso, così il suo carico non viene contato come carico della casa: un sensore con attributi L1/L2/L3 (es. OCPP current_import) oppure un sensore per fase.\n\nSe un sensore del contatore diventa non disponibile, la ricarica scende al minimo e si ferma dopo 2 minuti. Il margine di sicurezza si può cambiare dopo (EVSC Fuse Margin).",
+        "description": "Protegge l'interruttore/fusibile generale di casa: la corrente del caricatore viene limitata in modo che carico della casa + auto non superi mai il limite su nessuna fase. Vale per tutte le modalità, incluse Forza Ricarica e Boost.\n\nScegli la taglia del generale e mappa i sensori per fase del contatore. Ideale: corrente per fase (A) più potenza prelevata e immessa per fase (W), così si conosce la direzione della corrente. Anche solo la corrente funziona (un po' più prudente in immissione). Anche solo la potenza funziona (corrente = potenza / tensione).\n\nServe la corrente del caricatore stesso, così il suo carico non viene contato come carico della casa: un sensore con attributi L1/L2/L3 (es. OCPP current_import) oppure un sensore per fase.\n\nSe un sensore del contatore diventa non disponibile, la ricarica scende al minimo e si ferma dopo 2 minuti. Il margine di sicurezza si può cambiare dopo (EVSC Fuse Margin).",
         "data": {
           "main_fuse_size": "Taglia interruttore generale",
           "fuse_grid_current_l1": "Corrente contatore L1 (A)",
@@ -102,7 +102,7 @@
           "fuse_charger_current_l3": "Corrente caricatore L3 (A)"
         },
         "data_description": {
-          "main_fuse_size": "Taglia del generale per fase. Disattivato = nessuna protezione.",
+          "main_fuse_size": "Taglia del generale per fase.",
           "fuse_grid_current_l1": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
           "fuse_grid_current_l2": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
           "fuse_grid_current_l3": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
@@ -199,7 +199,7 @@
         },
         "data_description": {
           "soc_car": "Sensore con lo stato di carica EV in percentuale.",
-          "soc_home": "Sensore con lo stato di carica della batteria di casa in percentuale.",
+          "soc_home": "Sensore con lo stato di carica della batteria domestica in percentuale. Mostrato perché hai indicato di avere una batteria domestica; rispondi no nel primo passo per rimuoverla.",
           "fv_production": "Sensore con la produzione FV corrente in watt.",
           "home_consumption": "Sensore con il consumo di casa in watt, preferibilmente senza includere la ricarica EV.",
           "grid_import": "Sensore con la potenza importata dalla rete in watt. Valori positivi indicano import.",
@@ -227,7 +227,7 @@
       },
       "reconfigure_main_fuse": {
         "title": "Protezione interruttore generale - Passo {step}/{total_steps}",
-        "description": "Protegge l'interruttore/fusibile generale di casa: la corrente del caricatore viene limitata in modo che carico della casa + auto non superi mai il limite su nessuna fase. Vale per tutte le modalità, incluse Forza Ricarica e Boost.\n\nScegli la taglia del generale (Disattivato = funzione spenta) e mappa i sensori per fase del contatore. Ideale: corrente per fase (A) più potenza prelevata e immessa per fase (W), così si conosce la direzione della corrente. Anche solo la corrente funziona (un po' più prudente in immissione). Anche solo la potenza funziona (corrente = potenza / tensione).\n\nServe la corrente del caricatore stesso, così il suo carico non viene contato come carico della casa: un sensore con attributi L1/L2/L3 (es. OCPP current_import) oppure un sensore per fase.\n\nSe un sensore del contatore diventa non disponibile, la ricarica scende al minimo e si ferma dopo 2 minuti. Il margine di sicurezza si può cambiare dopo (EVSC Fuse Margin).",
+        "description": "Protegge l'interruttore/fusibile generale di casa: la corrente del caricatore viene limitata in modo che carico della casa + auto non superi mai il limite su nessuna fase. Vale per tutte le modalità, incluse Forza Ricarica e Boost.\n\nScegli la taglia del generale e mappa i sensori per fase del contatore. Ideale: corrente per fase (A) più potenza prelevata e immessa per fase (W), così si conosce la direzione della corrente. Anche solo la corrente funziona (un po' più prudente in immissione). Anche solo la potenza funziona (corrente = potenza / tensione).\n\nServe la corrente del caricatore stesso, così il suo carico non viene contato come carico della casa: un sensore con attributi L1/L2/L3 (es. OCPP current_import) oppure un sensore per fase.\n\nSe un sensore del contatore diventa non disponibile, la ricarica scende al minimo e si ferma dopo 2 minuti. Il margine di sicurezza si può cambiare dopo (EVSC Fuse Margin).",
         "data": {
           "main_fuse_size": "Taglia interruttore generale",
           "fuse_grid_current_l1": "Corrente contatore L1 (A)",
@@ -248,7 +248,7 @@
           "fuse_charger_current_l3": "Corrente caricatore L3 (A)"
         },
         "data_description": {
-          "main_fuse_size": "Taglia del generale per fase. Disattivato = nessuna protezione.",
+          "main_fuse_size": "Taglia del generale per fase.",
           "fuse_grid_current_l1": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
           "fuse_grid_current_l2": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
           "fuse_grid_current_l3": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
@@ -360,6 +360,34 @@
         "data_description": {
           "charger_model": "Tuya = scatti fissi (default). Generica = scatti da 1 A per wallbox non-Tuya che espongono la corrente come entità number."
         }
+      },
+      "features": {
+        "title": "Cosa hai? - Passo {step}/{total_steps}",
+        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare, la previsione FV e il passo dell'inverter ibrido.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — scegli *questa integrazione* per proteggere il contatore da qui (servono i sensori per fase del contatore). Scegli *lo gestisce il caricatore* se la wallbox bilancia già con un proprio misuratore, così i due non si ostacolano.",
+        "data": {
+          "has_solar": "Pannelli solari",
+          "has_home_battery": "Batteria domestica",
+          "load_balancing": "Bilanciamento del carico"
+        },
+        "data_description": {
+          "has_solar": "Disattiva se la casa non ha pannelli solari.",
+          "has_home_battery": "Attiva se la casa ha una batteria domestica da considerare.",
+          "load_balancing": "Chi mantiene il carico della casa sotto il limite del contatore durante la ricarica."
+        }
+      },
+      "reconfigure_features": {
+        "title": "Cosa hai? - Passo {step}/{total_steps}",
+        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare, la previsione FV e il passo dell'inverter ibrido.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — scegli *questa integrazione* per proteggere il contatore da qui (servono i sensori per fase del contatore). Scegli *lo gestisce il caricatore* se la wallbox bilancia già con un proprio misuratore, così i due non si ostacolano.",
+        "data": {
+          "has_solar": "Pannelli solari",
+          "has_home_battery": "Batteria domestica",
+          "load_balancing": "Bilanciamento del carico"
+        },
+        "data_description": {
+          "has_solar": "Disattiva se la casa non ha pannelli solari.",
+          "has_home_battery": "Attiva se la casa ha una batteria domestica da considerare.",
+          "load_balancing": "Chi mantiene il carico della casa sotto il limite del contatore durante la ricarica."
+        }
       }
     },
     "error": {
@@ -411,7 +439,7 @@
         },
         "data_description": {
           "soc_car": "Sensore con lo stato di carica EV in percentuale.",
-          "soc_home": "Sensore con lo stato di carica della batteria di casa in percentuale.",
+          "soc_home": "Sensore con lo stato di carica della batteria domestica in percentuale. Mostrato perché hai indicato di avere una batteria domestica; rispondi no nel primo passo per rimuoverla.",
           "fv_production": "Sensore con la produzione FV corrente in watt.",
           "home_consumption": "Sensore con il consumo di casa in watt, preferibilmente senza includere la ricarica EV.",
           "grid_import": "Sensore con la potenza importata dalla rete in watt. Valori positivi indicano import.",
@@ -439,7 +467,7 @@
       },
       "main_fuse": {
         "title": "Protezione interruttore generale - Passo {step}/{total_steps}",
-        "description": "Protegge l'interruttore/fusibile generale di casa: la corrente del caricatore viene limitata in modo che carico della casa + auto non superi mai il limite su nessuna fase. Vale per tutte le modalità, incluse Forza Ricarica e Boost.\n\nScegli la taglia del generale (Disattivato = funzione spenta) e mappa i sensori per fase del contatore. Ideale: corrente per fase (A) più potenza prelevata e immessa per fase (W), così si conosce la direzione della corrente. Anche solo la corrente funziona (un po' più prudente in immissione). Anche solo la potenza funziona (corrente = potenza / tensione).\n\nServe la corrente del caricatore stesso, così il suo carico non viene contato come carico della casa: un sensore con attributi L1/L2/L3 (es. OCPP current_import) oppure un sensore per fase.\n\nSe un sensore del contatore diventa non disponibile, la ricarica scende al minimo e si ferma dopo 2 minuti. Il margine di sicurezza si può cambiare dopo (EVSC Fuse Margin).",
+        "description": "Protegge l'interruttore/fusibile generale di casa: la corrente del caricatore viene limitata in modo che carico della casa + auto non superi mai il limite su nessuna fase. Vale per tutte le modalità, incluse Forza Ricarica e Boost.\n\nScegli la taglia del generale e mappa i sensori per fase del contatore. Ideale: corrente per fase (A) più potenza prelevata e immessa per fase (W), così si conosce la direzione della corrente. Anche solo la corrente funziona (un po' più prudente in immissione). Anche solo la potenza funziona (corrente = potenza / tensione).\n\nServe la corrente del caricatore stesso, così il suo carico non viene contato come carico della casa: un sensore con attributi L1/L2/L3 (es. OCPP current_import) oppure un sensore per fase.\n\nSe un sensore del contatore diventa non disponibile, la ricarica scende al minimo e si ferma dopo 2 minuti. Il margine di sicurezza si può cambiare dopo (EVSC Fuse Margin).",
         "data": {
           "main_fuse_size": "Taglia interruttore generale",
           "fuse_grid_current_l1": "Corrente contatore L1 (A)",
@@ -460,7 +488,7 @@
           "fuse_charger_current_l3": "Corrente caricatore L3 (A)"
         },
         "data_description": {
-          "main_fuse_size": "Taglia del generale per fase. Disattivato = nessuna protezione.",
+          "main_fuse_size": "Taglia del generale per fase.",
           "fuse_grid_current_l1": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
           "fuse_grid_current_l2": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
           "fuse_grid_current_l3": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
@@ -551,6 +579,20 @@
         },
         "data_description": {
           "charger_model": "Tuya = scatti fissi (default). Generica = scatti da 1 A per wallbox non-Tuya che espongono la corrente come entità number."
+        }
+      },
+      "features": {
+        "title": "Cosa hai? - Passo {step}/{total_steps}",
+        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare, la previsione FV e il passo dell'inverter ibrido.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — scegli *questa integrazione* per proteggere il contatore da qui (servono i sensori per fase del contatore). Scegli *lo gestisce il caricatore* se la wallbox bilancia già con un proprio misuratore, così i due non si ostacolano.",
+        "data": {
+          "has_solar": "Pannelli solari",
+          "has_home_battery": "Batteria domestica",
+          "load_balancing": "Bilanciamento del carico"
+        },
+        "data_description": {
+          "has_solar": "Disattiva se la casa non ha pannelli solari.",
+          "has_home_battery": "Attiva se la casa ha una batteria domestica da considerare.",
+          "load_balancing": "Chi mantiene il carico della casa sotto il limite del contatore durante la ricarica."
         }
       }
     },

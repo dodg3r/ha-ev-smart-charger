@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.16.1"
+VERSION = "2.17.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -232,6 +232,24 @@ CONF_PV_FORECAST_TOMORROW = "pv_forecast_tomorrow"
 # key that seeds the evsc_hybrid_inverter_mode switch's first-run state (NOT a new entity).
 CONF_BATTERY_POWER = "battery_power"
 CONF_HYBRID_INVERTER_MODE = "hybrid_inverter_mode"
+
+# v2.17.0: "What do you have?" setup answers. They decide which config steps
+# and fields are shown. Existing entries without the keys derive the answers
+# from what is already mapped (see has_solar / wants_home_battery /
+# get_load_balancing), so no migration is needed.
+CONF_HAS_SOLAR = "has_solar"
+CONF_HAS_HOME_BATTERY = "has_home_battery"
+CONF_LOAD_BALANCING = "load_balancing"
+LOAD_BALANCING_NONE = "none"
+LOAD_BALANCING_INTEGRATION = "integration"
+LOAD_BALANCING_CHARGER = "charger"
+LOAD_BALANCING_OPTIONS = [
+    LOAD_BALANCING_NONE,
+    LOAD_BALANCING_INTEGRATION,
+    LOAD_BALANCING_CHARGER,
+]
+# Fuse size preselected when load balancing is first switched on.
+DEFAULT_LOAD_BALANCING_FUSE_SIZE = 20
 DEFAULT_HYBRID_INVERTER_MODE = False
 
 # Mobile Notifications
@@ -691,6 +709,40 @@ def get_expected_entity_count(config: dict) -> int:
 def has_home_battery(config: dict) -> bool:
     """Return True if the user configured a home battery SOC sensor (v1.7.0)."""
     return bool(config.get(CONF_SOC_HOME))
+
+
+def has_solar(config: dict) -> bool:
+    """Return True when the install has solar panels (v2.17.0).
+
+    Explicit answer first; older entries always mapped a production sensor,
+    so they count as having solar.
+    """
+    if CONF_HAS_SOLAR in config:
+        return bool(config[CONF_HAS_SOLAR])
+    return True
+
+
+def wants_home_battery(config: dict) -> bool:
+    """Return the "do you have a home battery?" answer (v2.17.0).
+
+    Falls back to whether a home-battery SOC sensor is mapped. The runtime
+    truth stays ``has_home_battery`` (SOC sensor present); the flow clears
+    the battery fields when the answer is no, so the two always agree.
+    """
+    if CONF_HAS_HOME_BATTERY in config:
+        return bool(config[CONF_HAS_HOME_BATTERY])
+    return has_home_battery(config)
+
+
+def get_load_balancing(config: dict) -> str:
+    """Return the load-balancing choice (v2.17.0).
+
+    Older entries: "integration" when a main fuse size is set, else "none".
+    """
+    value = config.get(CONF_LOAD_BALANCING)
+    if value in LOAD_BALANCING_OPTIONS:
+        return value
+    return LOAD_BALANCING_INTEGRATION if is_fuse_protection_enabled(config) else LOAD_BALANCING_NONE
 
 
 def is_three_phase(config: dict) -> bool:

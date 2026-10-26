@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.16.1
+**Current Version:** 2.17.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,44 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.17.0 (2026-10-26) — fork dodg3r
+**FEATURE: "What do you have?" setup step — only the relevant steps and fields are shown**
+
+New step `features` (initial) / `reconfigure_features` / options `features`,
+right after the charger-model step: **solar panels** (`CONF_HAS_SOLAR`,
+default on), **home battery** (`CONF_HAS_HOME_BATTERY`) and **load balancing**
+(`CONF_LOAD_BALANCING`: `none` / `integration` / `charger` — the last one for
+wallboxes that balance against the main fuse with their own meter).
+- `const.py`: `has_solar()`, `wants_home_battery()`, `get_load_balancing()`
+  read the answer or derive it from older entries (solar → always yes;
+  battery → `soc_home` mapped; load balancing → fuse size > 0), so no
+  migration is needed.
+- `config_flow.py`: one step order (`_STEP_ORDER`) and a per-flow step-id map
+  (`_STEP_IDS`) drive all three flows through `_StepNavigator`
+  (`_go_next`, `_placeholders` → the "Step x/y" counter follows the answers).
+  Hybrid and PV-forecast steps only with solar; main-fuse step only with
+  load balancing = integration (its size selector no longer offers "Off");
+  sensors step shows `soc_home` (now Required) only with a home battery and
+  production / consumption only with solar; the hybrid step shows the
+  battery-power sensor only with a home battery.
+- `_apply_features()` runs on the merged entry data at the end of every flow
+  and clears what an answer rules out (battery sensors, solar sensors +
+  forecasts + hybrid seed, fuse size and fuse sensors). This replaces the
+  v1.7.0 "soc_home cannot be cleared" lock.
+- `__init__.py`: `_async_remove_orphan_helpers()` runs after a clean
+  registration barrier and removes registry entries of this entry whose
+  entity is no longer created (state missing or the `restored` placeholder),
+  e.g. the home-battery numbers after answering "no battery". User-disabled
+  entries are left alone.
+- Texts EN/IT/NL for the new step; main-fuse texts no longer mention "Off".
+- Tests: NEW `tests/test_v2170_features.py` (HiBerry flow: three-phase, no
+  battery, integration load balancing; no-solar flow; legacy defaults;
+  clearing; step filtering; reconfigure battery off); existing flow tests
+  submit the new step (`_submit_features`) and no longer expect the main-fuse
+  step by default.
+
+---
 
 ### v2.16.1 (2026-10-26) — fork dodg3r
 **Three-phase installs with only a TOTAL power sensor (PV production, home consumption or grid import)**

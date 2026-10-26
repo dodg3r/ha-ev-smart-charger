@@ -185,6 +185,41 @@ def _refresh_disabled_helpers_issue(
     )
 
 
+@callback
+def _async_remove_orphan_helpers(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove registry entries this config no longer creates (v2.17.0).
+
+    Answering "no" to a feature (home battery, load balancing) during
+    reconfigure stops creating its helper entities, but their registry
+    entries would linger as "unavailable". Only called once every helper has
+    registered: at that point every live entity has a real state, so a
+    registry entry whose state is missing or still the restore placeholder
+    (``restored: True``) belongs to no current entity. User-disabled entries
+    are left alone.
+    """
+    ent_reg = er.async_get(hass)
+    removed: list[str] = []
+    for registry_entry in list(ent_reg.entities.values()):
+        if registry_entry.config_entry_id != entry.entry_id:
+            continue
+        if registry_entry.disabled_by is not None:
+            continue
+        if _entity_key_from_unique_id(registry_entry.unique_id, entry.entry_id) is None:
+            continue
+        state = hass.states.get(registry_entry.entity_id)
+        if state is not None and not state.attributes.get("restored"):
+            continue
+        ent_reg.async_remove(registry_entry.entity_id)
+        removed.append(registry_entry.entity_id)
+    if removed:
+        _LOGGER.info(
+            "Removed %d helper entit%s no longer used by this configuration: %s",
+            len(removed),
+            "y" if len(removed) == 1 else "ies",
+            ", ".join(sorted(removed)),
+        )
+
+
 async def _async_wait_for_helper_registration(
     hass: HomeAssistant, entry: ConfigEntry, runtime_data: EVSCRuntimeData
 ) -> None:
@@ -216,6 +251,7 @@ async def _async_wait_for_helper_registration(
         )
         # Clean state — drop any stale Repairs entry left from a previous run.
         _refresh_disabled_helpers_issue(hass, entry, [])
+        _async_remove_orphan_helpers(hass, entry)
         return
     except TimeoutError as err:
         disabled_keys = _collect_disabled_helper_keys(hass, entry.entry_id)

@@ -51,7 +51,7 @@
         },
         "data_description": {
           "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
-          "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procenten.",
+          "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Sensor met de actuele PV-productie in watt.",
           "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden.",
           "grid_import": "Sensor met uit het net afgenomen vermogen in watt. Positieve waarden betekenen afname uit het net.",
@@ -81,7 +81,7 @@
       },
       "main_fuse": {
         "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
-        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering (Uit = functie uit) en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).",
+        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).",
         "data": {
           "main_fuse_size": "Grootte hoofdzekering",
           "fuse_grid_current_l1": "Meterstroom L1 (A)",
@@ -102,7 +102,7 @@
           "fuse_charger_current_l3": "Laadstroom L3 (A)"
         },
         "data_description": {
-          "main_fuse_size": "Waarde van je hoofdzekering per fase. Uit = geen bewaking.",
+          "main_fuse_size": "Waarde van je hoofdzekering per fase.",
           "fuse_grid_current_l1": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
           "fuse_grid_current_l2": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
           "fuse_grid_current_l3": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
@@ -199,7 +199,7 @@
         },
         "data_description": {
           "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
-          "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procenten.",
+          "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Sensor met de actuele PV-productie in watt.",
           "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden.",
           "grid_import": "Sensor met uit het net afgenomen vermogen in watt. Positieve waarden betekenen afname uit het net.",
@@ -227,7 +227,7 @@
       },
       "reconfigure_main_fuse": {
         "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
-        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering (Uit = functie uit) en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).",
+        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).",
         "data": {
           "main_fuse_size": "Grootte hoofdzekering",
           "fuse_grid_current_l1": "Meterstroom L1 (A)",
@@ -248,7 +248,7 @@
           "fuse_charger_current_l3": "Laadstroom L3 (A)"
         },
         "data_description": {
-          "main_fuse_size": "Waarde van je hoofdzekering per fase. Uit = geen bewaking.",
+          "main_fuse_size": "Waarde van je hoofdzekering per fase.",
           "fuse_grid_current_l1": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
           "fuse_grid_current_l2": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
           "fuse_grid_current_l3": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
@@ -360,6 +360,34 @@
         "data_description": {
           "charger_model": "Tuya = vaste stappen (standaard). Generiek = stappen van 1 A voor niet-Tuya-wallboxen die de stroom als number-entiteit aanbieden."
         }
+      },
+      "features": {
+        "title": "Wat heb je? - Stap {step}/{total_steps}",
+        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot, de zonneprognose en de hybride-omvormerstap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Load balancing** — kies *deze integratie* om de hoofdzekering vanaf hier te bewaken (vereist de sensoren per fase van je meter). Kies *de lader regelt het zelf* als je laadpaal al met een eigen meter balanceert, zodat ze elkaar niet tegenwerken.",
+        "data": {
+          "has_solar": "Zonnepanelen",
+          "has_home_battery": "Thuisbatterij",
+          "load_balancing": "Load balancing"
+        },
+        "data_description": {
+          "has_solar": "Uitschakelen als het huis geen zonnepanelen heeft.",
+          "has_home_battery": "Inschakelen als het huis een thuisbatterij heeft waarmee rekening moet worden gehouden.",
+          "load_balancing": "Wie de belasting van het huis onder de hoofdzekering houdt tijdens het laden."
+        }
+      },
+      "reconfigure_features": {
+        "title": "Wat heb je? - Stap {step}/{total_steps}",
+        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot, de zonneprognose en de hybride-omvormerstap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Load balancing** — kies *deze integratie* om de hoofdzekering vanaf hier te bewaken (vereist de sensoren per fase van je meter). Kies *de lader regelt het zelf* als je laadpaal al met een eigen meter balanceert, zodat ze elkaar niet tegenwerken.",
+        "data": {
+          "has_solar": "Zonnepanelen",
+          "has_home_battery": "Thuisbatterij",
+          "load_balancing": "Load balancing"
+        },
+        "data_description": {
+          "has_solar": "Uitschakelen als het huis geen zonnepanelen heeft.",
+          "has_home_battery": "Inschakelen als het huis een thuisbatterij heeft waarmee rekening moet worden gehouden.",
+          "load_balancing": "Wie de belasting van het huis onder de hoofdzekering houdt tijdens het laden."
+        }
       }
     },
     "error": {
@@ -411,7 +439,7 @@
         },
         "data_description": {
           "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
-          "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procenten.",
+          "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Sensor met de actuele PV-productie in watt.",
           "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden.",
           "grid_import": "Sensor met uit het net afgenomen vermogen in watt. Positieve waarden betekenen afname uit het net.",
@@ -439,7 +467,7 @@
       },
       "main_fuse": {
         "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
-        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering (Uit = functie uit) en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).",
+        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).",
         "data": {
           "main_fuse_size": "Grootte hoofdzekering",
           "fuse_grid_current_l1": "Meterstroom L1 (A)",
@@ -460,7 +488,7 @@
           "fuse_charger_current_l3": "Laadstroom L3 (A)"
         },
         "data_description": {
-          "main_fuse_size": "Waarde van je hoofdzekering per fase. Uit = geen bewaking.",
+          "main_fuse_size": "Waarde van je hoofdzekering per fase.",
           "fuse_grid_current_l1": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
           "fuse_grid_current_l2": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
           "fuse_grid_current_l3": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
@@ -551,6 +579,20 @@
         },
         "data_description": {
           "charger_model": "Tuya = vaste stappen (standaard). Generiek = stappen van 1 A voor niet-Tuya-wallboxen die de stroom als number-entiteit aanbieden."
+        }
+      },
+      "features": {
+        "title": "Wat heb je? - Stap {step}/{total_steps}",
+        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot, de zonneprognose en de hybride-omvormerstap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Load balancing** — kies *deze integratie* om de hoofdzekering vanaf hier te bewaken (vereist de sensoren per fase van je meter). Kies *de lader regelt het zelf* als je laadpaal al met een eigen meter balanceert, zodat ze elkaar niet tegenwerken.",
+        "data": {
+          "has_solar": "Zonnepanelen",
+          "has_home_battery": "Thuisbatterij",
+          "load_balancing": "Load balancing"
+        },
+        "data_description": {
+          "has_solar": "Uitschakelen als het huis geen zonnepanelen heeft.",
+          "has_home_battery": "Inschakelen als het huis een thuisbatterij heeft waarmee rekening moet worden gehouden.",
+          "load_balancing": "Wie de belasting van het huis onder de hoofdzekering houdt tijdens het laden."
         }
       }
     },

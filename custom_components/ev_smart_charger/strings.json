@@ -51,7 +51,7 @@
         },
         "data_description": {
           "soc_car": "Sensor with the EV state of charge in percent.",
-          "soc_home": "Optional. Sensor with the home battery state of charge in percent. Leave empty if you do not have a home battery — the integration will run in PV-only mode. Once configured this field cannot be cleared (to prevent orphan helper entities); to remove a home battery, delete and re-add the integration.",
+          "soc_home": "Sensor with the home battery state of charge in percent. Shown because you answered that the house has a home battery; answer no in the first step to remove it.",
           "fv_production": "Sensor with current PV production in watts. In three-phase mode: phase L1, or the TOTAL production if you only have a total sensor (then leave L2 and L3 empty).",
           "home_consumption": "Home consumption on phase L1 in watts, or the TOTAL if you only have a total sensor (then leave L2 and L3 empty).",
           "grid_import": "Grid import on phase L1 in watts, or the TOTAL if you only have a total sensor (then leave L2 and L3 empty).",
@@ -81,7 +81,7 @@
       },
       "main_fuse": {
         "title": "Main Fuse Protection - Step {step}/{total_steps}",
-        "description": "Protects your house main fuse: the charger current is limited so that house load + EV never exceeds the fuse on any phase. It applies to every charging mode, including Force Charge and Boost.\n\nPick your main fuse size (Off disables the feature) and map your electricity meter's per-phase sensors. Best: current per phase (A) plus import and export power per phase (W) so the direction of the current is known. Current alone also works (slightly more cautious while exporting). Power alone works too (current = power / voltage).\n\nThe charger's own current is needed so its load is not counted as house load: map one sensor with L1/L2/L3 attributes (for example OCPP current_import) or one sensor per phase.\n\nIf a meter sensor becomes unavailable, charging drops to the minimum current and stops after 2 minutes. The safety margin can be changed later (EVSC Fuse Margin).",
+        "description": "Protects your house main fuse: the charger current is limited so that house load + EV never exceeds the fuse on any phase. It applies to every charging mode, including Force Charge and Boost.\n\nPick your main fuse size and map your electricity meter's per-phase sensors. Best: current per phase (A) plus import and export power per phase (W) so the direction of the current is known. Current alone also works (slightly more cautious while exporting). Power alone works too (current = power / voltage).\n\nThe charger's own current is needed so its load is not counted as house load: map one sensor with L1/L2/L3 attributes (for example OCPP current_import) or one sensor per phase.\n\nIf a meter sensor becomes unavailable, charging drops to the minimum current and stops after 2 minutes. The safety margin can be changed later (EVSC Fuse Margin).",
         "data": {
           "main_fuse_size": "Main fuse size",
           "fuse_grid_current_l1": "Meter current L1 (A)",
@@ -102,7 +102,7 @@
           "fuse_charger_current_l3": "Charger current L3 (A)"
         },
         "data_description": {
-          "main_fuse_size": "The rating of your main fuse per phase. Off = no fuse protection.",
+          "main_fuse_size": "The rating of your main fuse per phase.",
           "fuse_grid_current_l1": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
           "fuse_grid_current_l2": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
           "fuse_grid_current_l3": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
@@ -199,7 +199,7 @@
         },
         "data_description": {
           "soc_car": "Sensor with the EV state of charge in percent.",
-          "soc_home": "Optional. Sensor with the home battery state of charge in percent. Leave empty if you do not have a home battery — the integration will run in PV-only mode. Once configured this field cannot be cleared (to prevent orphan helper entities); to remove a home battery, delete and re-add the integration.",
+          "soc_home": "Sensor with the home battery state of charge in percent. Shown because you answered that the house has a home battery; answer no in the first step to remove it.",
           "fv_production": "Sensor with current PV production in watts. In three-phase mode: phase L1, or the TOTAL production if you only have a total sensor (then leave L2 and L3 empty).",
           "home_consumption": "Home consumption on phase L1 in watts, or the TOTAL if you only have a total sensor (then leave L2 and L3 empty).",
           "grid_import": "Grid import on phase L1 in watts, or the TOTAL if you only have a total sensor (then leave L2 and L3 empty).",
@@ -227,7 +227,7 @@
       },
       "reconfigure_main_fuse": {
         "title": "Main Fuse Protection - Step {step}/{total_steps}",
-        "description": "Protects your house main fuse: the charger current is limited so that house load + EV never exceeds the fuse on any phase. It applies to every charging mode, including Force Charge and Boost.\n\nPick your main fuse size (Off disables the feature) and map your electricity meter's per-phase sensors. Best: current per phase (A) plus import and export power per phase (W) so the direction of the current is known. Current alone also works (slightly more cautious while exporting). Power alone works too (current = power / voltage).\n\nThe charger's own current is needed so its load is not counted as house load: map one sensor with L1/L2/L3 attributes (for example OCPP current_import) or one sensor per phase.\n\nIf a meter sensor becomes unavailable, charging drops to the minimum current and stops after 2 minutes. The safety margin can be changed later (EVSC Fuse Margin).",
+        "description": "Protects your house main fuse: the charger current is limited so that house load + EV never exceeds the fuse on any phase. It applies to every charging mode, including Force Charge and Boost.\n\nPick your main fuse size and map your electricity meter's per-phase sensors. Best: current per phase (A) plus import and export power per phase (W) so the direction of the current is known. Current alone also works (slightly more cautious while exporting). Power alone works too (current = power / voltage).\n\nThe charger's own current is needed so its load is not counted as house load: map one sensor with L1/L2/L3 attributes (for example OCPP current_import) or one sensor per phase.\n\nIf a meter sensor becomes unavailable, charging drops to the minimum current and stops after 2 minutes. The safety margin can be changed later (EVSC Fuse Margin).",
         "data": {
           "main_fuse_size": "Main fuse size",
           "fuse_grid_current_l1": "Meter current L1 (A)",
@@ -248,7 +248,7 @@
           "fuse_charger_current_l3": "Charger current L3 (A)"
         },
         "data_description": {
-          "main_fuse_size": "The rating of your main fuse per phase. Off = no fuse protection.",
+          "main_fuse_size": "The rating of your main fuse per phase.",
           "fuse_grid_current_l1": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
           "fuse_grid_current_l2": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
           "fuse_grid_current_l3": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
@@ -360,6 +360,34 @@
         "data_description": {
           "charger_model": "Tuya = fixed steps (default). Generic = 1 A steps for non-Tuya wallboxes that expose the current as a number entity."
         }
+      },
+      "features": {
+        "title": "What do you have? - Step {step}/{total_steps}",
+        "description": "Tell the integration what your installation looks like. Only the steps and fields that apply to you are shown afterwards, and you can change these answers later from the integration's options.\n\n**Solar panels** — enables solar-surplus charging, the solar forecast and the hybrid inverter step.\n\n**Home battery** — asks for the home battery sensors and creates the battery settings (minimum SOC, battery support, daily home targets).\n\n**Load balancing** — choose *this integration* to protect your main fuse from here (needs your electricity meter's per-phase sensors). Choose *the charger handles it* when your wallbox already balances against the main fuse with its own meter, so the two don't work against each other.",
+        "data": {
+          "has_solar": "Solar panels",
+          "has_home_battery": "Home battery",
+          "load_balancing": "Load balancing"
+        },
+        "data_description": {
+          "has_solar": "Turn off if the house has no solar panels.",
+          "has_home_battery": "Turn on if the house has a home battery you want to take into account.",
+          "load_balancing": "Who keeps the house load below the main fuse while the car charges."
+        }
+      },
+      "reconfigure_features": {
+        "title": "What do you have? - Step {step}/{total_steps}",
+        "description": "Tell the integration what your installation looks like. Only the steps and fields that apply to you are shown afterwards, and you can change these answers later from the integration's options.\n\n**Solar panels** — enables solar-surplus charging, the solar forecast and the hybrid inverter step.\n\n**Home battery** — asks for the home battery sensors and creates the battery settings (minimum SOC, battery support, daily home targets).\n\n**Load balancing** — choose *this integration* to protect your main fuse from here (needs your electricity meter's per-phase sensors). Choose *the charger handles it* when your wallbox already balances against the main fuse with its own meter, so the two don't work against each other.",
+        "data": {
+          "has_solar": "Solar panels",
+          "has_home_battery": "Home battery",
+          "load_balancing": "Load balancing"
+        },
+        "data_description": {
+          "has_solar": "Turn off if the house has no solar panels.",
+          "has_home_battery": "Turn on if the house has a home battery you want to take into account.",
+          "load_balancing": "Who keeps the house load below the main fuse while the car charges."
+        }
       }
     },
     "error": {
@@ -411,7 +439,7 @@
         },
         "data_description": {
           "soc_car": "Sensor with the EV state of charge in percent.",
-          "soc_home": "Optional. Sensor with the home battery state of charge in percent. Leave empty if you do not have a home battery — the integration will run in PV-only mode. Once configured this field cannot be cleared (to prevent orphan helper entities); to remove a home battery, delete and re-add the integration.",
+          "soc_home": "Sensor with the home battery state of charge in percent. Shown because you answered that the house has a home battery; answer no in the first step to remove it.",
           "fv_production": "Sensor with current PV production in watts. In three-phase mode: phase L1, or the TOTAL production if you only have a total sensor (then leave L2 and L3 empty).",
           "home_consumption": "Home consumption on phase L1 in watts, or the TOTAL if you only have a total sensor (then leave L2 and L3 empty).",
           "grid_import": "Grid import on phase L1 in watts, or the TOTAL if you only have a total sensor (then leave L2 and L3 empty).",
@@ -439,7 +467,7 @@
       },
       "main_fuse": {
         "title": "Main Fuse Protection - Step {step}/{total_steps}",
-        "description": "Protects your house main fuse: the charger current is limited so that house load + EV never exceeds the fuse on any phase. It applies to every charging mode, including Force Charge and Boost.\n\nPick your main fuse size (Off disables the feature) and map your electricity meter's per-phase sensors. Best: current per phase (A) plus import and export power per phase (W) so the direction of the current is known. Current alone also works (slightly more cautious while exporting). Power alone works too (current = power / voltage).\n\nThe charger's own current is needed so its load is not counted as house load: map one sensor with L1/L2/L3 attributes (for example OCPP current_import) or one sensor per phase.\n\nIf a meter sensor becomes unavailable, charging drops to the minimum current and stops after 2 minutes. The safety margin can be changed later (EVSC Fuse Margin).",
+        "description": "Protects your house main fuse: the charger current is limited so that house load + EV never exceeds the fuse on any phase. It applies to every charging mode, including Force Charge and Boost.\n\nPick your main fuse size and map your electricity meter's per-phase sensors. Best: current per phase (A) plus import and export power per phase (W) so the direction of the current is known. Current alone also works (slightly more cautious while exporting). Power alone works too (current = power / voltage).\n\nThe charger's own current is needed so its load is not counted as house load: map one sensor with L1/L2/L3 attributes (for example OCPP current_import) or one sensor per phase.\n\nIf a meter sensor becomes unavailable, charging drops to the minimum current and stops after 2 minutes. The safety margin can be changed later (EVSC Fuse Margin).",
         "data": {
           "main_fuse_size": "Main fuse size",
           "fuse_grid_current_l1": "Meter current L1 (A)",
@@ -460,7 +488,7 @@
           "fuse_charger_current_l3": "Charger current L3 (A)"
         },
         "data_description": {
-          "main_fuse_size": "The rating of your main fuse per phase. Off = no fuse protection.",
+          "main_fuse_size": "The rating of your main fuse per phase.",
           "fuse_grid_current_l1": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
           "fuse_grid_current_l2": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
           "fuse_grid_current_l3": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
@@ -551,6 +579,20 @@
         },
         "data_description": {
           "charger_model": "Tuya = fixed steps (default). Generic = 1 A steps for non-Tuya wallboxes that expose the current as a number entity."
+        }
+      },
+      "features": {
+        "title": "What do you have? - Step {step}/{total_steps}",
+        "description": "Tell the integration what your installation looks like. Only the steps and fields that apply to you are shown afterwards, and you can change these answers later from the integration's options.\n\n**Solar panels** — enables solar-surplus charging, the solar forecast and the hybrid inverter step.\n\n**Home battery** — asks for the home battery sensors and creates the battery settings (minimum SOC, battery support, daily home targets).\n\n**Load balancing** — choose *this integration* to protect your main fuse from here (needs your electricity meter's per-phase sensors). Choose *the charger handles it* when your wallbox already balances against the main fuse with its own meter, so the two don't work against each other.",
+        "data": {
+          "has_solar": "Solar panels",
+          "has_home_battery": "Home battery",
+          "load_balancing": "Load balancing"
+        },
+        "data_description": {
+          "has_solar": "Turn off if the house has no solar panels.",
+          "has_home_battery": "Turn on if the house has a home battery you want to take into account.",
+          "load_balancing": "Who keeps the house load below the main fuse while the car charges."
         }
       }
     },
