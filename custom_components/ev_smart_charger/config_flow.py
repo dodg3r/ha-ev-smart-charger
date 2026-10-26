@@ -73,6 +73,7 @@ from .const import (
     LOAD_BALANCING_OPTIONS,
     get_load_balancing,
     get_main_fuse_size,
+    has_meter_import_power,
     has_solar,
     is_three_phase,
     wants_home_battery,
@@ -164,6 +165,9 @@ _OPTIONAL_PHASE_POWER_KEYS = (
     CONF_HOME_CONSUMPTION_L3,
     CONF_GRID_IMPORT_L2,
     CONF_GRID_IMPORT_L3,
+    # v2.18.0: optional when they can be derived from the meter step.
+    CONF_GRID_IMPORT,
+    CONF_HOME_CONSUMPTION,
 )
 
 
@@ -308,8 +312,13 @@ def _sensor_schema(
     *,
     solar: bool = True,
     home_battery: bool = True,
+    derivable: bool = False,
 ) -> vol.Schema:
     """Build the sensor mapping schema.
+
+    v2.18.0: ``derivable`` (the meter step maps import power on every phase
+    and the charger current) makes grid import and home consumption optional:
+    left empty, the integration computes them.
 
     v2.0.0: in three-phase mode, production / home-consumption / grid-import are
     asked per phase (L1 reuses the single-phase key; L2/L3 optional since
@@ -336,7 +345,10 @@ def _sensor_schema(
             *power_groups,
         ]
     for l1, l2, l3 in power_groups:
-        fields[vol.Required(l1, **_field_config(current_data.get(l1)))] = _entity_selector("sensor")
+        marker = vol.Required
+        if derivable and l1 in (CONF_GRID_IMPORT, CONF_HOME_CONSUMPTION):
+            marker = vol.Optional
+        fields[marker(l1, **_field_config(current_data.get(l1)))] = _entity_selector("sensor")
         if three_phase:
             # v2.16.1: L2/L3 optional. Only the sum is ever used, so an install
             # with a single total sensor (e.g. an inverter that reports PV
@@ -709,9 +721,11 @@ _STEP_ORDER = (
     "model",
     "features",
     "entities",
+    # v2.18.0: the meter step comes before the sensors step, so the sensors
+    # step knows whether grid import / home consumption can be derived.
+    "fuse",
     "sensors",
     "hybrid",
-    "fuse",
     "forecast",
     "notifications",
     "external",
@@ -790,6 +804,17 @@ class _StepNavigator:
         if self.features_info:
             return self.features_info
         return _features_defaults(self._base_data())
+
+    def _derivable(self) -> bool:
+        """v2.18.0: can grid import / home consumption be computed?
+
+        Needs the meter step (load balancing by the integration) with import
+        power on every phase; that step also requires the charger current.
+        """
+        data = _merge_entry_data(
+            self._base_data(), self.mode_info, self._features(), self.fuse_info
+        )
+        return has_meter_import_power(data)
 
     def _placeholders(self, logical: str) -> dict[str, str]:
         steps = _active_steps(self._flow_kind, self._features())
@@ -923,6 +948,7 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
                 three_phase=is_three_phase(self.mode_info),
                 solar=has_solar(features),
                 home_battery=wants_home_battery(features),
+                derivable=self._derivable(),
             ),
             errors={},
             description_placeholders=self._placeholders("sensors"),
@@ -1126,6 +1152,7 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
                 three_phase=is_three_phase(self.mode_info),
                 solar=has_solar(features),
                 home_battery=wants_home_battery(features),
+                derivable=self._derivable(),
             ),
             errors={},
             description_placeholders=self._placeholders("sensors"),
@@ -1343,6 +1370,7 @@ class EVSCOptionsFlow(_StepNavigator, config_entries.OptionsFlowWithConfigEntry)
                 three_phase=is_three_phase(self.mode_info),
                 solar=has_solar(features),
                 home_battery=wants_home_battery(features),
+                derivable=self._derivable(),
             ),
             description_placeholders=self._placeholders("sensors"),
         )

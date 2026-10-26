@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.17.0"
+VERSION = "2.18.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -753,6 +753,19 @@ def is_three_phase(config: dict) -> bool:
 def get_phase_count(config: dict) -> int:
     """Return the number of phases (1 single, 3 three-phase) (v2.0.0)."""
     return 3 if is_three_phase(config) else 1
+
+
+def has_meter_import_power(config: dict) -> bool:
+    """True when the meter's import power is mapped on every phase (v2.18.0).
+
+    That is what lets the integration derive grid import (import − export per
+    phase) and, with the charger current, home consumption. Only meaningful
+    when the meter step is shown, i.e. load balancing by the integration.
+    """
+    if get_load_balancing(config) != LOAD_BALANCING_INTEGRATION:
+        return False
+    keys = FUSE_GRID_IMPORT_KEYS[: get_phase_count(config)]
+    return all(config.get(key) for key in keys)
 
 
 def get_effective_voltage(config: dict) -> float:

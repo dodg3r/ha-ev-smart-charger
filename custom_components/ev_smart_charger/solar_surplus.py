@@ -17,8 +17,6 @@ from .const import (
     CONF_FV_PRODUCTION,
     CONF_HOME_CONSUMPTION,
     CONF_GRID_IMPORT,
-    CONF_GRID_IMPORT_L2,
-    CONF_GRID_IMPORT_L3,
     CONF_SOC_HOME,
     PRIORITY_EV,
     PRIORITY_HOME,
@@ -537,15 +535,9 @@ class SolarSurplusAutomation:
         # at the next periodic tick. The handler itself is a no-op unless a
         # Solar-Surplus-owned charging session is active AND the spike delay
         # helper is > 0 (0 = legacy behaviour, byte-for-byte).
-        grid_sensors = [
-            sensor
-            for sensor in (
-                self.config.get(CONF_GRID_IMPORT),
-                self.config.get(CONF_GRID_IMPORT_L2),
-                self.config.get(CONF_GRID_IMPORT_L3),
-            )
-            if sensor
-        ]
+        # v2.18.0: the power model knows the sources — the mapped grid sensors,
+        # or the meter's import/export power when grid import is derived.
+        grid_sensors = self._power_model.grid_import_source_entities()
         if grid_sensors:
             self._grid_listener_unsub = async_track_state_change_event(
                 self.hass,
@@ -1087,6 +1079,18 @@ class SolarSurplusAutomation:
                 if entity_id in self._sensor_error_state:
                     self.logger.info(f"✅ {sensor_name} sensor recovered (was: {self._sensor_error_state[entity_id]})")
                     del self._sensor_error_state[entity_id]
+
+        # v2.18.0: quantities derived from the charger current.
+        derived_errors = self._power_model.derived_power_errors(self.hass)
+        for error_msg in derived_errors:
+            sensor_errors.append(error_msg)
+            failed_entities.append("derived home consumption")
+            if self._sensor_error_state.get("derived") != error_msg:
+                self._sensor_error_state["derived"] = error_msg
+                new_errors = True
+        if not derived_errors and "derived" in self._sensor_error_state:
+            self.logger.info("✅ Derived home consumption recovered")
+            del self._sensor_error_state["derived"]
 
         if sensor_errors:
             # issue #47/#48: debounce the hard ERROR label. Noisy integrations

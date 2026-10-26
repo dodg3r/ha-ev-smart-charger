@@ -1185,6 +1185,9 @@ class EvSmartChargerDashboard extends HTMLElement {
       solar_power_entities: config?.solar_power_entities,
       home_consumption_entities: config?.home_consumption_entities,
       grid_import_entities: config?.grid_import_entities,
+      // v2.18.0: meter export per phase — when grid import is derived from
+      // the main meter the Grid tile shows import − export. MUST be whitelisted.
+      grid_export_entities: config?.grid_export_entities,
       // v2.2.0: per-phase measured charging power, summed by _isDrawingNow /
       // _computeChargingPowerKw. MUST be whitelisted or it is silently dropped
       // (cf. the v1.11.13 pv_forecast_entity regression above).
@@ -1694,6 +1697,78 @@ class EvSmartChargerDashboard extends HTMLElement {
    * the single sensor's L1/L2/L3 attributes (OCPP `current_import`), else its
    * state. Mirrors fuse_guard so the card shows what the guard sees.
    */
+  /**
+   * v2.18.0: Grid tile. With meter export sensors (grid import derived from
+   * the main meter) it shows import − export in watts / kW; otherwise the
+   * mapped grid-import sensor(s) as before.
+   */
+  _gridDisplay() {
+    const exports = this._config.grid_export_entities;
+    const imports = this._config.grid_import_entities;
+    if (!Array.isArray(exports) || exports.length === 0 || !Array.isArray(imports)) {
+      return this._phaseAwareDisplay("grid_import_entities", "grid_import_entity", this._t("fallback.grid_import_entity"));
+    }
+    let net = 0;
+    for (const id of imports) {
+      const w = this._powerW(id);
+      if (w == null) return this._t("common.unavailable");
+      net += w;
+    }
+    for (const id of exports) {
+      const w = this._powerW(id);
+      if (w == null) return this._t("common.unavailable");
+      net -= w;
+    }
+    return Math.abs(net) >= 1000
+      ? `${(net / 1000).toFixed(2)} kW`
+      : `${Math.round(net)} W`;
+  }
+
+  /**
+   * v2.18.0: measured charger current per phase (A), from the meter-step
+   * mapping — dedicated per-phase sensors, or one sensor whose L1/L2/L3
+   * attributes hold the phases (its state is the total). Mirrors
+   * read_charger_phase_currents in power_model.py. null when not mapped or
+   * unreadable.
+   */
+  _measuredChargerPhaseCurrents() {
+    const readNum = (raw) => {
+      if (raw == null || raw === "unknown" || raw === "unavailable") return null;
+      const v = Number(String(raw).replace(",", "."));
+      return Number.isFinite(v) ? v : null;
+    };
+    const phases = this._config.phase_mode === "three" ? 3 : 1;
+    const ids = this._config.charger_current_entities;
+    if (Array.isArray(ids) && ids.length > 0) {
+      const values = ids.slice(0, phases).map((id) => readNum(this._stateObj(id)?.state));
+      return values.some((v) => v == null) ? null : values;
+    }
+    const obj = this._stateObj(this._config.charger_current_entity);
+    if (!obj) return null;
+    const total = readNum(obj.state);
+    if (total != null && Math.abs(total) < 0.1) return new Array(phases).fill(0);
+    const names = [
+      ["L1", "l1", "L1-N", "phase_1", "phase1", "current_l1"],
+      ["L2", "l2", "L2-N", "phase_2", "phase2", "current_l2"],
+      ["L3", "l3", "L3-N", "phase_3", "phase3", "current_l3"],
+    ];
+    const values = [];
+    for (const group of names.slice(0, phases)) {
+      let value = null;
+      for (const name of group) {
+        if (obj.attributes && name in obj.attributes) {
+          value = readNum(obj.attributes[name]);
+          break;
+        }
+      }
+      values.push(value);
+    }
+    if (values.every((v) => v == null)) {
+      return total == null ? null : new Array(phases).fill(total / phases);
+    }
+    return values.some((v) => v == null) ? null : values;
+  }
+
   _measuredChargerCurrentA() {
     const readNum = (raw) => {
       if (raw == null) return null;
@@ -1872,6 +1947,12 @@ class EvSmartChargerDashboard extends HTMLElement {
     if (single) {
       const w = this._powerW(single);
       return w == null ? null : Math.max(0, w);
+    }
+    // v2.18.0: no power sensor → measured charger current × 230 V per phase
+    // (same derivation as the backend power model).
+    const currents = this._measuredChargerPhaseCurrents();
+    if (currents) {
+      return currents.reduce((sum, a) => sum + Math.abs(a) * VOLTAGE_EU, 0);
     }
     return null;
   }
@@ -3052,7 +3133,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     // v2.0.0: sum the per-phase sensors in three-phase mode (single-phase
     // falls through to the original single-entity display path).
     const solarPower = this._phaseAwareDisplay("solar_power_entities", "solar_power_entity", this._t("fallback.solar_power_entity"));
-    const gridImport = this._phaseAwareDisplay("grid_import_entities", "grid_import_entity", this._t("fallback.grid_import_entity"));
+    const gridImport = this._gridDisplay();
     // v2.15.0: show the MEASURED charger current when the fuse-protection
     // mapping provides it; else the configured setpoint. An OCPP session
     // limit entity only exists during a session, so a mapped-but-missing

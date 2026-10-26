@@ -53,8 +53,8 @@
           "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
           "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Sensor met de actuele PV-productie in watt.",
-          "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden.",
-          "grid_import": "Sensor met uit het net afgenomen vermogen in watt. Positieve waarden betekenen afname uit het net.",
+          "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: het huisverbruik wordt dan berekend als opwek + netafname − laadvermogen (− batterijladen als een batterijvermogensensor is gekoppeld).",
+          "grid_import": "Sensor met uit het net afgenomen vermogen in watt. Positieve waarden betekenen afname uit het net. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: de netafname wordt dan berekend als afname − teruglevering.",
           "fv_production_l2": "Zonneproductie op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "fv_production_l3": "Zonneproductie op fase L3, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "home_consumption_l2": "Verbruik woning op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
@@ -81,7 +81,7 @@
       },
       "main_fuse": {
         "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
-        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).",
+        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).\n\nMet afgenomen (en teruggeleverd) vermogen op elke fase berekent de integratie ook netafname, huisverbruik en laadvermogen, zodat je die sensoren in de volgende stap leeg kunt laten.",
         "data": {
           "main_fuse_size": "Grootte hoofdzekering",
           "fuse_grid_current_l1": "Meterstroom L1 (A)",
@@ -201,8 +201,8 @@
           "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
           "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Sensor met de actuele PV-productie in watt.",
-          "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden.",
-          "grid_import": "Sensor met uit het net afgenomen vermogen in watt. Positieve waarden betekenen afname uit het net.",
+          "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: het huisverbruik wordt dan berekend als opwek + netafname − laadvermogen (− batterijladen als een batterijvermogensensor is gekoppeld).",
+          "grid_import": "Sensor met uit het net afgenomen vermogen in watt. Positieve waarden betekenen afname uit het net. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: de netafname wordt dan berekend als afname − teruglevering.",
           "fv_production_l2": "Zonneproductie op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "fv_production_l3": "Zonneproductie op fase L3, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "home_consumption_l2": "Verbruik woning op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
@@ -227,7 +227,7 @@
       },
       "reconfigure_main_fuse": {
         "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
-        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).",
+        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).\n\nMet afgenomen (en teruggeleverd) vermogen op elke fase berekent de integratie ook netafname, huisverbruik en laadvermogen, zodat je die sensoren in de volgende stap leeg kunt laten.",
         "data": {
           "main_fuse_size": "Grootte hoofdzekering",
           "fuse_grid_current_l1": "Meterstroom L1 (A)",
@@ -441,8 +441,8 @@
           "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
           "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Sensor met de actuele PV-productie in watt.",
-          "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden.",
-          "grid_import": "Sensor met uit het net afgenomen vermogen in watt. Positieve waarden betekenen afname uit het net.",
+          "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: het huisverbruik wordt dan berekend als opwek + netafname − laadvermogen (− batterijladen als een batterijvermogensensor is gekoppeld).",
+          "grid_import": "Sensor met uit het net afgenomen vermogen in watt. Positieve waarden betekenen afname uit het net. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: de netafname wordt dan berekend als afname − teruglevering.",
           "fv_production_l2": "Zonneproductie op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "fv_production_l3": "Zonneproductie op fase L3, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "home_consumption_l2": "Verbruik woning op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
@@ -467,7 +467,7 @@
       },
       "main_fuse": {
         "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
-        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).",
+        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin).\n\nMet afgenomen (en teruggeleverd) vermogen op elke fase berekent de integratie ook netafname, huisverbruik en laadvermogen, zodat je die sensoren in de volgende stap leeg kunt laten.",
         "data": {
           "main_fuse_size": "Grootte hoofdzekering",
           "fuse_grid_current_l1": "Meterstroom L1 (A)",

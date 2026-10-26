@@ -115,7 +115,7 @@ from .utils.amperage_helper import AmperageCalculator
 from .utils.astral_time_service import AstralTimeService
 from .utils.logging_helper import EVSCLogger
 from .utils.mobile_notification_service import MobileNotificationService
-from .utils.state_helper import get_bool, get_float, get_int, get_state, validate_sensor
+from .utils.state_helper import get_bool, get_float, get_int, get_state
 
 
 class HybridInverterMode:
@@ -439,7 +439,7 @@ class HybridInverterMode:
                 return False
 
         # Grid import must be valid
-        is_valid, _ = validate_sensor(self.hass, self._grid_import, "Grid Import")
+        is_valid, _ = self._power_model.validate_grid_import(self.hass)
         if not is_valid:
             return False
 
@@ -482,7 +482,7 @@ class HybridInverterMode:
             )
 
             # Sanity: re-check sensor on EVERY tick
-            is_valid, err = validate_sensor(self.hass, self._grid_import, "Grid Import")
+            is_valid, err = self._power_model.validate_grid_import(self.hass)
             if not is_valid and self._state != HYBRID_STATE_IDLE:
                 self.logger.warning(
                     f"Hybrid: grid_import sensor invalid ({err}) — aborting + COOLDOWN_SHORT"

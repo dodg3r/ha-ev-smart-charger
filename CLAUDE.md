@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.17.0
+**Current Version:** 2.18.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,44 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.18.0 (2026-10-26) — fork dodg3r
+**FEATURE: grid import, charging power and home consumption computed by the integration**
+
+With load balancing by the integration, the meter step already maps import /
+export power per phase and the charger current. v2.18.0 uses that data, so
+the matching sensors in the sensors step become optional overrides:
+- **Grid import** = Σ (meter import − meter export) per phase, kW normalised
+  (`ChargingModel._derived_grid_import`). Needs import power on every phase
+  (`const.has_meter_import_power`, only with load balancing = integration).
+- **Charging power** = Σ charger current × phase voltage (meter voltage, else
+  230 V). The charger-current reader moved from `FuseGuard` to
+  `power_model.read_charger_phase_currents` (shared, unchanged behaviour), so
+  `is_charging()` now uses the measured current when no power sensor is mapped.
+- **Home consumption** = production + grid import − EV power − battery power
+  (signed, positive = charging, only if mapped), clamped ≥ 0. Surplus
+  (production − consumption) then equals EV draw + export − import. When the
+  charger current is unreadable the EV power counts as 0 W only if the status
+  says the car is not drawing; otherwise `derived_power_errors()` makes Solar
+  Surplus skip the tick like an unavailable sensor.
+- Mapped sensors always win; nothing changes for installs without the meter
+  step.
+- Config flow: the meter step (`fuse`) now comes **before** the sensors step
+  in `_STEP_ORDER`; `_StepNavigator._derivable()` makes `grid_import` and
+  `home_consumption` (L1) `vol.Optional` when derivation is possible, and
+  `_normalize_sensor_input` writes them as `None` when left empty.
+- Solar Surplus: the consumption-spike listener follows
+  `grid_import_source_entities()` (meter import/export when derived) and the
+  validation adds the meter sensors plus `derived_power_errors()`. Hybrid
+  Inverter Mode validates through `validate_grid_import()`.
+- Dashboard: `grid_export_entities` passed when grid import is derived (Grid
+  tile = import − export); the card derives charging power from the measured
+  charger current when no power sensor is mapped.
+- Texts EN/IT/NL for the optional fields and the meter step.
+- Tests: NEW `tests/test_v2180_derived_power.py`; fuse and features tests
+  follow the new step order.
+
+---
 
 ### v2.17.0 (2026-10-26) — fork dodg3r
 **FEATURE: "What do you have?" setup step — only the relevant steps and fields are shown**

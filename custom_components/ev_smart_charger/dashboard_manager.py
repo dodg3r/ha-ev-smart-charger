@@ -87,7 +87,10 @@ from .const import (
     PHASE_MODE_SINGLE,
     PHASE_MODE_THREE,
     VERSION,
+    FUSE_GRID_EXPORT_KEYS,
+    FUSE_GRID_IMPORT_KEYS,
     get_charger_model,
+    has_meter_import_power,
     is_three_phase,
 )
 
@@ -282,6 +285,16 @@ def _build_card_config(entry: ConfigEntry) -> dict[str, Any]:
             entities = [data[k] for k in conf_keys if data.get(k)]
             if entities:
                 config[card_key] = entities
+
+    # v2.18.0: grid import derived from the main meter (import − export per
+    # phase) when no grid-import sensor is mapped. The card subtracts the
+    # export sum from the import sum for the Grid tile.
+    if not data.get(CONF_GRID_IMPORT) and has_meter_import_power(data):
+        phases = 3 if is_three_phase(data) else 1
+        config["grid_import_entities"] = [data[k] for k in FUSE_GRID_IMPORT_KEYS[:phases]]
+        exports = [data[k] for k in FUSE_GRID_EXPORT_KEYS[:phases] if data.get(k)]
+        if exports:
+            config["grid_export_entities"] = exports
 
     return config
 

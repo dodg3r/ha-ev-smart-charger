@@ -116,6 +116,20 @@ async def test_no_battery_with_load_balancing_flow(hass):
     )
     assert result["step_id"] == "entities"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], ENTITIES)
+
+    # v2.18.0: the meter step comes before the sensors step.
+    assert result["step_id"] == "main_fuse"
+    assert result["description_placeholders"]["total_steps"] == "12"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_MAIN_FUSE_SIZE: "20",
+            CONF_FUSE_GRID_CURRENT_L1: "sensor.i1",
+            CONF_FUSE_GRID_CURRENT_L2: "sensor.i2",
+            CONF_FUSE_GRID_CURRENT_L3: "sensor.i3",
+            CONF_FUSE_CHARGER_CURRENT: "sensor.charger_current_import",
+        },
+    )
     assert result["step_id"] == "sensors"
 
     keys = _schema_keys(result)
@@ -135,18 +149,6 @@ async def test_no_battery_with_load_balancing_flow(hass):
     assert CONF_BATTERY_POWER not in _schema_keys(result)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
 
-    assert result["step_id"] == "main_fuse"
-    assert result["description_placeholders"]["total_steps"] == "12"
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {
-            CONF_MAIN_FUSE_SIZE: "20",
-            CONF_FUSE_GRID_CURRENT_L1: "sensor.i1",
-            CONF_FUSE_GRID_CURRENT_L2: "sensor.i2",
-            CONF_FUSE_GRID_CURRENT_L3: "sensor.i3",
-            CONF_FUSE_CHARGER_CURRENT: "sensor.charger_current_import",
-        },
-    )
     assert result["step_id"] == "pv_forecast"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
 

@@ -552,7 +552,8 @@ async def test_main_fuse_step_stores_normalized_data(hass):
 
     result = await flow.async_step_main_fuse(payload)
 
-    assert result["step_id"] == "pv_forecast"
+    # v2.18.0: the meter step comes before the sensors step.
+    assert result["step_id"] == "sensors"
     assert flow.fuse_info[CONF_MAIN_FUSE_SIZE] == 25
     assert flow.fuse_info[CONF_FUSE_GRID_CURRENT_L1] == "sensor.i1"
     assert flow.fuse_info[CONF_FUSE_GRID_CURRENT_L3] is None
@@ -565,7 +566,7 @@ async def test_main_fuse_off_skips_validation(hass):
 
     result = await flow.async_step_main_fuse({CONF_MAIN_FUSE_SIZE: "0"})
 
-    assert result["step_id"] == "pv_forecast"
+    assert result["step_id"] == "sensors"
     assert flow.fuse_info[CONF_MAIN_FUSE_SIZE] == 0
 
 

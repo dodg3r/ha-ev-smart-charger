@@ -37,10 +37,18 @@ from .const import (
     CONF_HOME_CONSUMPTION,
     CONF_HOME_CONSUMPTION_L2,
     CONF_HOME_CONSUMPTION_L3,
+    CONF_FUSE_CHARGER_CURRENT,
+    FUSE_CHARGER_CURRENT_KEYS,
+    FUSE_CHARGER_PHASE_ATTRIBUTES,
+    FUSE_GRID_EXPORT_KEYS,
+    FUSE_GRID_IMPORT_KEYS,
+    FUSE_GRID_VOLTAGE_KEYS,
+    VOLTAGE_EU,
     get_amp_levels,
     get_charger_model,
     get_effective_voltage,
     get_phase_count,
+    has_meter_import_power,
     is_three_phase,
 )
 from .utils.state_helper import get_float, get_state
@@ -134,6 +142,100 @@ _GRID_IMPORT_KEYS = (CONF_GRID_IMPORT, CONF_GRID_IMPORT_L2, CONF_GRID_IMPORT_L3)
 _CHARGING_POWER_KEYS = (CONF_CHARGING_POWER, CONF_CHARGING_POWER_L2, CONF_CHARGING_POWER_L3)
 
 
+# ---------------------------------------------------------------------------
+# v2.18.0 — raw readers shared with the fuse guard
+# ---------------------------------------------------------------------------
+def _parse_number(value) -> float | None:
+    if value in (None, "", "unknown", "unavailable", "none"):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def read_power_w(hass: HomeAssistant, entity_id: str | None) -> float | None:
+    """A power sensor in watts (kW normalised), or None when unreadable."""
+    if not entity_id:
+        return None
+    state = hass.states.get(entity_id)
+    if state is None:
+        return None
+    value = _parse_number(state.state)
+    if value is None:
+        return None
+    unit = str(state.attributes.get("unit_of_measurement") or "").lower()
+    if unit == "kw":
+        value *= 1000.0
+    return value
+
+
+def read_current_a(hass: HomeAssistant, entity_id: str | None) -> float | None:
+    """A current sensor in amperes (mA normalised), or None when unreadable."""
+    if not entity_id:
+        return None
+    state = hass.states.get(entity_id)
+    if state is None:
+        return None
+    value = _parse_number(state.state)
+    if value is None:
+        return None
+    if str(state.attributes.get("unit_of_measurement") or "") == "mA":
+        value /= 1000.0
+    return value
+
+
+def read_number(hass: HomeAssistant, entity_id: str | None) -> float | None:
+    """Any numeric sensor, or None when unreadable."""
+    if not entity_id:
+        return None
+    state = hass.states.get(entity_id)
+    return None if state is None else _parse_number(state.state)
+
+
+def read_charger_phase_currents(
+    hass: HomeAssistant, config: dict, phase_count: int
+) -> list[float | None]:
+    """Per-phase charger current (A) from the meter-step mapping.
+
+    Dedicated per-phase sensors win; otherwise one sensor whose state is the
+    total and whose L1/L2/L3 attributes (if any) hold the phases. Used by the
+    fuse guard and by the derived charging power.
+    """
+    dedicated = [config.get(key) for key in FUSE_CHARGER_CURRENT_KEYS[:phase_count]]
+    if any(dedicated):
+        return [read_current_a(hass, entity) for entity in dedicated]
+
+    total_entity = config.get(CONF_FUSE_CHARGER_CURRENT)
+    if not total_entity:
+        return [None] * phase_count
+    state = hass.states.get(total_entity)
+    if state is None:
+        return [None] * phase_count
+    total = _parse_number(state.state)
+
+    # Charger reports no current at all: per-phase attributes are often
+    # left at their last value, so trust the total and report zero.
+    if total is not None and abs(total) < 0.1:
+        return [0.0] * phase_count
+
+    values: list[float | None] = []
+    for candidates in FUSE_CHARGER_PHASE_ATTRIBUTES[:phase_count]:
+        value = None
+        for name in candidates:
+            if name in state.attributes:
+                value = _parse_number(state.attributes.get(name))
+                break
+        values.append(value)
+
+    if phase_count == 1 and values[0] is None:
+        return [total]
+    if all(v is None for v in values) and total is not None:
+        # No per-phase attributes: assume the load is spread evenly.
+        return [total / phase_count] * phase_count
+    return values
+
+
 def _entities_for(config: dict, keys: tuple[str, ...]) -> list[str]:
     """Return the configured entity ids for a quantity.
 
@@ -170,10 +272,19 @@ class ChargingModel:
     # v2.6.0 (issue #36) — optional binary_sensor for grid availability
     # (on = grid present, off = grid lost). None when unmapped.
     _grid_available_entity: str | None = None
+    # v2.18.0 — meter-step data used to DERIVE quantities the user left
+    # unmapped: per-phase import / export power and voltage from the main
+    # meter, and the charger current. ``_meter_import_entities`` is empty
+    # unless every phase is mapped (a partial sum would be wrong).
+    _meter_import_entities: list[str] = field(default_factory=list)
+    _meter_export_entities: list[str | None] = field(default_factory=list)
+    _meter_voltage_entities: list[str | None] = field(default_factory=list)
+    _config: dict = field(default_factory=dict, repr=False)
 
     @classmethod
     def from_config(cls, config: dict) -> "ChargingModel":
         """Build the model from config entry data."""
+        phases = get_phase_count(config)
         return cls(
             phase_count=get_phase_count(config),
             effective_voltage=get_effective_voltage(config),
@@ -186,6 +297,14 @@ class ChargingModel:
             _charging_power_entities=_entities_for(config, _CHARGING_POWER_KEYS),
             _charger_status_entity=config.get(CONF_EV_CHARGER_STATUS),
             _grid_available_entity=config.get(CONF_GRID_AVAILABLE),
+            _meter_import_entities=(
+                [config[k] for k in FUSE_GRID_IMPORT_KEYS[:phases]]
+                if has_meter_import_power(config)
+                else []
+            ),
+            _meter_export_entities=[config.get(k) for k in FUSE_GRID_EXPORT_KEYS[:phases]],
+            _meter_voltage_entities=[config.get(k) for k in FUSE_GRID_VOLTAGE_KEYS[:phases]],
+            _config=dict(config),
         )
 
     def is_grid_available(self, hass) -> bool | None:
@@ -217,23 +336,90 @@ class ChargingModel:
         """Return mapped grid-import sensors."""
         return list(self._grid_import_entities)
 
+    # ----- v2.18.0: what is derived instead of mapped -----
+    @property
+    def grid_import_derived(self) -> bool:
+        """Grid import is computed from the meter's import − export power."""
+        return not self._grid_import_entities and bool(self._meter_import_entities)
+
+    @property
+    def charging_power_derived(self) -> bool:
+        """Charging power is computed from the charger current × voltage."""
+        if self._charging_power_entities:
+            return False
+        config = self._config
+        return bool(config.get(CONF_FUSE_CHARGER_CURRENT)) or any(
+            config.get(k) for k in FUSE_CHARGER_CURRENT_KEYS[: self.phase_count]
+        )
+
+    @property
+    def consumption_derived(self) -> bool:
+        """Home consumption is computed from production, grid and charger."""
+        return (
+            not self._consumption_entities
+            and bool(self._grid_import_entities or self._meter_import_entities)
+            and bool(self._charging_power_entities or self.charging_power_derived)
+        )
+
+    def grid_import_source_entities(self) -> list[str]:
+        """Entities whose changes move the grid-import reading."""
+        if self._grid_import_entities:
+            return list(self._grid_import_entities)
+        if self._meter_import_entities:
+            return self._meter_import_entities + [
+                e for e in self._meter_export_entities if e
+            ]
+        return []
+
     def labelled_power_entities(self) -> list[tuple[str, str]]:
         """Return (entity_id, label) pairs for all power sensors, for validation.
 
         Labels gain an "Ln" suffix only in three-phase so single-phase log
-        messages are unchanged.
+        messages are unchanged. v2.18.0: a derived grid import validates the
+        meter's import / export sensors instead.
         """
         out: list[tuple[str, str]] = []
-        groups = (
+        groups = [
             ("Solar Production", self._production_entities),
             ("Home Consumption", self._consumption_entities),
             ("Grid Import", self._grid_import_entities),
-        )
+        ]
+        if self.grid_import_derived:
+            groups.append(("Meter Import", self._meter_import_entities))
+            groups.append(
+                ("Meter Export", [e for e in self._meter_export_entities if e])
+            )
         for base, entities in groups:
             for idx, entity in enumerate(entities):
                 label = base if self.phase_count == 1 else f"{base} L{idx + 1}"
                 out.append((entity, label))
         return out
+
+    def validate_grid_import(self, hass: HomeAssistant) -> tuple[bool, str | None]:
+        """Is grid import readable right now? (mapped or derived)."""
+        if self._grid_import_entities:
+            for entity in self._grid_import_entities:
+                if read_number(hass, entity) is None:
+                    return False, f"Grid Import ({entity}) unavailable"
+            return True, None
+        if self._meter_import_entities:
+            if self._derived_grid_import(hass) is None:
+                return False, "Grid Import (meter import/export) unavailable"
+            return True, None
+        return False, "Grid Import not configured"
+
+    def derived_power_errors(self, hass: HomeAssistant) -> list[str]:
+        """Errors for derived quantities that cannot be computed right now.
+
+        Mapped sensors are checked through ``labelled_power_entities``; this
+        covers what is derived from the charger current.
+        """
+        if self.consumption_derived and self._ev_power_for_balance(hass) is None:
+            return [
+                "Home Consumption (derived): charger current unavailable "
+                "while the car may be charging"
+            ]
+        return []
 
     # ----- power readers (sum across phases) -----
     def read_production(self, hass: HomeAssistant) -> float:
@@ -241,12 +427,84 @@ class ChargingModel:
         return sum(get_float(hass, e) for e in self._production_entities)
 
     def read_consumption(self, hass: HomeAssistant) -> float:
-        """Total home consumption (W), summed across phases."""
-        return sum(get_float(hass, e) for e in self._consumption_entities)
+        """Total home consumption (W), summed across phases.
+
+        v2.18.0: when unmapped it is derived as
+        production + grid import − EV charging power − battery charging
+        (battery power signed: positive = charging), i.e. what the house
+        itself uses. Surplus = production − consumption then equals what the
+        EV draws now plus any export, minus any import.
+        """
+        if self._consumption_entities or not self.consumption_derived:
+            return sum(get_float(hass, e) for e in self._consumption_entities)
+        ev = self._ev_power_for_balance(hass) or 0.0
+        battery = (
+            get_float(hass, self._battery_power_entity, default=0.0)
+            if self._battery_power_entity
+            else 0.0
+        )
+        house = self.read_production(hass) + self.read_grid_import(hass) - ev - battery
+        return max(0.0, house)
 
     def read_grid_import(self, hass: HomeAssistant) -> float:
-        """Total grid import (W, positive = importing), summed across phases."""
-        return sum(get_float(hass, e) for e in self._grid_import_entities)
+        """Total grid import (W, positive = importing), summed across phases.
+
+        v2.18.0: when unmapped, the meter's import − export power per phase.
+        """
+        if self._grid_import_entities or not self._meter_import_entities:
+            return sum(get_float(hass, e) for e in self._grid_import_entities)
+        value = self._derived_grid_import(hass)
+        return 0.0 if value is None else value
+
+    def _derived_grid_import(self, hass: HomeAssistant) -> float | None:
+        total = 0.0
+        for index, entity in enumerate(self._meter_import_entities):
+            imported = read_power_w(hass, entity)
+            if imported is None:
+                return None
+            export_entity = self._meter_export_entities[index]
+            exported = 0.0
+            if export_entity:
+                exported = read_power_w(hass, export_entity)
+                if exported is None:
+                    return None
+            total += imported - exported
+        return total
+
+    def _derived_charging_power(self, hass: HomeAssistant) -> float | None:
+        currents = read_charger_phase_currents(hass, self._config, self.phase_count)
+        total = 0.0
+        for index, current in enumerate(currents):
+            if current is None:
+                return None
+            voltage = read_number(hass, self._meter_voltage_entities[index]) if index < len(
+                self._meter_voltage_entities
+            ) else None
+            if voltage is None or voltage < 100:
+                voltage = VOLTAGE_EU
+            total += abs(current) * voltage
+        return total
+
+    def _ev_power_for_balance(self, hass: HomeAssistant) -> float | None:
+        """EV power to remove from the house balance, or None when unknown.
+
+        Measured / derived charging power when readable. Otherwise 0 W when
+        the status says the car is not drawing (an OCPP current sensor often
+        goes unavailable between sessions), else None.
+        """
+        power = self.read_charging_power(hass)
+        if power is not None:
+            return power
+        status = get_state(hass, self._charger_status_entity)
+        if status in _UNAVAILABLE_STATES:
+            return None
+        if (
+            status in _IDLE_OR_DONE_STATUSES
+            or is_disconnected_status(status)
+            or is_charge_complete_status(status)
+        ):
+            return 0.0
+        return None
 
     def read_battery_discharge(self, hass: HomeAssistant) -> float | None:
         """Home-battery discharge in watts (>=0 = discharging), or None.
@@ -283,6 +541,9 @@ class ChargingModel:
         (use status fallback) from "genuinely 0 W" (not drawing).
         """
         if not self._charging_power_entities:
+            if self.charging_power_derived:
+                # v2.18.0: charger current × phase voltage (230 V fallback).
+                return self._derived_charging_power(hass)
             return None
         total = 0.0
         for entity in self._charging_power_entities:

@@ -38,10 +38,7 @@ from .const import (
     CONF_CHARGING_POWER_L3,
     CONF_EV_CHARGER_STATUS,
     CONF_EV_CHARGER_SWITCH,
-    CONF_FUSE_CHARGER_CURRENT,
     DEFAULT_FUSE_MARGIN,
-    FUSE_CHARGER_CURRENT_KEYS,
-    FUSE_CHARGER_PHASE_ATTRIBUTES,
     FUSE_ENTITY_KEYS,
     FUSE_GRID_CURRENT_KEYS,
     FUSE_GRID_EXPORT_KEYS,
@@ -67,19 +64,13 @@ from .fuse_math import (
     PhaseReading,
     compute_fuse_limit,
 )
+from .power_model import (
+    read_charger_phase_currents,
+    read_current_a,
+    read_number,
+    read_power_w,
+)
 from .utils.logging_helper import EVSCLogger
-
-_UNAVAILABLE = (None, "", "unknown", "unavailable", "none")
-
-
-def _parse_float(value: Any) -> float | None:
-    if value in _UNAVAILABLE:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
 
 class FuseGuard:
     """Main-fuse ceiling + watchdog for one config entry."""
@@ -213,79 +204,17 @@ class FuseGuard:
         return sorted({e for e in entities if e})
 
     def _read_entity(self, entity_id: str | None) -> float | None:
-        if not entity_id:
-            return None
-        state = self.hass.states.get(entity_id)
-        if state is None:
-            return None
-        return _parse_float(state.state)
+        return read_number(self.hass, entity_id)
 
     def _read_power_w(self, entity_id: str | None) -> float | None:
-        if not entity_id:
-            return None
-        state = self.hass.states.get(entity_id)
-        if state is None:
-            return None
-        value = _parse_float(state.state)
-        if value is None:
-            return None
-        unit = str(state.attributes.get("unit_of_measurement") or "").lower()
-        if unit == "kw":
-            value *= 1000.0
-        return value
+        return read_power_w(self.hass, entity_id)
 
     def _read_current_a(self, entity_id: str | None) -> float | None:
-        if not entity_id:
-            return None
-        state = self.hass.states.get(entity_id)
-        if state is None:
-            return None
-        value = _parse_float(state.state)
-        if value is None:
-            return None
-        unit = str(state.attributes.get("unit_of_measurement") or "")
-        if unit == "mA":
-            value /= 1000.0
-        return value
+        return read_current_a(self.hass, entity_id)
 
     def _read_charger_phase_currents(self) -> list[float | None]:
         """Per-phase charger current, from dedicated sensors or attributes."""
-        dedicated = [
-            self.config.get(key) for key in FUSE_CHARGER_CURRENT_KEYS[: self.phase_count]
-        ]
-        if any(dedicated):
-            return [self._read_current_a(entity) for entity in dedicated]
-
-        total_entity = self.config.get(CONF_FUSE_CHARGER_CURRENT)
-        if not total_entity:
-            return [None] * self.phase_count
-        state = self.hass.states.get(total_entity)
-        if state is None:
-            return [None] * self.phase_count
-        total = _parse_float(state.state)
-
-        # Charger reports no current at all: per-phase attributes are often
-        # left at their last value, so trust the total and report zero.
-        if total is not None and abs(total) < 0.1:
-            return [0.0] * self.phase_count
-
-        values: list[float | None] = []
-        for candidates in FUSE_CHARGER_PHASE_ATTRIBUTES[: self.phase_count]:
-            value = None
-            for name in candidates:
-                if name in state.attributes:
-                    value = _parse_float(state.attributes.get(name))
-                    break
-            values.append(value)
-
-        if self.phase_count == 1 and values[0] is None:
-            return [total]
-        if all(v is None for v in values) and total is not None:
-            # No per-phase attributes: assume the load is spread evenly. If the
-            # sensor is really per-phase this under-states the charger, which
-            # only makes the house estimate (and the limit) more conservative.
-            return [total / self.phase_count] * self.phase_count
-        return values
+        return read_charger_phase_currents(self.hass, self.config, self.phase_count)
 
     def _build_readings(self) -> list[PhaseReading]:
         charger = self._read_charger_phase_currents()
