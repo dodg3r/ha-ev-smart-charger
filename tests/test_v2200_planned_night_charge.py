@@ -377,3 +377,18 @@ async def test_far_deadline_chart_is_capped(hass):
     assert attrs["prices_truncated"] is True
     assert len(attrs["prices"]) == 12  # at least 12 hours, prices end at 07:00
     assert attrs["price_source"] == "attributes"
+
+
+async def test_missing_prices_are_retried_every_minute(hass):
+    """v2.23.0: empty prices are re-read after a minute, not ten."""
+    base = _base()
+    night, _controller_mock = await _component(hass, base)
+    raw = hass.states.get("sensor.prices").attributes["raw_today"]
+    hass.states.async_set("sensor.prices", "0.5", {"unit_of_measurement": "SEK/kWh"})
+    await night._evaluate(_at(base, 3, 0))
+    assert night.get_plan().prices == {}
+
+    hass.states.async_set("sensor.prices", "0.5", {"raw_today": raw, "raw_tomorrow": []})
+    night._prices_dirty = False  # no state-change event in this test
+    await night._evaluate(_at(base, 3, 1, ) + timedelta(seconds=5))
+    assert night.get_plan().prices

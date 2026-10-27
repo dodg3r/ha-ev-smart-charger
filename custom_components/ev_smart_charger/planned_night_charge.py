@@ -433,10 +433,12 @@ class PlannedNightCharge:
             self._prices = {}
             self._price_source = PRICE_SOURCE_NOT_MAPPED
             return
+        # v2.23.0: without any prices (e.g. the price integration was not
+        # ready at startup) retry every minute instead of every 10 minutes.
+        refresh = 60 if not self._prices else NIGHT_PLAN_PRICE_REFRESH_SECONDS
         stale = (
             self._prices_fetched_at is None
-            or (now - self._prices_fetched_at).total_seconds()
-            >= NIGHT_PLAN_PRICE_REFRESH_SECONDS
+            or (now - self._prices_fetched_at).total_seconds() >= refresh
         )
         if not (self._prices_dirty or stale):
             return

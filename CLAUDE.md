@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.22.0
+**Current Version:** 2.23.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,30 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.23.0 (2026-10-27) — fork dodg3r
+**Hero card says each thing once, in plain words; missing prices retried every minute**
+
+Requested by the maintainer: while charging the hero showed current and
+power in three places, and the status line leaked raw codes
+(`GRID_IMPORT_DELAY`, `GRID_IMPORT_NOOP`, `CHECKING: …`).
+- Ring: always the EV SOC with "Target N%" below (`_ringText`, target from
+  Boost, the night plan or today's target via `_activeEvTarget`); the kW
+  headline and the pill under the ring are gone.
+- Status line (`_heroStatus`): while charging "Charging · solar surplus /
+  night plan / Boost · towards 80% · capped by main fuse (L1)" without
+  current or power; otherwise manual stop, no car, fuse pause, complete,
+  Boost starting, night plan, then `_friendlySolarReason()` which maps the
+  Solar Surplus diagnostic codes to sentences (unknown codes → "waiting for
+  solar surplus", never raw text).
+- The "Charging Power" tile is now "Charger" (`_chargerStateText`): kW while
+  charging, else No car / Car connected / Fully charged / Stopped / Paused
+  (fuse) / Not charging.
+- Night plan: with no prices at all they are re-read every minute instead of
+  every 10 minutes (price integration not ready at startup).
+- Strings EN/IT/NL. Test: missing prices retried after a minute.
+
+---
 
 ### v2.22.0 (2026-10-27) — fork dodg3r
 **Boost Charge is the manual override; Force Charge hidden from the dashboard**
