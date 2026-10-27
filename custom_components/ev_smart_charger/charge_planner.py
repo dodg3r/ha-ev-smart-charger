@@ -106,8 +106,8 @@ def build_plan(
 ) -> NightPlan:
     """Build the plan for one night window.
 
-    ``cheapest`` is always the ``cheapest_count`` cheapest hours in the
-    window. ``planned`` is filled only when ``needed_kwh`` is known: the
+    ``cheapest`` is the ``cheapest_count`` cheapest hours with a known price
+    in the window. ``planned`` is filled only when ``needed_kwh`` is known: the
     cheapest hours that cover the need. ``committed`` hours (already started)
     are kept in the plan. Only hours that end after ``earliest`` (usually
     now) can be planned. When ``allowed`` is given, only those hours are
@@ -123,7 +123,12 @@ def build_plan(
         prices=window_prices,
     )
     candidates = [hour for hour in hours if allowed is None or hour in allowed]
-    plan.cheapest = pick_cheapest(candidates, window_prices, cheapest_count)
+    # v2.21.1: only hours with a known price can be "cheapest".
+    plan.cheapest = pick_cheapest(
+        [hour for hour in candidates if hour in window_prices],
+        window_prices,
+        cheapest_count,
+    )
     plan.needed_kwh = None if needed_kwh is None else round(needed_kwh, 2)
     plan.needed_hours = hours_needed(needed_kwh, power_kw)
     if plan.needed_hours is not None:

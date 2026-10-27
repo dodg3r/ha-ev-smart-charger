@@ -645,6 +645,10 @@ const FRONTEND_LOCALES = {
     "night.next": "Next {time}",
     "night.no_hours": "No charging needed",
     "night.no_price_sensor": "Map a price sensor in the integration options (Nord Pool).",
+    "night.no_prices_yet": "No prices for the coming hours yet.",
+    "night.price_sensor_missing": "The mapped price sensor does not exist. Check the integration options.",
+    "night.price_sensor_unsupported": "The price sensor has no price list (raw_today / today). Use the Nord Pool integration (core or HACS).",
+    "night.waiting_more_prices": "The plan opens when prices reach the car-ready time.",
     "night.legend_cheap": "Cheapest",
     "night.legend_plan": "Planned",
     "night.soc_to_target": "{soc}% → {target}%",
@@ -832,6 +836,10 @@ const FRONTEND_LOCALES = {
     "night.next": "Prossima {time}",
     "night.no_hours": "Nessuna ricarica necessaria",
     "night.no_price_sensor": "Mappa un sensore prezzi nelle opzioni dell'integrazione (Nord Pool).",
+    "night.no_prices_yet": "Nessun prezzo ancora per le prossime ore.",
+    "night.price_sensor_missing": "Il sensore prezzi mappato non esiste. Controlla le opzioni dell'integrazione.",
+    "night.price_sensor_unsupported": "Il sensore prezzi non ha un elenco prezzi (raw_today / today). Usa l'integrazione Nord Pool (core o HACS).",
+    "night.waiting_more_prices": "Il piano si attiva quando i prezzi coprono l'orario di auto pronta.",
     "night.legend_cheap": "Più economiche",
     "night.legend_plan": "Pianificate",
     "night.soc_to_target": "{soc}% → {target}%",
@@ -1019,6 +1027,10 @@ const FRONTEND_LOCALES = {
     "night.next": "Volgende {time}",
     "night.no_hours": "Geen laden nodig",
     "night.no_price_sensor": "Koppel een prijssensor in de integratie-opties (Nord Pool).",
+    "night.no_prices_yet": "Nog geen prijzen voor de komende uren.",
+    "night.price_sensor_missing": "De gekoppelde prijssensor bestaat niet. Controleer de integratie-opties.",
+    "night.price_sensor_unsupported": "De prijssensor heeft geen prijslijst (raw_today / today). Gebruik de Nord Pool-integratie (core of HACS).",
+    "night.waiting_more_prices": "Het plan start zodra de prijzen tot de klaar-tijd lopen.",
     "night.legend_cheap": "Goedkoopst",
     "night.legend_plan": "Gepland",
     "night.soc_to_target": "{soc}% → {target}%",
@@ -2720,6 +2732,9 @@ class EvSmartChargerDashboard extends HTMLElement {
       mode: a.mode || "plan",
       windowEnd: a.window_end,
       plannable: Array.isArray(a.plannable) ? a.plannable : null,
+      priceSource: a.price_source || null,
+      pricesUntil: a.prices_until || null,
+      truncated: a.prices_truncated === true,
     };
   }
 
@@ -2745,6 +2760,15 @@ class EvSmartChargerDashboard extends HTMLElement {
       .join(", ");
   }
 
+  _nightPriceNote(plan) {
+    if (!plan) return "";
+    let key = "night.no_prices_yet";
+    if (!plan.priceSensor || plan.priceSource === "not_mapped") key = "night.no_price_sensor";
+    else if (plan.priceSource === "sensor_missing") key = "night.price_sensor_missing";
+    else if (plan.priceSource === "unsupported") key = "night.price_sensor_unsupported";
+    return `<div class="evsc-np-note">${this._t(key)}</div>`;
+  }
+
   _formatPrice(value, unit) {
     if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
     const v = Number(value);
@@ -2761,8 +2785,8 @@ class EvSmartChargerDashboard extends HTMLElement {
     const statusText = this._t(statusKey) !== statusKey ? this._t(statusKey) : status;
 
     let readyText = "";
-    if (plan && plan.mode === "overview" && plan.windowEnd) {
-      const d = new Date(plan.windowEnd);
+    if (plan && plan.mode === "overview" && plan.pricesUntil) {
+      const d = new Date(plan.pricesUntil);
       if (!Number.isNaN(d.getTime())) {
         const day = d.toLocaleDateString(this._language(), { weekday: "short" });
         readyText = this._tf("night.overview_until", {
@@ -2779,7 +2803,9 @@ class EvSmartChargerDashboard extends HTMLElement {
     }
 
     const prices = plan?.prices || [];
-    const known = prices.map((p) => p.price).filter((v) => Number.isFinite(Number(v))).map(Number);
+    // null/undefined = unknown price (Number(null) would read as 0).
+    const hasPrice = (v) => v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v));
+    const known = prices.map((p) => p.price).filter(hasPrice).map(Number);
     let chart = "";
     if (known.length) {
       const min = Math.min(...known);
@@ -2790,7 +2816,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       const nowHour = new Date();
       nowHour.setMinutes(0, 0, 0);
       const bars = prices.map((p, idx) => {
-        const has = Number.isFinite(Number(p.price));
+        const has = hasPrice(p.price);
         const ratio = has && max > min ? (Number(p.price) - min) / (max - min) : 0.5;
         const h = has ? Math.round(18 + ratio * 82) : 6;
         const cls = [
@@ -2815,11 +2841,12 @@ class EvSmartChargerDashboard extends HTMLElement {
         <div class="evsc-np-legend">
           <span><i class="dot cheap"></i>${this._t("night.legend_cheap")}</span>
           <span><i class="dot plan"></i>${this._t("night.legend_plan")}</span>
-        </div>`;
+        </div>
+        ${plan.truncated && plan.mode === "plan" ? `<div class="evsc-np-note">${this._t("night.waiting_more_prices")}</div>` : ""}`;
     } else {
       chart = `
         <div class="evsc-night-illu" aria-hidden="true"><div class="evsc-night-moon"></div></div>
-        ${plan && !plan.priceSensor ? `<div class="evsc-np-note">${this._t("night.no_price_sensor")}</div>` : ""}`;
+        ${this._nightPriceNote(plan)}`;
     }
 
     const cheapestText = plan?.cheapest?.length ? this._hourRanges(plan.cheapest) : "—";

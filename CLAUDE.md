@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.21.0
+**Current Version:** 2.21.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,24 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.21.1 (2026-10-27) — fork dodg3r
+**FIX: night card without prices, long deadlines and unknown "cheapest" hours**
+
+- The card counted unknown prices as 0 (`Number(null)`), drew equal bars and
+  hid the "map a price sensor" note. Unknown prices now read as unknown and
+  the card says why there are no prices.
+- New plan attribute `price_source`: `attributes` / `nordpool_service` /
+  `not_mapped` / `sensor_missing` / `unsupported` (`price_source.async_read_prices`).
+  An unsupported sensor logs a warning with its attribute names once.
+- "Cheapest" only uses hours with a known price; the fallback plan at sunset
+  may still use unknown hours.
+- The chart shows the known prices (at least 12 h and every planned hour),
+  not a week of empty bars when the deadline is days away
+  (`prices_truncated`); "Prices until" in the overview uses `prices_until`.
+- Tests: cheapest priced only, unsupported sensor, capped chart.
+
+---
 
 ### v2.21.0 (2026-10-27) — fork dodg3r
 **Night Smart Charge: overview without car ready, skips days without car ready, waits for prices, night hours only**

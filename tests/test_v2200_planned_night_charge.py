@@ -319,3 +319,61 @@ async def test_raising_the_target_reopens_the_plan(hass):
 
     await night._evaluate(_at(base, 3, 0))
     controller.start_charger.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# v2.21.1: unknown prices, price source, chart window
+# ---------------------------------------------------------------------------
+
+
+def test_cheapest_only_uses_priced_hours():
+    base = _base()
+    plan = build_plan(
+        window_start=_at(base, 1),
+        deadline=_at(base, 9),
+        prices={_at(base, 2): 0.4, _at(base, 3): 0.1},
+        cheapest_count=5,
+        needed_kwh=None,
+        power_kw=3.68,
+    )
+    assert plan.cheapest == [_at(base, 2), _at(base, 3)]
+
+
+def _capture(night):
+    published = {}
+
+    def _publish(key, value, attributes=None):
+        published["state"] = value
+        published["attrs"] = attributes or {}
+
+    night._publish = _publish
+    return published
+
+
+async def test_unsupported_price_sensor_is_reported(hass):
+    base = _base()
+    night, _controller_mock = await _component(hass, base)
+    hass.states.async_set("sensor.prices", "0.5", {"unit_of_measurement": "SEK/kWh"})
+    published = _capture(night)
+
+    await night._evaluate(_at(base, 3, 0))
+    assert published["attrs"]["price_source"] == "unsupported"
+    assert published["attrs"]["cheapest"] == []
+    assert all(p["price"] is None for p in published["attrs"]["prices"])
+
+
+async def test_far_deadline_chart_is_capped(hass):
+    """A deadline a week away does not publish a week of empty bars."""
+    base = _base()
+    night, _controller_mock = await _component(hass, base)
+    keys = [WEEKDAY_KEYS[(base.weekday() + i) % 7] for i in range(7)]
+    for key in keys:
+        hass.states.async_set(f"switch.ready_{key}", "off")
+    hass.states.async_set(f"switch.ready_{keys[6]}", "on")
+    published = _capture(night)
+
+    await night._evaluate(_at(base, 3, 0))
+    attrs = published["attrs"]
+    assert attrs["prices_truncated"] is True
+    assert len(attrs["prices"]) == 12  # at least 12 hours, prices end at 07:00
+    assert attrs["price_source"] == "attributes"

@@ -55,7 +55,12 @@ from .const import (
     WEEKDAY_KEYS,
 )
 from .power_model import ChargingModel, is_disconnected_status
-from .price_source import async_read_hourly_prices, hour_start
+from .price_source import (
+    PRICE_SOURCE_NOT_MAPPED,
+    PRICE_SOURCE_UNSUPPORTED,
+    async_read_prices,
+    hour_start,
+)
 from .runtime import EVSCRuntimeData
 from .utils import state_helper
 from .utils.astral_time_service import AstralTimeService
@@ -120,6 +125,7 @@ class PlannedNightCharge:
 
         self._unsubs: list = []
         self._prices: dict[datetime, float] = {}
+        self._price_source: str | None = None
         self._prices_fetched_at: datetime | None = None
         self._prices_dirty = True
         self._active = False
@@ -425,6 +431,7 @@ class PlannedNightCharge:
     async def _refresh_prices(self, now: datetime) -> None:
         if not self._price_entity:
             self._prices = {}
+            self._price_source = PRICE_SOURCE_NOT_MAPPED
             return
         stale = (
             self._prices_fetched_at is None
@@ -434,7 +441,18 @@ class PlannedNightCharge:
         if not (self._prices_dirty or stale):
             return
         try:
-            self._prices = await async_read_hourly_prices(self.hass, self._price_entity)
+            self._prices, source = await async_read_prices(
+                self.hass, self._price_entity
+            )
+            if source == PRICE_SOURCE_UNSUPPORTED and self._price_source != source:
+                state = self.hass.states.get(self._price_entity)
+                keys = sorted((state.attributes or {}).keys()) if state else []
+                self.logger.warning(
+                    f"Price sensor {self._price_entity} has no price list "
+                    f"(raw_today/today) and is not a core Nord Pool sensor. "
+                    f"Attributes: {keys}"
+                )
+            self._price_source = source
         except Exception as err:  # noqa: BLE001 - never break the tick on prices
             self.logger.warning(f"Could not read prices: {err}")
         self._prices_fetched_at = now
@@ -675,12 +693,22 @@ class PlannedNightCharge:
             state = self.hass.states.get(self._price_entity)
             if state is not None:
                 unit = state.attributes.get("unit_of_measurement")
+        known = [hour for hour in plan.prices]
+        # v2.21.1: the chart shows the known prices (at least 12 hours and
+        # every planned hour), not a week of empty bars when the deadline is
+        # days away.
+        display_end = current_hour + timedelta(hours=12)
+        if known:
+            display_end = max(display_end, max(known) + timedelta(hours=1))
+        if plan.planned:
+            display_end = max(display_end, max(plan.planned) + timedelta(hours=1))
+        display_end = min(display_end, plan.deadline)
+        shown = [hour for hour in plan.hours if hour < display_end]
         prices = [
             {"start": hour.isoformat(), "price": plan.prices.get(hour)}
-            for hour in plan.hours
+            for hour in shown
         ]
         cheapest_prices = [plan.prices[hour] for hour in plan.cheapest if hour in plan.prices]
-        known = [hour for hour in plan.prices]
         attributes = {
             "mode": mode,
             "plan_active": plan_active,
@@ -696,11 +724,13 @@ class PlannedNightCharge:
             "needed_hours": plan.needed_hours,
             "power_kw": round(self._power_kw(), 2),
             "prices": prices,
+            "prices_truncated": len(shown) < len(plan.hours),
+            "price_source": self._price_source,
             "prices_until": (
                 (max(known) + timedelta(hours=1)).isoformat() if known else None
             ),
             "plannable": (
-                [hour.isoformat() for hour in plan.hours if hour in allowed]
+                [hour.isoformat() for hour in shown if hour in allowed]
                 if allowed is not None
                 else None
             ),

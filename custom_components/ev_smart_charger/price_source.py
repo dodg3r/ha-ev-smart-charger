@@ -196,14 +196,39 @@ async def _async_core_nordpool_prices(
     return aggregate_hourly(points)
 
 
+PRICE_SOURCE_NOT_MAPPED = "not_mapped"
+PRICE_SOURCE_MISSING = "sensor_missing"
+PRICE_SOURCE_ATTRIBUTES = "attributes"
+PRICE_SOURCE_NORDPOOL = "nordpool_service"
+PRICE_SOURCE_UNSUPPORTED = "unsupported"
+
+
+async def async_read_prices(
+    hass: HomeAssistant, entity_id: str | None
+) -> tuple[dict[datetime, float], str]:
+    """Return hourly prices and where they came from (v2.21.1).
+
+    The source tells the dashboard why there are no prices: no sensor
+    mapped, the sensor does not exist, or it carries no price list that
+    this reader understands.
+    """
+    if not entity_id:
+        return {}, PRICE_SOURCE_NOT_MAPPED
+    state = hass.states.get(entity_id)
+    today = dt_util.now().date()
+    if state is not None and has_attribute_prices(state.attributes):
+        return prices_from_attributes(dict(state.attributes), today), PRICE_SOURCE_ATTRIBUTES
+    prices = await _async_core_nordpool_prices(hass, entity_id, today)
+    if prices:
+        return prices, PRICE_SOURCE_NORDPOOL
+    if state is None:
+        return {}, PRICE_SOURCE_MISSING
+    return {}, PRICE_SOURCE_UNSUPPORTED
+
+
 async def async_read_hourly_prices(
     hass: HomeAssistant, entity_id: str | None
 ) -> dict[datetime, float]:
     """Return hourly prices (local hour start -> price per kWh)."""
-    if not entity_id:
-        return {}
-    state = hass.states.get(entity_id)
-    today = dt_util.now().date()
-    if state is not None and has_attribute_prices(state.attributes):
-        return prices_from_attributes(dict(state.attributes), today)
-    return await _async_core_nordpool_prices(hass, entity_id, today)
+    prices, _source = await async_read_prices(hass, entity_id)
+    return prices
