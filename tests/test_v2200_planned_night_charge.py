@@ -164,6 +164,9 @@ def _controller():
     controller.stop_charger = AsyncMock(
         return_value=OperationResult(success=True, operation="stop", reason="t")
     )
+    controller.set_amperage = AsyncMock(
+        return_value=OperationResult(success=True, operation="set", reason="t")
+    )
     return controller
 
 
@@ -418,3 +421,22 @@ async def test_missing_prices_are_retried_every_minute(hass):
     night._prices_dirty = False  # no state-change event in this test
     await night._evaluate(_at(base, 3, 1, ) + timedelta(seconds=5))
     assert night.get_plan().prices
+
+
+async def test_changed_amperage_is_applied_while_charging(hass):
+    """v2.25.3: the night amperage follows the setting during a session."""
+    base = _base()
+    night, controller = await _component(hass, base)
+    await night._evaluate(_at(base, 3, 0))
+    assert controller.start_charger.await_args.args[0] == 16
+
+    await night._evaluate(_at(base, 3, 10))
+    controller.set_amperage.assert_not_awaited()
+
+    hass.states.async_set("number.night_amps", "10")
+    await night._evaluate(_at(base, 3, 20))
+    controller.set_amperage.assert_awaited_once()
+    assert controller.set_amperage.await_args.args[0] == 10
+
+    await night._evaluate(_at(base, 3, 30))
+    controller.set_amperage.assert_awaited_once()

@@ -135,6 +135,7 @@ class PlannedNightCharge:
         # after a restart (the price integration may not be ready yet).
         self._setup_at: datetime | None = None
         self._committed: set[datetime] = set()
+        self._applied_amps: int | None = None
         self._plan_deadline: datetime | None = None
         self._completed_deadline: datetime | None = None
         # Target the latch was set for: raising the target re-opens the plan.
@@ -635,6 +636,8 @@ class PlannedNightCharge:
         elif self._active and not self._has_control():
             self.logger.warning("Night Smart Charge lost control of the charger")
             self._set_inactive()
+        elif self._active and should_charge:
+            await self._apply_amps()
 
         self._publish_plan(
             now, plan, mode="plan", enabled=enabled, connected=connected,
@@ -656,9 +659,30 @@ class PlannedNightCharge:
             self._release_control("Start failed")
             return
         self._active = True
+        self._applied_amps = amps
         self._committed.add(current_hour)
         self._active_mode = NIGHT_CHARGE_MODE_GRID
         self.logger.info(f"⚡ {reason} at {amps} A")
+
+    async def _apply_amps(self) -> None:
+        """v2.25.3: follow a changed night amperage during a running session.
+
+        The controller caps the value to the main fuse and remembers it as the
+        request, so the fuse guard ramps up towards it when there is room.
+        """
+        amps = self._night_amps()
+        if amps == self._applied_amps:
+            return
+        previous = self._applied_amps
+        self._applied_amps = amps
+        result = await self.charger_controller.set_amperage(
+            amps, f"Night charge amperage changed {previous} A -> {amps} A"
+        )
+        if not self._succeeded(result):
+            self.logger.warning("Could not apply the new night charge amperage")
+            self._applied_amps = previous
+            return
+        self.logger.info(f"⚡ Night charge amperage {previous} A -> {amps} A")
 
     async def _stop(self, reason: str) -> None:
         if self._has_control():
@@ -671,6 +695,7 @@ class PlannedNightCharge:
 
     def _set_inactive(self) -> None:
         self._active = False
+        self._applied_amps = None
         self._active_mode = NIGHT_CHARGE_MODE_IDLE
 
     def _publish_plan(

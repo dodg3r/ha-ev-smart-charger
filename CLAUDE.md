@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.25.2
+**Current Version:** 2.25.3
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,19 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.25.3 (2026-10-27) — fork dodg3r
+**FIX: night charge amperage changed during a session was ignored**
+
+`PlannedNightCharge` set `evsc_night_charge_amperage` only when it started the
+charger; raising it from 6 A to 10 A mid-session left the charger at 6 A.
+New `_apply_amps()` (`_applied_amps`, reset in `_set_inactive`) calls
+`charger_controller.set_amperage()` on the next tick when the setting differs.
+The controller caps it to the main fuse and stores it as the request, so the
+fuse guard ramps up towards it as room allows. Test:
+`test_changed_amperage_is_applied_while_charging`.
+
+---
 
 ### v2.25.2 (2026-10-27) — fork dodg3r
 **FIX: main fuse protection stopped a button charger every minute at 10 A**
