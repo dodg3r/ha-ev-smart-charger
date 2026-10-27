@@ -58,8 +58,9 @@ def test_pick_cheapest_orders_by_price_then_time():
     hours = [_at(base, h) for h in range(6)]
     prices = {hours[0]: 3, hours[1]: 1, hours[2]: 1, hours[3]: 2}
     assert pick_cheapest(hours, prices, 3) == [hours[1], hours[2], hours[3]]
-    # Unknown prices are used last.
-    assert pick_cheapest(hours, prices, 5)[-1] == hours[4]
+    # Unknown prices are used last, latest first (v2.25.1).
+    assert pick_cheapest(hours, prices, 5)[-1] == hours[5]
+    assert pick_cheapest(hours, {}, 2) == [hours[4], hours[5]]
 
 
 def test_energy_and_hours_needed():
@@ -264,6 +265,31 @@ async def test_missing_prices_plan_goes_live_at_sunset(hass):
 
     await night._evaluate(_at(base, 22, 0))  # after sunset, still no prices
     assert night.get_plan().planned  # planned with unknown prices
+
+
+async def test_no_priceless_plan_right_after_startup(hass):
+    """v2.25.1: a restart before the prices load must not start charging now."""
+    base = _base()
+    night, controller = await _component(hass, base)
+    keys = [WEEKDAY_KEYS[(base.weekday() + i) % 7] for i in range(7)]
+    for key in keys:
+        hass.states.async_set(f"switch.ready_{key}", "off")
+    hass.states.async_set(f"switch.ready_{keys[1]}", "on")  # tomorrow 07:00
+    night._prices = {}
+    night._refresh_prices = AsyncMock()
+
+    now = _at(base, 22, 0)
+    night._setup_at = now - timedelta(seconds=30)
+    await night._evaluate(now)
+    assert night.get_plan().planned == []
+    controller.start_charger.assert_not_awaited()
+
+    night._setup_at = now - timedelta(minutes=15)
+    await night._evaluate(now)
+    planned = night.get_plan().planned
+    assert planned
+    # Without prices the hours closest to the deadline are used first.
+    assert _at(base + timedelta(days=1), 6) in planned
 
 
 async def test_night_hours_exclude_daytime(hass):

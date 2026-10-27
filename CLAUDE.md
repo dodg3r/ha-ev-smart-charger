@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.25.0
+**Current Version:** 2.25.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,26 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.25.1 (2026-10-27) — fork dodg3r
+**FIX: night charge started at once after a restart; stop button "no active transaction"**
+
+Reported from Dahlbergs (Growatt THOR, buttons): after an HA restart at 17:31
+the night plan started charging at 17:00 although the plan is 20–23.
+- Right after setup the price integration was not ready: no prices, the
+  sunset fallback made the plan live, and with every price unknown
+  `pick_cheapest` took the earliest hours (now). New
+  `NIGHT_PLAN_STARTUP_GRACE_SECONDS = 600`: without any prices and within
+  10 min of `async_setup` the plan stays waiting (`_setup_at`).
+- `pick_cheapest`: unknown-priced hours now come latest first (closer to the
+  deadline, deeper in the night), priced hours unchanged.
+- `ChargerController._turn_off_charger_switch` (button mode): a rejected stop
+  press ("no active transaction is known", e.g. after the fuse guard already
+  stopped the session) counts as stopped when the measured draw is below
+  the floor; it still fails while the charger draws.
+- Tests: startup grace, latest-first unknown hours, rejected stop button.
+
+---
 
 ### v2.25.0 (2026-10-27) — fork dodg3r
 **Swedish dashboard**

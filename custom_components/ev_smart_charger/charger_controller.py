@@ -756,11 +756,30 @@ class ChargerController:
     async def _turn_off_charger_switch(self) -> None:
         """Turn the charger off through its switch or its stop button."""
         if self._uses_buttons:
-            await self._call_service(
-                "button",
-                "press",
-                {"entity_id": self._stop_button},
-            )
+            try:
+                await self._call_service(
+                    "button",
+                    "press",
+                    {"entity_id": self._stop_button},
+                    log_failure=False,
+                )
+            except Exception as err:
+                # v2.25.1: a stop button rejects the press when there is no
+                # session ("no active transaction"). With the measured draw
+                # below the floor the charger is already stopped: done.
+                await self._refresh_state()
+                if (
+                    self._measured_power_w is not None
+                    and self._measured_power_w <= CHARGING_POWER_DRAWING_FLOOR_W
+                ):
+                    self.logger.warning(
+                        f"Stop button rejected ({err}) - charger is not drawing, "
+                        "treating it as stopped"
+                    )
+                    self._record_command(False)
+                    return
+                self.logger.error(f"Service call failed: button.press - {err}")
+                raise
             self._record_command(False)
             return
         await self._call_service(

@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.25.0"
+VERSION = "2.25.1"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -483,6 +483,7 @@ CONF_PRICE_SENSOR = "price_sensor"
 NIGHT_PLAN_CHEAPEST_HOURS = 5
 NIGHT_PLAN_CHARGE_EFFICIENCY = 0.9
 NIGHT_PLAN_PRICE_REFRESH_SECONDS = 600
+NIGHT_PLAN_STARTUP_GRACE_SECONDS = 600  # v2.25.1: no price-less plan for 10 min after setup
 
 # Hybrid Inverter Mode (v1.8.0 — issue #20)
 HELPER_HYBRID_INVERTER_MODE_SUFFIX = "evsc_hybrid_inverter_mode"

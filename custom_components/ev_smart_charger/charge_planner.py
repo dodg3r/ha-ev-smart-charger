@@ -46,7 +46,7 @@ def pick_cheapest(
     """Pick ``count`` hours with the lowest price, returned in time order.
 
     Hours with an unknown price are only used when there are not enough
-    priced hours. Ties are broken by the earlier hour. ``required`` hours
+    priced hours, latest first. Ties are broken by the earlier hour. ``required`` hours
     (e.g. the hour that is already charging) are always included and count
     towards ``count``.
     """
@@ -55,10 +55,13 @@ def pick_cheapest(
     chosen = [hour for hour in (required or []) if hour in hours]
     remaining = max(0, count - len(chosen))
     candidates = [hour for hour in hours if hour not in chosen]
+    # Priced hours: cheapest first, ties -> earlier. Unknown hours come last
+    # and, among themselves, latest first (v2.25.1): closer to the deadline
+    # is normally deeper in the night and leaves time for prices to arrive.
     candidates.sort(
         key=lambda hour: (
             hour not in prices,
-            prices.get(hour, 0.0),
+            prices[hour] if hour in prices else -hour.timestamp(),
             hour,
         )
     )

@@ -48,6 +48,7 @@ from .const import (
     HELPER_NIGHT_SESSION_STATE_SUFFIX,
     NIGHT_CHARGE_MODE_GRID,
     NIGHT_CHARGE_MODE_IDLE,
+    NIGHT_PLAN_STARTUP_GRACE_SECONDS,
     NIGHT_PLAN_CHARGE_EFFICIENCY,
     NIGHT_PLAN_CHEAPEST_HOURS,
     NIGHT_PLAN_PRICE_REFRESH_SECONDS,
@@ -130,6 +131,9 @@ class PlannedNightCharge:
         self._prices_dirty = True
         self._active = False
         self._active_mode_value = NIGHT_CHARGE_MODE_IDLE
+        # v2.25.1: set in async_setup; no planning on missing prices right
+        # after a restart (the price integration may not be ready yet).
+        self._setup_at: datetime | None = None
         self._committed: set[datetime] = set()
         self._plan_deadline: datetime | None = None
         self._completed_deadline: datetime | None = None
@@ -216,6 +220,7 @@ class PlannedNightCharge:
             "Planned Night Smart Charge: price sensor "
             f"{self._price_entity or 'not configured'}"
         )
+        self._setup_at = dt_util.now()
         # v2.24.1: start the session sensor from a known state.
         self._publish(HELPER_NIGHT_SESSION_STATE_SUFFIX, self._active_mode_value)
         self._unsubs.append(
@@ -562,6 +567,16 @@ class PlannedNightCharge:
         # what is known, unknown hours last).
         covered = all(hour in self._prices for hour in hours)
         plan_active = covered or now >= sunset_before or bool(self._committed)
+        # v2.25.1: right after a restart the price integration is often not
+        # ready; do not fall back to a plan without any prices then, or the
+        # current hour is picked and charging starts at once.
+        if (
+            not self._prices
+            and not self._committed
+            and self._setup_at is not None
+            and now - self._setup_at < timedelta(seconds=NIGHT_PLAN_STARTUP_GRACE_SECONDS)
+        ):
+            plan_active = False
 
         wants_charge = connected and not completed
         needed_kwh = None

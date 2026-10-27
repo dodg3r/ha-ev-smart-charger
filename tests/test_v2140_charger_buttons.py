@@ -103,6 +103,39 @@ async def test_start_and_stop_press_buttons(hass, services):
     assert not [c for c in services if c[0] == "switch"]
 
 
+async def test_rejected_stop_button_is_ok_when_not_drawing(hass):
+    """v2.25.1: "no active transaction" on stop is fine when nothing draws."""
+    hass.states.async_set("number.thor_current", "10")
+
+    async def _reject(call):
+        raise RuntimeError("Charging cannot be stopped because no active transaction is known")
+
+    hass.services.async_register("button", "press", _reject)
+    controller = ChargerController(hass, "e", BUTTON_CONFIG, runtime_data=_runtime(0.0))
+    await controller.async_setup()
+    controller._record_command(True)
+    controller._last_operation_time = None
+    with patch("asyncio.sleep", new=AsyncMock()):
+        result = await controller.stop_charger(reason="test")
+    assert result.success is True
+
+
+async def test_rejected_stop_button_fails_while_drawing(hass):
+    hass.states.async_set("number.thor_current", "10")
+
+    async def _reject(call):
+        raise RuntimeError("busy")
+
+    hass.services.async_register("button", "press", _reject)
+    controller = ChargerController(hass, "e", BUTTON_CONFIG, runtime_data=_runtime(6900.0))
+    await controller.async_setup()
+    controller._record_command(True)
+    controller._last_operation_time = None
+    with patch("asyncio.sleep", new=AsyncMock()):
+        result = await controller.stop_charger(reason="test")
+    assert result.success is False
+
+
 async def test_decrease_sequence_uses_buttons(hass, services):
     hass.states.async_set("number.thor_current", "16")
     controller = ChargerController(hass, "e", BUTTON_CONFIG, runtime_data=_runtime(3600.0))
