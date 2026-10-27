@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import (
     CHARGER_AMPERAGE_STABILIZATION_DELAY,
+    CHARGER_BUTTON_OFF_GRACE_SECONDS,
     CHARGER_BUTTON_STATE_SETTLE_SECONDS,
     CHARGER_COMMAND_DELAY,
     CHARGER_CURRENT_ENTITY_WAIT_SECONDS,
@@ -185,6 +186,7 @@ class ChargerController:
         self._uses_buttons = uses_charger_buttons(config)
         self._commanded_on: Optional[bool] = None
         self._last_command_time: Optional[datetime] = None
+        self._last_seen_drawing: Optional[datetime] = None
         self._charger_current = config.get(CONF_EV_CHARGER_CURRENT)
         self._current_control = CurrentControlAdapter(hass, self._charger_current)
 
@@ -317,7 +319,21 @@ class ChargerController:
             self.config.get(CONF_EV_CHARGER_STATUS)
         )
         if power_model is not None and has_signal:
-            return power_model.is_charging(self.hass)
+            drawing = power_model.is_charging(self.hass)
+            now = dt_util.now()
+            if drawing:
+                self._last_seen_drawing = now
+                return True
+            # v2.25.2: ride out a one-update dropout of the power/status
+            # sensor while no stop was pressed.
+            if (
+                self._commanded_on is not False
+                and self._last_seen_drawing is not None
+                and (now - self._last_seen_drawing).total_seconds()
+                < CHARGER_BUTTON_OFF_GRACE_SECONDS
+            ):
+                return True
+            return False
         return self._commanded_on
 
     def button_charger_on(self) -> bool:
@@ -336,6 +352,8 @@ class ChargerController:
         """Remember the last on/off command sent to a button-controlled charger."""
         self._commanded_on = on
         self._last_command_time = dt_util.now()
+        if not on:
+            self._last_seen_drawing = None
 
     async def start_charger(
         self,

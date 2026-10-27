@@ -40,6 +40,7 @@ from .const import (
     CONF_EV_CHARGER_SWITCH,
     DEFAULT_FUSE_HARD_TRIP,
     DEFAULT_FUSE_MARGIN,
+    FUSE_CHARGER_DRAWING_A,
     FUSE_ENTITY_KEYS,
     FUSE_GRID_CURRENT_KEYS,
     FUSE_GRID_EXPORT_KEYS,
@@ -277,9 +278,16 @@ class FuseGuard:
     # evaluation
     # ------------------------------------------------------------------
     def _evaluate(self, *, enforce: bool) -> LimiterDecision:
-        charger_on = self._charger_on()
-        setpoint = self._setpoint_a()
         readings = self._build_readings()
+        # v2.25.2: a charger phase current above ~1 A means the charger draws
+        # and the meter includes that draw, whatever the on/off state says.
+        # A one-update 'off' (button charger power sensor dropping out) used
+        # to count the charger's own current as house load -> stop + hold.
+        charger_on = self._charger_on() or any(
+            r.charger_current_a is not None and r.charger_current_a > FUSE_CHARGER_DRAWING_A
+            for r in readings
+        )
+        setpoint = self._setpoint_a()
         margin = self._margin_a()
         now = time.monotonic()
 

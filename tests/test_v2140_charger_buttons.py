@@ -19,6 +19,7 @@ from homeassistant.util import dt as dt_util
 from custom_components.ev_smart_charger.charger_controller import ChargerController
 from custom_components.ev_smart_charger.config_flow import _normalize_charger_input
 from custom_components.ev_smart_charger.const import (
+    CHARGER_BUTTON_OFF_GRACE_SECONDS,
     CHARGER_BUTTON_STATE_SETTLE_SECONDS,
     CONF_CHARGER_MODEL,
     CONF_EV_CHARGER_CURRENT,
@@ -103,7 +104,7 @@ async def test_start_and_stop_press_buttons(hass, services):
     assert not [c for c in services if c[0] == "switch"]
 
 
-async def test_rejected_stop_button_is_ok_when_not_drawing(hass):
+async def test_rejected_stop_button_is_ok_when_not_drawing(hass, services):
     """v2.25.1: "no active transaction" on stop is fine when nothing draws."""
     hass.states.async_set("number.thor_current", "10")
 
@@ -120,7 +121,7 @@ async def test_rejected_stop_button_is_ok_when_not_drawing(hass):
     assert result.success is True
 
 
-async def test_rejected_stop_button_fails_while_drawing(hass):
+async def test_rejected_stop_button_fails_while_drawing(hass, services):
     hass.states.async_set("number.thor_current", "10")
 
     async def _reject(call):
@@ -161,6 +162,41 @@ async def test_state_follows_measurement_after_settle(hass, services):
         seconds=CHARGER_BUTTON_STATE_SETTLE_SECONDS + 1
     )
     assert await controller.is_charging() is False  # 0 W measured wins
+
+
+async def test_state_rides_out_a_power_dropout(hass, services):
+    """v2.25.2: one 0 W reading after the settle window is not 'off'."""
+    hass.states.async_set("number.thor_current", "10")
+    runtime = _runtime(6600.0)
+    controller = ChargerController(hass, "e", BUTTON_CONFIG, runtime_data=runtime)
+    await controller.async_setup()
+    controller._record_command(True)
+    controller._last_command_time = dt_util.now() - timedelta(
+        seconds=CHARGER_BUTTON_STATE_SETTLE_SECONDS + 1
+    )
+    assert controller.button_charger_on() is True  # drawing seen
+
+    runtime.power_model.read_charging_power = lambda _hass: 0.0
+    runtime.power_model.is_charging = lambda _hass: False
+    assert controller.button_charger_on() is True  # dropout within the grace
+
+    controller._last_seen_drawing = dt_util.now() - timedelta(
+        seconds=CHARGER_BUTTON_OFF_GRACE_SECONDS + 1
+    )
+    assert controller.button_charger_on() is False  # really stopped
+
+
+async def test_stop_press_ends_the_dropout_grace(hass, services):
+    hass.states.async_set("number.thor_current", "10")
+    controller = ChargerController(hass, "e", BUTTON_CONFIG, runtime_data=_runtime(6600.0))
+    await controller.async_setup()
+    controller._record_command(True)
+    controller._last_command_time = dt_util.now() - timedelta(
+        seconds=CHARGER_BUTTON_STATE_SETTLE_SECONDS + 1
+    )
+    assert controller.button_charger_on() is True
+    controller._record_command(False)
+    assert controller._last_seen_drawing is None
 
 
 async def test_state_is_commanded_without_any_sensor(hass, services):

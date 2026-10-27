@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.25.1
+**Current Version:** 2.25.2
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,30 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.25.2 (2026-10-27) — fork dodg3r
+**FIX: main fuse protection stopped a button charger every minute at 10 A**
+
+Log from Dahlbergs (Growatt THOR, buttons, 10 A night plan): every start was
+followed ~60 s later by `limited -> stopped` and a 120 s hold, in a loop.
+60 s is `CHARGER_BUTTON_STATE_SETTLE_SECONDS`: after it the on/off state of a
+button charger follows the measured power, and one dropout of the power
+sensor made the charger read "off" for a single update. With the charger off
+the guard counts nothing for it, so its own 10 A became house load, the room
+fell below 6 A -> stopped + hold; the next update said "on" again and the
+guard stopped the charger.
+- `ChargerController._button_mode_is_on`: once drawing was seen, a
+  "not charging" reading is ignored for `CHARGER_BUTTON_OFF_GRACE_SECONDS`
+  (30 s) unless a stop was pressed (`_last_seen_drawing`, cleared on a stop
+  command).
+- `FuseGuard._evaluate`: the charger counts as on whenever a mapped charger
+  phase current is above `FUSE_CHARGER_DRAWING_A` (1 A), whatever the on/off
+  state says (all charger types).
+- Tests: NEW `tests/test_v2252_fuse_charger_dropout.py`, dropout grace in
+  `tests/test_v2140_charger_buttons.py`; the v2.25.1 rejected-stop tests now
+  register `number.set_value`.
+
+---
 
 ### v2.25.1 (2026-10-27) — fork dodg3r
 **FIX: night charge started at once after a restart; stop button "no active transaction"**

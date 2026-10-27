@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.25.1"
+VERSION = "2.25.2"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -82,6 +82,15 @@ CHARGING_POWER_GRACE_SECONDS = 15
 # back. For this long after a press the commanded state is trusted; afterwards
 # the measured charging state (power sensor, else status sensor) wins.
 CHARGER_BUTTON_STATE_SETTLE_SECONDS = 60
+# v2.25.2: once a button charger was seen drawing, a single 'not charging'
+# reading (power sensor dropping to 0 / unavailable for one update) is ignored
+# for this long unless a stop was pressed. A flicker made the main fuse guard
+# count the charger's own current as house load and stop it every minute.
+CHARGER_BUTTON_OFF_GRACE_SECONDS = 30
+# v2.25.2: the fuse guard treats the charger as on whenever a mapped charger
+# phase current is above this, whatever the on/off state says (the meter then
+# certainly includes the charger's draw).
+FUSE_CHARGER_DRAWING_A = 1.0
 # Night-charge GRID mode: suppress the measured-power blind-spot stop for this
 # long after the session starts. An EV can take tens of seconds to begin drawing
 # after the wallbox reports 'charging' (cold battery, scheduled charging,
