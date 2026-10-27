@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.24.1
+**Current Version:** 2.25.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,17 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.25.0 (2026-10-27) — fork dodg3r
+**Swedish dashboard**
+
+The bundled card follows Home Assistant's language; Swedish (`sv`) is now a
+full locale: `FRONTEND_LOCALES.sv` (every key of `en`), `STATIC_LABELS.sv`,
+day initials / names, and an `sv` entry in every `SETTINGS_CATALOG`
+name / description / hint. Dashboard only — the setup steps, entity names
+and notifications stay EN/IT/NL.
+
+---
 
 ### v2.24.1 (2026-10-27) — fork dodg3r
 **FIX: blue night banner stuck after a restart; "Paused (fuse)" without a pause**
