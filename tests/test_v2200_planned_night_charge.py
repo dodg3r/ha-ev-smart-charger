@@ -44,7 +44,7 @@ def _at(day: datetime, hour: int, minute: int = 0) -> datetime:
 
 
 def _base() -> datetime:
-    return datetime(2026, 11, 3, 0, 0, tzinfo=TZ)
+    return datetime(2026, 11, 3, 0, 0, tzinfo=dt_util.DEFAULT_TIME_ZONE)
 
 
 def test_window_hours_includes_partial_first_hour():
