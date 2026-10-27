@@ -200,6 +200,7 @@ def test_defaults_derived_from_legacy_entry():
     assert _features_defaults(legacy) == {
         CONF_HAS_SOLAR: True,
         CONF_HAS_HOME_BATTERY: True,
+        "home_battery_control": True,
         CONF_LOAD_BALANCING: LOAD_BALANCING_INTEGRATION,
     }
     plain = {CONF_FV_PRODUCTION: "sensor.pv"}
