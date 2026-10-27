@@ -216,6 +216,8 @@ class PlannedNightCharge:
             "Planned Night Smart Charge: price sensor "
             f"{self._price_entity or 'not configured'}"
         )
+        # v2.24.1: start the session sensor from a known state.
+        self._publish(HELPER_NIGHT_SESSION_STATE_SUFFIX, self._active_mode_value)
         self._unsubs.append(
             async_track_time_interval(
                 self.hass, self._async_interval, timedelta(minutes=1)

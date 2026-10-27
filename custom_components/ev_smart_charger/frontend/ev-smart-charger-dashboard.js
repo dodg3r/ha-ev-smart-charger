@@ -1957,6 +1957,11 @@ class EvSmartChargerDashboard extends HTMLElement {
     const fuse = this._stateObj(this._entityId("fuseHeadroom"));
     const fuseState = fuse?.attributes?.state;
     const phase = fuse?.attributes?.bottleneck_phase || "";
+    // v2.24.1: "stopped"/"hold" also mean "no room to start" while nothing
+    // charges. Only call it a pause when the guard really paused the charger.
+    const pausedByGuard = fuse?.attributes?.charger_paused;
+    const isPauseState = ["invalid_data_stop", "stopped", "hold", "hard_trip"].includes(fuseState);
+    if (isPauseState && pausedByGuard === false) return null;
     if (fuseState === "invalid_data_stop") {
       return { kind: "paused", text: this._t("status.fuse_invalid") };
     }

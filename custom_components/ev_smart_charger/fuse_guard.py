@@ -460,6 +460,11 @@ class FuseGuard:
             "overloaded": limit.overloaded,
             "hard_limit_a": round(self._hard_limit_a(), 1),
             "settling": time.monotonic() < self._settle_until,
+            # v2.24.1: True only while the guard itself stopped the charger
+            # (a fuse pause); "stopped" alone can also mean "no room to start".
+            "charger_paused": bool(
+                getattr(self._controller, "is_fuse_paused", lambda: False)()
+            ),
         }
         for result in limit.phases:
             suffix = f"l{result.phase}"

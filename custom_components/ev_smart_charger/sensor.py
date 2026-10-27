@@ -301,9 +301,12 @@ class EVSCNightSessionStateSensor(EVSCBaseSensor):
             self.entity_id,
             self.unique_id,
         )
-        if (last_state := await self.async_get_last_state()) is not None:
-            self._attr_native_value = last_state.state
-            self._attr_extra_state_attributes = dict(last_state.attributes)
+        # v2.24.1: runtime state, never restored. A restored "grid" from a
+        # session that was running at restart kept the blue banner lit, since
+        # Night Smart Charge starts idle and only publishes on a change.
+        self._attr_native_value = NIGHT_CHARGE_MODE_IDLE
+        self._attr_extra_state_attributes = {}
+        self.async_write_ha_state()
 
 
 class EVSCNightChargePlanSensor(EVSCBaseSensor):

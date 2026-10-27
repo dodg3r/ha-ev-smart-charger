@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.24.0
+**Current Version:** 2.24.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,22 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.24.1 (2026-10-27) — fork dodg3r
+**FIX: blue night banner stuck after a restart; "Paused (fuse)" without a pause**
+
+- `EVSCNightSessionStateSensor` restored its last state: a restart or reload
+  during a planned night hour left it on `grid`, and `PlannedNightCharge`
+  starts idle and only publishes on a change, so the blue "Night Smart Charge
+  Active" banner stayed on outside the planned hours. The sensor now always
+  starts `idle` and `PlannedNightCharge.async_setup` publishes its state.
+- The fuse headroom sensor gains `charger_paused` (`is_fuse_paused()`). The
+  limiter reports `stopped`/`hold` also when nothing charges and the house
+  leaves no room to start; the card now shows a fuse pause only when the
+  guard really paused the charger.
+- Test: NEW `tests/test_v2241_stale_state.py`.
+
+---
 
 ### v2.24.0 (2026-10-27) — fork dodg3r
 **Display-only home battery; priority pill in plain words**
