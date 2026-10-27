@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.26.0
+**Current Version:** 2.27.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,19 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.27.0 (2026-10-27) — fork dodg3r
+**Weekly planner: one toggle for "car ready" on all days**
+
+Requested by the maintainer. Frontend only: the empty top-left cell of the
+weekly planner grid (and a row above the mobile day cards) holds an "All days"
+toggle (`data-toggle-all`, `_toggleAllCarReady`). It is on when every
+`evsc_car_ready_<day>` is on; a click turns all on, or all off when all are
+on, with one `switch.turn_on/turn_off` call for the days that change.
+`_refreshAllToggle()` keeps it in step with the day toggles (also with
+pending optimistic flips). New label `weekly_all_days` EN/IT/NL/SV.
+
+---
 
 ### v2.26.0 (2026-10-27) — fork dodg3r
 **Gentler on slow chargers (Growatt THOR), status blink is not an unplug, quiet night log**

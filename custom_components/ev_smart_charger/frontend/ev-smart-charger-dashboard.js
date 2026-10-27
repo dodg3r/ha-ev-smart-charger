@@ -594,6 +594,7 @@ const STATIC_LABELS = {
     weekly_title: "Weekly Planner", weekly_desc: "EV target and ready time per day · Car ready toggle",
     weekly_ev: "EV target", weekly_home: "Home target", weekly_car: "Car ready", weekly_ready_time: "Ready by",
     weekly_car_ready_label: "Ready ☀️?",
+    weekly_all_days: "All days",
     weekly_today_badge: "Today",
     weekly_info: "Car ready on: Night Smart Charge charges in the cheapest hours before the ready time, up to the EV target. Off: no night charging — the car charges on solar surplus only.",
     night_start: "Start", night_car_ready: "Car Ready", night_enabled: "Enabled", night_card_title: "Night Smart Charge", night_card_sub: "Cheapest hours",
@@ -607,6 +608,7 @@ const STATIC_LABELS = {
     weekly_title: "Pianificatore settimanale", weekly_desc: "Target EV e orario pronta per giorno · Toggle Car Ready",
     weekly_ev: "Target EV", weekly_home: "Target casa", weekly_car: "Car ready", weekly_ready_time: "Pronta alle",
     weekly_car_ready_label: "Ready ☀️?",
+    weekly_all_days: "Tutti i giorni",
     weekly_today_badge: "Oggi",
     weekly_info: "Car ready attivo: Night Smart Charge ricarica nelle ore più economiche prima dell'orario pronta, fino al target EV. Disattivo: nessuna ricarica notturna — solo surplus solare.",
     night_start: "Inizio", night_car_ready: "Auto pronta", night_enabled: "Attivo", night_card_title: "Night Smart Charge", night_card_sub: "Ore più economiche",
@@ -620,6 +622,7 @@ const STATIC_LABELS = {
     weekly_title: "Weekplanner", weekly_desc: "EV-doel en klaar-tijd per dag · Car Ready-schakelaar",
     weekly_ev: "EV-doel", weekly_home: "Thuisdoel", weekly_car: "Auto klaar", weekly_ready_time: "Klaar om",
     weekly_car_ready_label: "Ready ☀️?",
+    weekly_all_days: "Alle dagen",
     weekly_today_badge: "Vandaag",
     weekly_info: "Car ready aan: Night Smart Charge laadt in de goedkoopste uren vóór de klaar-tijd, tot het EV-doel. Uit: geen nachtladen — alleen zonneoverschot.",
     night_start: "Start", night_car_ready: "Auto klaar", night_enabled: "Actief", night_card_title: "Slim nachtelijk laden", night_card_sub: "Goedkoopste uren",
@@ -633,6 +636,7 @@ const STATIC_LABELS = {
     weekly_title: "Veckoplanering", weekly_desc: "Mål för bilen och klartid per dag · Bil klar",
     weekly_ev: "Mål bil", weekly_home: "Mål hus", weekly_car: "Bil klar", weekly_ready_time: "Klar till",
     weekly_car_ready_label: "Klar ☀️?",
+    weekly_all_days: "Alla dagar",
     weekly_today_badge: "I dag",
     weekly_info: "Bil klar på: nattladdningen laddar under de billigaste timmarna före klartiden, upp till bilens mål. Av: ingen nattladdning — bilen laddas bara på solöverskott.",
     night_start: "Start", night_car_ready: "Bil klar", night_enabled: "På", night_card_title: "Nattladdning", night_card_sub: "Billigaste timmarna",
@@ -1920,6 +1924,46 @@ class EvSmartChargerDashboard extends HTMLElement {
    * tick (driven by HA's state_changed event) will confirm via the
    * live-update path.
    */
+  /**
+   * v2.27.0: turn "car ready" on for every day, or off when all are on.
+   */
+  async _toggleAllCarReady() {
+    if (!this._hass) return;
+    const ids = DAYS.map((day) => this._entityId(`carReady_${day}`)).filter(Boolean);
+    if (!ids.length) return;
+    const allOn = ids.every((id) => this._isOn(id));
+    const changed = ids.filter((id) => this._isOn(id) === allOn);
+    changed.forEach((id) => this._optimisticToggleVisual(id));
+    this._refreshAllToggle(!allOn);
+    try {
+      await this._hass.callService("switch", allOn ? "turn_off" : "turn_on", {
+        entity_id: changed,
+      });
+    } catch (e) {
+      changed.forEach((id) => this._pendingToggles.delete(id));
+      this.render();
+      throw e;
+    }
+  }
+
+  _refreshAllToggle(forced) {
+    const root = this.shadowRoot;
+    if (!root) return;
+    let on = forced;
+    if (on === undefined) {
+      const ids = DAYS.map((day) => this._entityId(`carReady_${day}`)).filter(Boolean);
+      const now = Date.now();
+      on = ids.length > 0 && ids.every((id) => {
+        const pending = this._pendingToggles.get(id);
+        if (pending && now <= pending.expiresAt) return pending.desired;
+        return this._isOn(id);
+      });
+    }
+    root.querySelectorAll("[data-toggle-all]").forEach((node) => {
+      node.classList.toggle("on", on);
+    });
+  }
+
   _optimisticToggleVisual(entityId) {
     const root = this.shadowRoot;
     if (!root) return;
@@ -2823,6 +2867,10 @@ class EvSmartChargerDashboard extends HTMLElement {
       node.addEventListener("click", () => this._toggle(node.dataset.toggle));
     });
 
+    root.querySelectorAll("[data-toggle-all]").forEach((node) => {
+      node.addEventListener("click", () => this._toggleAllCarReady());
+    });
+
     root.querySelectorAll("[data-number][data-direction]").forEach((node) => {
       node.addEventListener("click", () => {
         this._adjustNumber(node.dataset.number, Number(node.dataset.direction));
@@ -3445,6 +3493,16 @@ class EvSmartChargerDashboard extends HTMLElement {
       `;
     }).join("");
 
+    // v2.27.0: one toggle for "car ready" on every day.
+    const carIds = DAYS.map((day) => this._entityId(`carReady_${day}`)).filter(Boolean);
+    const allOn = carIds.length > 0 && carIds.every((id) => this._isOn(id));
+    const allToggle = carIds.length ? `
+      <div class="evsc-wp-all">
+        <button class="evsc-wp-tog ${allOn ? "on" : ""}" data-toggle-all="carReady"
+                aria-label="${this._label("weekly_car")} · ${this._label("weekly_all_days")}"></button>
+        <span class="evsc-wp-all-label">${this._label("weekly_all_days")}</span>
+      </div>` : "<div></div>";
+
     return `
       <section class="evsc-weekly">
         <div class="evsc-wp-head">
@@ -3454,12 +3512,15 @@ class EvSmartChargerDashboard extends HTMLElement {
           </div>
         </div>
         <div class="evsc-wp-grid">
-          <div></div>${headers}
+          ${allToggle}${headers}
           <div class="evsc-wp-row-label">${this._label("weekly_ev")}</div>${evRow}
           <div class="evsc-wp-row-label">${this._label("weekly_car")}</div>${carRow}
           <div class="evsc-wp-row-label">${this._label("weekly_ready_time")}</div>${readyRow}
         </div>
-        <div class="evsc-wp-mobile">${dayCards}</div>
+        <div class="evsc-wp-mobile">
+          ${carIds.length ? `<div class="evsc-wp-mobile-all">${allToggle}</div>` : ""}
+          ${dayCards}
+        </div>
         <div class="evsc-wp-info">${this._label("weekly_info")}</div>
       </section>
     `;
@@ -4070,6 +4131,9 @@ class EvSmartChargerDashboard extends HTMLElement {
         el.setAttribute(attr, value);
       }
     }
+
+    // v2.27.0: the "all days" car-ready toggle follows the day toggles.
+    queueMicrotask(() => this._refreshAllToggle());
 
     // v1.11.3: Toggle class updates — find every [data-toggle="entityId"]
     // and flip the correct "is-on" / "on" class based on the actual state.
@@ -6054,6 +6118,27 @@ class EvSmartChargerDashboard extends HTMLElement {
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
         }
         .evsc-wp-tog.on { background: var(--evsc-sys-purple); }
+        .evsc-wp-all {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 4px;
+        }
+        .evsc-wp-all .evsc-wp-tog { margin: 0; }
+        .evsc-wp-all-label {
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.04em;
+          color: var(--evsc-fg-mid);
+          white-space: nowrap;
+        }
+        .evsc-wp-mobile-all .evsc-wp-all {
+          flex-direction: row;
+          justify-content: flex-end;
+          gap: 8px;
+          padding: 0 4px 8px;
+        }
         .evsc-wp-tog.on::after { transform: translateX(16px); }
         .evsc-wp-info {
           margin-top: 14px;
