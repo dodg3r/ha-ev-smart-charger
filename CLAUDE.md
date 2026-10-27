@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.25.3
+**Current Version:** 2.26.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,37 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.26.0 (2026-10-27) — fork dodg3r
+**Gentler on slow chargers (Growatt THOR), status blink is not an unplug, quiet night log**
+
+Log from Dahlbergs at 22:02–22:05: the fuse guard sent 16→14→13→11→9 A and
+back up within ~80 s, each `number.set_value` timing out after 10 s; then the
+THOR reported "not connected", Night Smart Charge stopped ("Car
+disconnected"), Solar Surplus stopped the charger with today's 70 % target
+and Night Smart Charge retried its start six times in two seconds against a
+fuse hold. The current never had to go below 9 A.
+- `FuseLimiter(increase_delay_s=...)`, `FUSE_INCREASE_DELAY_SECONDS = 60`:
+  reductions stay immediate; an increase waits until the room has been there
+  for 60 s and then goes up in ONE step to the lowest room seen meanwhile
+  (a dip restarts the wait). Used by `FuseGuard`.
+- `_set_amperage_internal`: `CURRENT_SET_TIMEOUT_SECONDS = 30` and a timeout
+  is a warning ("did not confirm"), not an error; `_call_service(timeout=)`.
+- Stop button "The charger is not connected" counts as stopped.
+- `ChargerController.fuse_ceiling()` (public).
+- `PlannedNightCharge`: a running session stops for a disconnect only after
+  `NIGHT_DISCONNECT_GRACE_SECONDS` (60 s); a failed start waits
+  `NIGHT_START_RETRY_SECONDS` (60 s); no start while `fuse_ceiling() == 0`.
+- Solar Surplus at night: when another automation owns the charger, or the
+  planned night charge is in use and Solar Surplus does not own it, it skips
+  silently (no hard cap with today's target, no handover). Night skips log
+  once per night, the tick separator is not printed at night.
+- Fuse guard: ok / limited / ramping transitions at DEBUG (the controller
+  logs real changes), hard trip at WARNING.
+- Tests: NEW `tests/test_v2260_gentle_commands.py`, one in
+  `tests/test_solar_surplus.py`.
+
+---
 
 ### v2.25.3 (2026-10-27) — fork dodg3r
 **FIX: night charge amperage changed during a session was ignored**

@@ -29,6 +29,8 @@ from homeassistant.util import dt as dt_util
 
 from .charge_planner import NightPlan, build_plan, energy_needed_kwh, window_hours
 from .const import (
+    NIGHT_DISCONNECT_GRACE_SECONDS,
+    NIGHT_START_RETRY_SECONDS,
     CAR_READY_TIME_DAY_SUFFIX_PREFIX,
     CONF_BATTERY_CAPACITY,
     CONF_EV_CHARGER_STATUS,
@@ -141,6 +143,8 @@ class PlannedNightCharge:
         # Target the latch was set for: raising the target re-opens the plan.
         self._completed_target: float | None = None
         self._was_connected = False
+        self._disconnected_since: datetime | None = None
+        self._start_retry_at: datetime | None = None
         self._last_plan: NightPlan | None = None
         self._tick_running = False
         # Read by Solar Surplus (1 h cooldown after a night session). Planned
@@ -506,6 +510,19 @@ class PlannedNightCharge:
         enabled = self.is_enabled()
         deadline, day_key = self._next_deadline(now)
         connected = self._connected()
+        # v2.26.0: a running session survives a short "not connected" blink
+        # of the charger status (Growatt); stop only when it lasts.
+        if connected:
+            self._disconnected_since = None
+        else:
+            if self._disconnected_since is None:
+                self._disconnected_since = now
+            if (
+                self._active
+                and (now - self._disconnected_since).total_seconds()
+                < NIGHT_DISCONNECT_GRACE_SECONDS
+            ):
+                connected = True
         soc = self._soc()
         current_hour = hour_start(now)
 
@@ -620,7 +637,8 @@ class PlannedNightCharge:
         )
 
         if should_charge and not self._active:
-            await self._start(current_hour, plan)
+            if self._may_try_start(now):
+                await self._start(now, current_hour, plan)
         elif self._active and not should_charge:
             if not enabled:
                 reason = "Night Smart Charge disabled"
@@ -645,7 +663,25 @@ class PlannedNightCharge:
             target=target, day_key=day_key, allowed=allowed,
         )
 
-    async def _start(self, current_hour: datetime, plan: NightPlan) -> None:
+    def _may_try_start(self, now: datetime) -> bool:
+        """v2.26.0: no start while the main fuse leaves no room, and wait
+        after a failed start instead of retrying on every tick."""
+        if self._start_retry_at is not None and now < self._start_retry_at:
+            return False
+        ceiling = getattr(self.charger_controller, "fuse_ceiling", None)
+        if callable(ceiling):
+            try:
+                value = ceiling()
+            except Exception:  # never block on a diagnostic read
+                value = None
+            if value == 0:
+                self.logger.debug("Planned night charge waits: main fuse has no room")
+                return False
+        return True
+
+    async def _start(
+        self, now: datetime, current_hour: datetime, plan: NightPlan
+    ) -> None:
         amps = self._night_amps()
         reason = (
             f"Planned night charge {current_hour.strftime('%H:%M')} "
@@ -655,9 +691,14 @@ class PlannedNightCharge:
             return
         result = await self.charger_controller.start_charger(amps, reason)
         if not self._succeeded(result):
-            self.logger.warning("Planned night charge could not start the charger")
+            self.logger.warning(
+                "Planned night charge could not start the charger - "
+                f"retrying in {NIGHT_START_RETRY_SECONDS} s"
+            )
+            self._start_retry_at = now + timedelta(seconds=NIGHT_START_RETRY_SECONDS)
             self._release_control("Start failed")
             return
+        self._start_retry_at = None
         self._active = True
         self._applied_amps = amps
         self._committed.add(current_hour)

@@ -28,6 +28,7 @@ from .const import (
     CONF_EV_CHARGER_STOP_BUTTON,
     CONF_EV_CHARGER_SWITCH,
     SERVICE_CALL_TIMEOUT,
+    CURRENT_SET_TIMEOUT_SECONDS,
     get_amp_levels,
     get_charger_model,
     uses_charger_buttons,
@@ -786,7 +787,9 @@ class ChargerController:
                 # session ("no active transaction"). With the measured draw
                 # below the floor the charger is already stopped: done.
                 await self._refresh_state()
-                if (
+                # v2.26.0: "The charger is not connected" means there is no
+                # session to stop either.
+                if "not connected" in str(err).lower() or (
                     self._measured_power_w is not None
                     and self._measured_power_w <= CHARGING_POWER_DRAWING_FLOOR_W
                 ):
@@ -888,7 +891,27 @@ class ChargerController:
                 self._fuse_reduced = True
             amps = capped
         service_domain, service_name, data = self._current_control.build_service_call(amps)
-        await self._call_service(service_domain, service_name, data)
+        try:
+            await self._call_service(
+                service_domain,
+                service_name,
+                data,
+                log_failure=False,
+                timeout=CURRENT_SET_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            # v2.26.0: cloud chargers (Growatt THOR) confirm a new current
+            # slowly; the command has been sent, so carry on.
+            self.logger.warning(
+                "Charger did not confirm %sA within %ss - continuing",
+                amps,
+                CURRENT_SET_TIMEOUT_SECONDS,
+            )
+        except Exception as ex:
+            self.logger.error(
+                "Service call failed: %s.%s - %s", service_domain, service_name, ex
+            )
+            raise
 
     async def _wait_for_rate_limit(self) -> None:
         """Wait until the minimum operation interval has elapsed."""
@@ -916,6 +939,10 @@ class ChargerController:
     # ------------------------------------------------------------------
     # Main fuse protection (v2.14.0)
     # ------------------------------------------------------------------
+    def fuse_ceiling(self) -> int | None:
+        """Public main-fuse ceiling in A (None = no fuse protection)."""
+        return self._fuse_ceiling()
+
     def _fuse_ceiling(self) -> int | None:
         """Return the main-fuse ceiling in A, or None when not configured."""
         if self._runtime_data is None:
@@ -1104,10 +1131,11 @@ class ChargerController:
         data: dict,
         *,
         log_failure: bool = True,
+        timeout: float = SERVICE_CALL_TIMEOUT,
     ):
         """Call a Home Assistant service with timeout and error handling."""
         try:
-            async with async_timeout.timeout(SERVICE_CALL_TIMEOUT):
+            async with async_timeout.timeout(timeout):
                 await self.hass.services.async_call(
                     domain,
                     service,

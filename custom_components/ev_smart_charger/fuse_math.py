@@ -282,6 +282,7 @@ class FuseLimiter:
         ramp_interval_s: float = 20.0,
         stop_hold_s: float = 120.0,
         invalid_stop_s: float = 120.0,
+        increase_delay_s: float | None = None,
     ) -> None:
         self._levels = sorted(levels)
         self._max_a = max_a if max_a is not None else self._levels[-1]
@@ -294,6 +295,16 @@ class FuseLimiter:
         self._last_increase_at: float | None = None
         self._hold_until: float = 0.0
         self._invalid_since: float | None = None
+        # v2.26.0: with ``increase_delay_s`` an increase waits until the room
+        # has been there that long, then goes up in one step to the lowest
+        # room seen in that time (instead of ramp_step_a per interval).
+        self._increase_delay_s = increase_delay_s
+        self._up_since: float | None = None
+        self._up_min: int | None = None
+
+    def _reset_increase(self) -> None:
+        self._up_since = None
+        self._up_min = None
 
     @property
     def min_level(self) -> int:
@@ -317,6 +328,7 @@ class FuseLimiter:
         """Return the ceiling for the charger given the latest limit."""
         # ---- invalid data: fail safe -------------------------------------
         if not limit.valid:
+            self._reset_increase()
             if self._invalid_since is None:
                 self._invalid_since = now
             if now - self._invalid_since >= self._invalid_stop_s:
@@ -336,6 +348,7 @@ class FuseLimiter:
 
         # ---- hard limit: a phase far above the fuse -> stop at once --------
         if limit.hard_trip:
+            self._reset_increase()
             self._hold_until = now + self._stop_hold_s
             self.allowed_a = 0
             return LimiterDecision(0, 0, self.STATE_HARD_TRIP, limit.reason)
@@ -360,17 +373,20 @@ class FuseLimiter:
             and target < floor
             and now >= self._hold_until
         ):
+            self._reset_increase()
             self.allowed_a = floor
             state = self.STATE_LIMITED if floor < self._max_a else self.STATE_OK
             return LimiterDecision(floor, target, state, limit.reason)
 
         # ---- below minimum: stop and hold ---------------------------------
         if target == 0:
+            self._reset_increase()
             self._hold_until = now + self._stop_hold_s
             self.allowed_a = 0
             return LimiterDecision(0, 0, self.STATE_STOPPED, limit.reason)
 
         if now < self._hold_until:
+            self._reset_increase()
             self.allowed_a = 0
             remaining = int(self._hold_until - now)
             return LimiterDecision(
@@ -381,6 +397,7 @@ class FuseLimiter:
 
         # ---- decrease, first value, or not charging: apply directly ------
         if previous is None or previous == 0 or target <= previous or not charging:
+            self._reset_increase()
             self.allowed_a = target
             if previous is not None and target > previous:
                 self._last_increase_at = now
@@ -391,8 +408,23 @@ class FuseLimiter:
         # v2.19.0: no increase while the charger is still settling after a
         # reduction (the estimate is deliberately generous then).
         if not allow_increase:
+            self._reset_increase()
             state = self.STATE_LIMITED if previous < self._max_a else self.STATE_OK
             return LimiterDecision(previous, target, state, limit.reason)
+        if self._increase_delay_s is not None:
+            if self._up_since is None:
+                self._up_since = now
+                self._up_min = target
+            else:
+                self._up_min = min(self._up_min or target, target)
+            if now - self._up_since < self._increase_delay_s:
+                return LimiterDecision(previous, target, self.STATE_RAMPING, limit.reason)
+            allowed = max(previous, self._up_min or target)
+            self._reset_increase()
+            self.allowed_a = allowed
+            self._last_increase_at = now
+            state = self.STATE_LIMITED if allowed < self._max_a else self.STATE_OK
+            return LimiterDecision(allowed, target, state, limit.reason)
         if (
             self._last_increase_at is not None
             and now - self._last_increase_at < self._ramp_interval_s

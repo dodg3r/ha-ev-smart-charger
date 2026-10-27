@@ -736,3 +736,24 @@ async def test_periodic_check_still_skips_on_charger_free(hass, automation):
 
     automation.charger_controller.start_charger.assert_not_called()
     automation.charger_controller.set_amperage.assert_not_called()
+
+
+async def test_night_does_not_touch_a_charger_run_by_another_automation(hass, automation):
+    """v2.26.0: at night with Night Smart Charge in control, stay out silently."""
+    hass.states.async_set("switch.force", "off")
+    hass.states.async_set("select.profile", "solar_surplus")
+    hass.states.async_set("sensor.charger_status", CHARGER_STATUS_CHARGING)
+
+    automation._astral_service.is_nighttime.return_value = True
+    automation.charger_controller.is_charging.return_value = True
+    automation.priority_balancer.is_ev_target_reached = AsyncMock(return_value=True)
+    automation._coordinator = MagicMock()
+    automation._coordinator.is_automation_active.return_value = False
+    automation._coordinator.is_controlled_by_other.return_value = True
+    automation._night_smart_charge = MagicMock()
+    automation._night_smart_charge.async_try_handover_from_solar_surplus = AsyncMock(return_value=True)
+
+    await automation._async_periodic_check()
+
+    automation.charger_controller.stop_charger.assert_not_called()
+    automation._night_smart_charge.async_try_handover_from_solar_surplus.assert_not_called()

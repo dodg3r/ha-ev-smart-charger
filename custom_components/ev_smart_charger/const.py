@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.25.3"
+VERSION = "2.26.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -87,6 +87,11 @@ CHARGER_BUTTON_STATE_SETTLE_SECONDS = 60
 # for this long unless a stop was pressed. A flicker made the main fuse guard
 # count the charger's own current as house load and stop it every minute.
 CHARGER_BUTTON_OFF_GRACE_SECONDS = 30
+# v2.26.0: the planned night charge stops for "car disconnected" only after the
+# status has said so for this long (Growatt blinks "not connected").
+NIGHT_DISCONNECT_GRACE_SECONDS = 60
+# v2.26.0: after a failed start the planned night charge waits this long.
+NIGHT_START_RETRY_SECONDS = 60
 # v2.25.2: the fuse guard treats the charger as on whenever a mapped charger
 # phase current is above this, whatever the on/off state says (the meter then
 # certainly includes the charger's draw).
@@ -618,6 +623,14 @@ DEFAULT_FUSE_MARGIN = 2.0  # A kept free below the main fuse on every phase
 FUSE_GUARD_INTERVAL_SECONDS = 5  # periodic re-evaluation (plus every sensor change)
 FUSE_RAMP_STEP_A = 2  # max increase per ramp interval while charging
 FUSE_RAMP_INTERVAL_SECONDS = 20
+# v2.26.0: the guard raises the current only after the room has been there for
+# this long, and then in ONE step (to the lowest room seen meanwhile). Fewer
+# commands: some chargers (Growatt THOR) drop the session when they get many
+# current changes in a row. Reductions stay immediate.
+FUSE_INCREASE_DELAY_SECONDS = 60
+# v2.26.0: setting the charger current may take long on cloud chargers
+# (Growatt THOR > 10 s). A slow confirmation is not an error.
+CURRENT_SET_TIMEOUT_SECONDS = 30
 FUSE_STOP_HOLD_SECONDS = 120  # charger stays off this long after a fuse stop
 FUSE_INVALID_STOP_SECONDS = 120  # missing meter data this long -> stop charging
 # v2.19.0: after a reduction the car needs a few seconds to follow. During this

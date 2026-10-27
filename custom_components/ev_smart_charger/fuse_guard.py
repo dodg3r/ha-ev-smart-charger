@@ -49,6 +49,7 @@ from .const import (
     FUSE_GUARD_INTERVAL_SECONDS,
     FUSE_INVALID_STOP_SECONDS,
     FUSE_MEASURED_OVERDRAW_TOLERANCE_A,
+    FUSE_INCREASE_DELAY_SECONDS,
     FUSE_RAMP_INTERVAL_SECONDS,
     FUSE_RAMP_STEP_A,
     FUSE_SETTLE_SECONDS,
@@ -104,6 +105,7 @@ class FuseGuard:
             ramp_step_a=FUSE_RAMP_STEP_A,
             ramp_interval_s=FUSE_RAMP_INTERVAL_SECONDS,
             stop_hold_s=FUSE_STOP_HOLD_SECONDS,
+            increase_delay_s=FUSE_INCREASE_DELAY_SECONDS,
             invalid_stop_s=FUSE_INVALID_STOP_SECONDS,
         )
 
@@ -423,6 +425,7 @@ class FuseGuard:
             FuseLimiter.STATE_STOPPED,
             FuseLimiter.STATE_INVALID,
             FuseLimiter.STATE_INVALID_STOP,
+            FuseLimiter.STATE_HARD_TRIP,
         ):
             self.logger.warning(
                 "Fuse protection %s -> %s: ceiling %sA (%s)",
@@ -431,8 +434,18 @@ class FuseGuard:
                 decision.allowed_a,
                 limit.reason,
             )
-        else:
+        elif decision.state == FuseLimiter.STATE_HOLD:
             self.logger.info(
+                "Fuse protection %s -> %s: ceiling %sA (%s)",
+                previous,
+                decision.state,
+                decision.allowed_a,
+                limit.reason,
+            )
+        else:
+            # v2.26.0: ok / limited / ramping are logged by the controller
+            # when it actually changes the current.
+            self.logger.debug(
                 "Fuse protection %s -> %s: ceiling %sA (%s)",
                 previous,
                 decision.state,

@@ -841,7 +841,9 @@ class SolarSurplusAutomation:
         # issue #50C: one separator per tick (fence pattern). Early-return
         # branches below no longer emit their own separator, so a single tick
         # produces exactly one ═══ at the top regardless of which branch fires.
-        self.logger.separator()
+        # v2.26.0: not at night, where every tick is a skip.
+        if getattr(self, "_night_skip_logged", None) is None:
+            self.logger.separator()
 
         # issue #40: this header (and most per-tick readout below) is DEBUG now.
         # On idle no-op ticks nothing actionable happens, so INFO is reserved for
@@ -902,6 +904,7 @@ class SolarSurplusAutomation:
         if self._astral_service.is_nighttime(now, sunset_offset, sunrise_offset):
             await self._handle_nighttime_transition(now, current_profile)
             return
+        self._night_skip_logged = None
 
         # === 4. Check Night Smart Charge ===
         if self._night_smart_charge and self._night_smart_charge.is_active():
@@ -1589,16 +1592,51 @@ class SolarSurplusAutomation:
             ),
         }
 
+    def _log_night_skip(self, message: str) -> None:
+        """v2.26.0: log a nighttime skip once per night, then at DEBUG."""
+        if getattr(self, "_night_skip_logged", None) == message:
+            self.logger.debug(message)
+            return
+        self._night_skip_logged = message
+        self.logger.skip(message)
+
     async def _handle_nighttime_transition(self, now: datetime, current_profile: str | None) -> None:
         """Handle sunset transition when Solar Surplus is no longer allowed to run."""
         charger_is_on = await self.charger_controller.is_charging()
         nighttime_debug = self._build_nighttime_debug_attributes(now)
 
+        # v2.26.0: someone else (Night Smart Charge, Boost, …) runs the
+        # charger at night: nothing for Solar Surplus to hand over or stop.
+        other_owner = (
+            self._coordinator is not None
+            and self._coordinator.is_controlled_by_other(self._automation_name)
+        ) or (
+            # The planned night charge owns the night even between its
+            # hours; its targets are the car-ready day's, not today's.
+            not self._has_control()
+            and bool(getattr(self._night_smart_charge, "uses_price_plan", False))
+        )
+        if charger_is_on and other_owner:
+            self._log_night_skip(
+                "Nighttime - charger is run by another automation"
+            )
+            await self._update_diagnostic_sensor(
+                "SKIPPED: Nighttime",
+                {
+                    "reason": "Charger controlled by another automation at night",
+                    "last_check": dt_util.now().isoformat(),
+                    **nighttime_debug,
+                },
+            )
+            return
+
         if not charger_is_on:
             if self._has_control():
                 self._release_control("Nighttime with charger off")
                 self._handle_control_loss("Nighttime with charger off")
-            self.logger.skip("Nighttime - Solar Surplus only operates during daytime (sunrise to sunset)")
+            self._log_night_skip(
+                "Nighttime - Solar Surplus only operates during daytime (sunrise to sunset)"
+            )
             await self._update_diagnostic_sensor(
                 "SKIPPED: Nighttime",
                 {
