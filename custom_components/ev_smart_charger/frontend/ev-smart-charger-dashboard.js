@@ -454,22 +454,6 @@ const SETTINGS_CATALOG = [
           nl: "Bemiddelt EV vs thuisbatterij met de dagelijkse SOC-doelen. Wanneer UIT zijn die doelen en de batterijbescherming inactief.",
         },
         hint: { en: "Default off — enable to protect the home battery", it: "Default off — abilita per proteggere la batteria di casa", nl: "Standaard uit — schakel in om de thuisbatterij te beschermen" } },
-      { entityKey: "forceChargeAutoDisarm", kind: "toggle",
-        name: {
-          en: "Auto-disarm Force Charge",
-          it: "Auto-disarmo Forza ricarica",
-          nl: "Laad forceren automatisch uitschakelen",
-        },
-        desc: {
-          en: "Turn Force Charge off automatically when you unplug the EV, so the next session starts from the normal automation state instead of a forgotten override.",
-          it: "Spegne automaticamente Forza ricarica quando stacchi l'auto, così la ricarica successiva riparte dallo stato normale delle automazioni e non da un override dimenticato.",
-          nl: "Schakelt Laad forceren automatisch uit wanneer je de EV loskoppelt, zodat de volgende sessie start vanuit de normale automatiseringsstatus in plaats van een vergeten override.",
-        },
-        hint: {
-          en: "Default off · Requires the charger status sensor",
-          it: "Default off · Richiede il sensore di stato del wallbox",
-          nl: "Standaard uit · Vereist de laadstatus-sensor",
-        } },
       { entityKey: "smartBlocker", kind: "toggle",
         name: { en: "Smart Charger Blocker", it: "Smart Charger Blocker", nl: "Smart Charger Blocker" },
         desc: {
@@ -700,6 +684,7 @@ const FRONTEND_LOCALES = {
     "control.output": "Output",
     "control.boost_target_soc": "Boost Target SOC",
     "control.auto_stop": "Auto Stop",
+    "control.boost_stop_hint": "Stops at target or when unplugged",
     "module.forecast_driven": "Forecast Driven",
     "module.night_smart_charge": "Night Smart Charge",
     "control.enable_night_smart_charge": "Enable Night Smart Charge",
@@ -891,6 +876,7 @@ const FRONTEND_LOCALES = {
     "control.output": "Output",
     "control.boost_target_soc": "Target SOC boost",
     "control.auto_stop": "Arresto automatico",
+    "control.boost_stop_hint": "Si ferma al target o allo scollegamento",
     "module.forecast_driven": "Guidato dalla previsione",
     "module.night_smart_charge": "Night Smart Charge",
     "control.enable_night_smart_charge": "Abilita Night Smart Charge",
@@ -1082,6 +1068,7 @@ const FRONTEND_LOCALES = {
     "control.output": "Output",
     "control.boost_target_soc": "Boostdoel-SOC",
     "control.auto_stop": "Automatisch stoppen",
+    "control.boost_stop_hint": "Stopt bij het doel of bij loskoppelen",
     "module.forecast_driven": "Op verwachting gestuurd",
     "module.night_smart_charge": "Slim nachtelijk laden",
     "control.enable_night_smart_charge": "Slim nachtelijk laden inschakelen",
@@ -1518,13 +1505,9 @@ class EvSmartChargerDashboard extends HTMLElement {
 
     const evSoc = this._numericState(this._config.ev_soc_entity);
     const target = this._numericState(this._entityId("boostTargetSoc"));
-    if (evSoc == null) {
-      return {
-        ok: false,
-        reason: this._t("toast.boost.missing_soc"),
-      };
-    }
-    if (target != null && evSoc >= target) {
+    // v2.22.0: an unknown SOC no longer blocks Boost; it then charges until
+    // the car is unplugged.
+    if (evSoc != null && target != null && evSoc >= target) {
       const reason = this._t("toast.boost.target_reached")
         .replace("{ev}", String(Math.round(evSoc)))
         .replace("{target}", String(Math.round(target)));
@@ -3192,14 +3175,18 @@ class EvSmartChargerDashboard extends HTMLElement {
         ${this._renderToggle(ids.boostEnabledId, this._t("control.boost_session"), this._t("control.high_priority"), "amber")}
         <div class="evsc-boost-subitems">
           ${this._renderStepper(ids.boostAmperageId, this._t("control.boost_amperage"), this._t("control.output"), "amber")}
-          ${this._renderStepper(ids.boostTargetSocId, this._t("control.boost_target_soc"), this._t("control.auto_stop"), "lime")}
+          ${this._renderStepper(ids.boostTargetSocId, this._t("control.boost_target_soc"), this._t("control.boost_stop_hint"), "lime")}
         </div>
       </div>
     `;
 
     const overrideStack = `
       ${this._renderToggle(ids.manualStopId, this._t("control.stop_charging"), this._t("control.stop_charging_hint"), "red")}
-      ${this._renderToggle(ids.forceChargeId, this._t("control.force_charge"), this._t("control.override_all"), "rose")}
+      ${/* v2.22.0: Boost is the manual override; Force Charge is only
+          shown while it is ON, so a forgotten override can be switched off. */
+        this._isOn(ids.forceChargeId)
+          ? this._renderToggle(ids.forceChargeId, this._t("control.force_charge"), this._t("control.override_all"), "rose")
+          : ""}
       ${boostGroup}
     `;
 

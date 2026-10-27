@@ -163,20 +163,70 @@ async def test_boost_uses_updated_target_during_active_session(hass, boost):
     boost.charger_controller.stop_charger.assert_awaited_once()
 
 
-async def test_boost_fails_safe_when_ev_soc_unavailable_too_long(hass, boost):
-    """Boost Charge should stop after repeated SOC read failures."""
+async def test_boost_keeps_charging_when_ev_soc_unavailable(hass, boost):
+    """v2.22.0: without a SOC Boost keeps charging until unplugged."""
     boost._boost_active = True
     boost._monitor_unsub = lambda: None
     hass.states.async_set("switch.test_evsc_boost_charge_enabled", "on")
     hass.states.async_set("sensor.ev_soc", "unavailable")
     boost.charger_controller.get_current_amperage.return_value = 16
 
-    for _ in range(4):
+    for _ in range(6):
         await boost._async_monitor_boost_charge(None)
+
+    assert boost.is_active() is True
+    assert boost.is_no_soc_mode() is True
+    boost.charger_controller.stop_charger.assert_not_awaited()
+
+
+async def test_boost_starts_without_ev_soc(hass, boost):
+    """v2.22.0: a missing SOC no longer blocks the start."""
+    hass.states.async_set("sensor.ev_soc", "unavailable")
+    boost.priority_balancer.get_ev_current_soc = AsyncMock(return_value=None)
+    with patch(
+        "custom_components.ev_smart_charger.boost_charge.async_track_time_interval",
+        return_value=lambda: None,
+    ):
+        await boost._start_boost_charge()
+
+    assert boost.is_active() is True
+    assert boost.is_no_soc_mode() is True
+    boost.charger_controller.start_charger.assert_awaited_once_with(16, "Boost charge")
+
+
+async def test_boost_stops_when_car_is_unplugged(hass, boost):
+    """v2.22.0: unplugging ends the session and hands back to automation."""
+    from homeassistant.core import State
+
+    from custom_components.ev_smart_charger.const import CONF_EV_CHARGER_STATUS
+
+    boost.config[CONF_EV_CHARGER_STATUS] = "sensor.charger_status"
+    boost._boost_active = True
+    boost._monitor_unsub = lambda: None
+    event = MagicMock()
+    event.data = {
+        "old_state": State("sensor.charger_status", "Charging"),
+        "new_state": State("sensor.charger_status", "Available"),
+    }
+
+    await boost._async_charger_plugged_in(event)
 
     assert boost.is_active() is False
     boost.charger_controller.stop_charger.assert_awaited_once()
-    boost._notification_service.send_warning.assert_awaited_once()
+    boost._night_smart_charge.async_request_immediate_check.assert_awaited_once()
+
+
+async def test_boost_does_not_start_without_car(hass, boost):
+    """A clearly unplugged car does not start a Boost session."""
+    from custom_components.ev_smart_charger.const import CONF_EV_CHARGER_STATUS
+
+    boost.config[CONF_EV_CHARGER_STATUS] = "sensor.charger_status"
+    hass.states.async_set("sensor.charger_status", "Available")
+
+    await boost._start_boost_charge()
+
+    assert boost.is_active() is False
+    boost.charger_controller.start_charger.assert_not_awaited()
 
 
 async def test_boost_completion_clears_the_live_activity_without_notifying(hass, boost):

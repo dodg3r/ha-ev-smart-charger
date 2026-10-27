@@ -226,7 +226,7 @@ class MobileNotificationService:
     async def send_boost_charge_started_notification(
         self,
         amperage: int,
-        start_soc: float,
+        start_soc: float | None,
         target_soc: int,
     ) -> None:
         """Send Boost Charge start notification using Night Charge toggle."""
@@ -241,7 +241,7 @@ class MobileNotificationService:
         message = translate_runtime(
             self.hass,
             "mobile.boost_started.message",
-            start_soc=start_soc,
+            start_soc_label="—" if start_soc is None else f"{start_soc:.1f}%",
             target_soc=target_soc,
             amperage=amperage,
             time=dt_util.now().strftime("%H:%M"),

@@ -15,7 +15,6 @@ from homeassistant.helpers.event import (
 )
 
 from .const import (
-    CHARGER_STATUS_FREE,
     LIVE_ACTIVITY_MODE_BOOST,
     CONF_EV_CHARGER_STATUS,
     CONF_CAR_OWNER,
@@ -29,6 +28,7 @@ from .const import (
     PRIORITY_BOOST_CHARGE,
 )
 from .localization import translate_runtime
+from .power_model import is_disconnected_status
 from .runtime import EVSCRuntimeData
 from .utils import state_helper
 from .utils.logging_helper import EVSCLogger
@@ -96,6 +96,9 @@ class BoostCharge:
         self._schedule_time_change_unsub_start = None
         self._schedule_time_change_unsub_end = None
         self._charger_status_unsub = None  # listener for late plug-in during scheduled window
+        # v2.22.0: without a readable EV SOC Boost charges until the car is
+        # unplugged (or Boost is switched off) instead of refusing to start.
+        self._no_soc_mode = False
 
     async def _emit_diagnostic(
         self,
@@ -255,6 +258,18 @@ class BoostCharge:
         """Return configured boost amperage."""
         return state_helper.get_int(self.hass, self._boost_amperage_entity, default=None)
 
+    def is_no_soc_mode(self) -> bool:
+        """Return True while Boost charges without a readable EV SOC."""
+        return self._boost_active and self._no_soc_mode
+
+    def _car_disconnected(self) -> bool:
+        """Return True only when the status sensor clearly says unplugged."""
+        entity = self.config.get(CONF_EV_CHARGER_STATUS)
+        if not entity:
+            return False
+        state = self.hass.states.get(entity)
+        return state is not None and is_disconnected_status(state.state)
+
     @callback
     async def _async_boost_switch_changed(self, event) -> None:
         """Handle boost switch state changes."""
@@ -296,14 +311,20 @@ class BoostCharge:
             )
             return
 
-        current_soc = await self._read_ev_soc()
-        if current_soc is None:
+        if self._car_disconnected():
             await self._handle_start_failure(
-                translate_runtime(self.hass, "boost.reason.missing_soc")
+                translate_runtime(self.hass, "boost.reason.unplugged")
             )
             return
 
-        if target_soc <= current_soc:
+        current_soc = await self._read_ev_soc()
+        self._no_soc_mode = current_soc is None
+        if self._no_soc_mode:
+            self.logger.warning(
+                "EV SOC unavailable - Boost charges until the car is unplugged"
+            )
+
+        if current_soc is not None and target_soc <= current_soc:
             await self._set_boost_switch(False)
             await self._notification_service.send_info(
                 translate_runtime(self.hass, "boost.title.not_started"),
@@ -409,21 +430,33 @@ class BoostCharge:
                 target_amps, "Boost configuration updated"
             )
 
+        if self._car_disconnected():
+            await self._complete_boost(
+                translate_runtime(self.hass, "boost.reason.unplugged"),
+                stop_charger=True,
+                notify=True,
+                success=False,
+            )
+            return
+
         current_soc = await self._read_ev_soc()
         if current_soc is None:
+            # v2.22.0: keep charging without a SOC; the session ends when the
+            # car is unplugged or Boost is switched off.
             self._soc_read_failures += 1
-            self.logger.warning(
-                f"EV SOC unavailable during Boost Charge "
-                f"({self._soc_read_failures}/{BOOST_MAX_SOC_READ_FAILURES})"
-            )
-            if self._soc_read_failures >= BOOST_MAX_SOC_READ_FAILURES:
-                await self._complete_boost(
-                    translate_runtime(self.hass, "boost.reason.session_soc_missing"),
-                    stop_charger=True,
-                    notify=True,
-                    success=False,
+            if not self._no_soc_mode and self._soc_read_failures >= BOOST_MAX_SOC_READ_FAILURES:
+                self._no_soc_mode = True
+                self.logger.warning(
+                    "EV SOC unavailable during Boost Charge - charging until unplugged"
                 )
+            await self._mobile_notifier.send_ev_charging_live_activity(
+                mode=LIVE_ACTIVITY_MODE_BOOST,
+                amperage=target_amps,
+                ev_soc=None,
+                target_soc=target_soc,
+            )
             return
+        self._no_soc_mode = False
 
         self._soc_read_failures = 0
         await self._mobile_notifier.send_ev_charging_live_activity(
@@ -466,6 +499,7 @@ class BoostCharge:
         self._boost_active = False
         self._scheduled_session_active = False
         self._soc_read_failures = 0
+        self._no_soc_mode = False
 
         if stop_charger and was_active:
             await self.charger_controller.stop_charger(f"Boost Charge: {reason}")
@@ -672,7 +706,7 @@ class BoostCharge:
         charger_status_entity = self.config.get(CONF_EV_CHARGER_STATUS)
         if charger_status_entity:
             charger_status = state_helper.get_state(self.hass, charger_status_entity)
-            if charger_status == CHARGER_STATUS_FREE:
+            if is_disconnected_status(charger_status):
                 self.logger.debug("Schedule start trigger: car not plugged in, skipping")
                 return
 
@@ -756,10 +790,20 @@ class BoostCharge:
         if not new_state or not old_state:
             return
 
-        # Only act on transitions FROM charger_free (car just plugged in)
-        if old_state.state != CHARGER_STATUS_FREE:
+        # v2.22.0: unplugging ends a running Boost session at once.
+        if self._boost_active and is_disconnected_status(new_state.state):
+            await self._complete_boost(
+                translate_runtime(self.hass, "boost.reason.unplugged"),
+                stop_charger=True,
+                notify=True,
+                success=False,
+            )
             return
-        if new_state.state == CHARGER_STATUS_FREE:
+
+        # Only act on transitions from disconnected (car just plugged in)
+        if not is_disconnected_status(old_state.state):
+            return
+        if is_disconnected_status(new_state.state):
             return
 
         # Guard: boost already running, or schedule not enabled

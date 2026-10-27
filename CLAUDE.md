@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.21.1
+**Current Version:** 2.22.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,29 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.22.0 (2026-10-27) — fork dodg3r
+**Boost Charge is the manual override; Force Charge hidden from the dashboard**
+
+Agreed with the maintainer: Force Charge and Boost overlapped; Boost keeps its
+name, amperage and target.
+- `boost_charge.py`: a session ends when the car is unplugged
+  (`is_disconnected_status`, on the status event and every monitor tick);
+  a clearly unplugged car does not start a session (`boost.reason.unplugged`).
+  Without a readable EV SOC Boost starts anyway and charges until unplugged
+  or switched off (`_no_soc_mode`, `is_no_soc_mode()`); a SOC that drops out
+  mid-session no longer stops it. Plug-in / schedule checks use the brand
+  classifier instead of `charger_free`.
+- Start notification: `{start_soc_label}` ("—" without SOC), EN/IT/NL.
+- Dashboard: Force Charge toggle only rendered while it is ON; the
+  "Auto-disarm Force Charge" setting removed from Safety; Boost no longer
+  blocked by a missing SOC; target hint "Stops at target or when unplugged".
+  Force Charge stays in the backend (coordinator, blocker, manual stop) so
+  upstream merges stay simple.
+- Tests: Boost without SOC (start and mid-session), unplug stops, no start
+  without a car.
+
+---
 
 ### v2.21.1 (2026-10-27) — fork dodg3r
 **FIX: night card without prices, long deadlines and unknown "cheapest" hours**

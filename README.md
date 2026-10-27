@@ -1013,6 +1013,8 @@ Boost Charge is a high-priority override that guarantees the EV reaches `evsc_bo
 
 **Manual mode:** Toggle `evsc_boost_charge_enabled` ON at any time. The session starts immediately, runs at full configured amperage, and stops automatically when the SOC target is reached. The switch reverts to OFF on completion.
 
+**The manual override (v2.22.0, fork):** Boost is the dashboard's manual override; Force Charge is no longer shown there (only while it is ON, so a forgotten override can still be switched off). Boost overrides the night plan, Solar Surplus and the Smart Charger Blocker, and the main fuse protection still applies. A session ends when the target is reached, when Boost is switched off, or when the car is unplugged (status sensor), and then normal automation takes over. When the EV SOC cannot be read, Boost no longer refuses to start: it charges at the Boost amperage until the car is unplugged or Boost is switched off.
+
 **Scheduled mode:** Enable `evsc_boost_schedule_enabled` and configure `evsc_boost_schedule_start_time` / `evsc_boost_schedule_end_time`. Every day at the start time the integration checks:
 - Car plugged in? If not, the session is silently skipped.
 - EV SOC already ≥ target? If so, the session is silently skipped.

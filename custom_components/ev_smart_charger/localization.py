@@ -51,7 +51,7 @@ RUNTIME_TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "mobile.boost_started.message": (
             "EV boost charge started\n\n"
-            "EV: {start_soc:.1f}%\n"
+            "EV: {start_soc_label}\n"
             "Boost target: {target_soc}%\n"
             "Amperage: {amperage}A\n"
             "Time: {time}"
@@ -88,6 +88,8 @@ RUNTIME_TRANSLATIONS: dict[str, dict[str, str]] = {
         "boost.reason.schedule_disabled": "Schedule Boost Charge disabled mid-session",
         "boost.reason.missing_configuration": "Unable to start Boost Charge: incomplete configuration.",
         "boost.reason.missing_soc": "Unable to start Boost Charge: EV SOC unavailable.",
+        "boost.reason.unplugged": "Car unplugged",
+        "boost.reason.no_soc_until_unplug": "EV SOC unavailable: Boost charges until the car is unplugged.",
         "boost.reason.not_started_target_reached": (
             "The configured SOC target has already been reached.\n\n"
             "Current SOC: {current_soc:.1f}%\n"
@@ -188,7 +190,7 @@ RUNTIME_TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "mobile.boost_started.message": (
             "Boost EV avviato\n\n"
-            "EV: {start_soc:.1f}%\n"
+            "EV: {start_soc_label}\n"
             "Target Boost: {target_soc}%\n"
             "Amperaggio: {amperage}A\n"
             "Ora: {time}"
@@ -227,6 +229,8 @@ RUNTIME_TRANSLATIONS: dict[str, dict[str, str]] = {
             "Impossibile avviare Boost Charge: configurazione incompleta."
         ),
         "boost.reason.missing_soc": "Impossibile avviare Boost Charge: SOC EV non disponibile.",
+        "boost.reason.unplugged": "Auto scollegata",
+        "boost.reason.no_soc_until_unplug": "SOC EV non disponibile: Boost ricarica finché l'auto non viene scollegata.",
         "boost.reason.not_started_target_reached": (
             "Il target SOC configurato e' gia' stato raggiunto.\n\n"
             "SOC attuale: {current_soc:.1f}%\n"
@@ -328,7 +332,7 @@ RUNTIME_TRANSLATIONS: dict[str, dict[str, str]] = {
         ),
         "mobile.boost_started.message": (
             "EV-boostladen gestart\n\n"
-            "EV: {start_soc:.1f}%\n"
+            "EV: {start_soc_label}\n"
             "Boostdoel: {target_soc}%\n"
             "Stroomsterkte: {amperage}A\n"
             "Tijd: {time}"
@@ -367,6 +371,8 @@ RUNTIME_TRANSLATIONS: dict[str, dict[str, str]] = {
             "Boost Charge kan niet worden gestart: onvolledige configuratie."
         ),
         "boost.reason.missing_soc": "Boost Charge kan niet worden gestart: EV-SOC niet beschikbaar.",
+        "boost.reason.unplugged": "Auto losgekoppeld",
+        "boost.reason.no_soc_until_unplug": "EV-SOC niet beschikbaar: Boost laadt tot de auto wordt losgekoppeld.",
         "boost.reason.not_started_target_reached": (
             "Het ingestelde SOC-doel is al bereikt.\n\n"
             "Huidige SOC: {current_soc:.1f}%\n"
