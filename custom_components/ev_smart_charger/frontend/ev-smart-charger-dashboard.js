@@ -626,10 +626,13 @@ const FRONTEND_LOCALES = {
     "status.force_waiting": "Force Charge is on · charger is not running",
     "status.night_waiting": "Night charge starts at {time}",
     "status.night_planned": "Night charge planned at {time}",
+    "night.tick_car_ready": "Tick Car ready to plan",
+    "night.overview_until": "Prices until {day} {time}",
+    "night.status.waiting_for_prices": "Waiting for prices up to ready time",
     "night.status.planned": "Plan ready",
     "night.status.charging": "Charging now",
     "night.status.waiting_for_car": "Plug in the car to plan",
-    "night.status.car_ready_off": "Car ready off · solar only",
+    "night.status.car_ready_off": "No car ready day · overview",
     "night.status.target_reached": "EV target reached",
     "night.status.no_prices": "No prices yet",
     "night.status.disabled": "Off",
@@ -810,10 +813,13 @@ const FRONTEND_LOCALES = {
     "status.force_waiting": "Forza ricarica attiva · il caricatore non è in funzione",
     "status.night_waiting": "La ricarica notturna inizia alle {time}",
     "status.night_planned": "Ricarica notturna pianificata alle {time}",
+    "night.tick_car_ready": "Attiva Car ready per pianificare",
+    "night.overview_until": "Prezzi fino a {day} {time}",
+    "night.status.waiting_for_prices": "In attesa dei prezzi fino all'orario pronta",
     "night.status.planned": "Piano pronto",
     "night.status.charging": "In ricarica",
     "night.status.waiting_for_car": "Collega l'auto per pianificare",
-    "night.status.car_ready_off": "Car ready off · solo solare",
+    "night.status.car_ready_off": "Nessun giorno car ready · panoramica",
     "night.status.target_reached": "Target EV raggiunto",
     "night.status.no_prices": "Prezzi non ancora disponibili",
     "night.status.disabled": "Off",
@@ -994,10 +1000,13 @@ const FRONTEND_LOCALES = {
     "status.force_waiting": "Laden forceren staat aan · lader is niet actief",
     "status.night_waiting": "Nachtladen start om {time}",
     "status.night_planned": "Nachtladen gepland om {time}",
+    "night.tick_car_ready": "Zet Car ready aan om te plannen",
+    "night.overview_until": "Prijzen tot {day} {time}",
+    "night.status.waiting_for_prices": "Wacht op prijzen tot de klaar-tijd",
     "night.status.planned": "Plan klaar",
     "night.status.charging": "Laadt nu",
     "night.status.waiting_for_car": "Sluit de auto aan om te plannen",
-    "night.status.car_ready_off": "Car ready uit · alleen zon",
+    "night.status.car_ready_off": "Geen car-ready dag · overzicht",
     "night.status.target_reached": "EV-doel bereikt",
     "night.status.no_prices": "Nog geen prijzen",
     "night.status.disabled": "Uit",
@@ -2708,6 +2717,9 @@ class EvSmartChargerDashboard extends HTMLElement {
       target: a.target_soc,
       next: a.next_charge,
       priceSensor: a.price_sensor,
+      mode: a.mode || "plan",
+      windowEnd: a.window_end,
+      plannable: Array.isArray(a.plannable) ? a.plannable : null,
     };
   }
 
@@ -2749,7 +2761,15 @@ class EvSmartChargerDashboard extends HTMLElement {
     const statusText = this._t(statusKey) !== statusKey ? this._t(statusKey) : status;
 
     let readyText = "";
-    if (plan?.deadline) {
+    if (plan && plan.mode === "overview" && plan.windowEnd) {
+      const d = new Date(plan.windowEnd);
+      if (!Number.isNaN(d.getTime())) {
+        const day = d.toLocaleDateString(this._language(), { weekday: "short" });
+        readyText = this._tf("night.overview_until", {
+          day, time: `${String(d.getHours()).padStart(2, "0")}:00`,
+        });
+      }
+    } else if (plan?.deadline) {
       const d = new Date(plan.deadline);
       if (!Number.isNaN(d.getTime())) {
         const day = d.toLocaleDateString(this._language(), { weekday: "short" });
@@ -2766,6 +2786,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       const max = Math.max(...known);
       const cheap = new Set(plan.cheapest);
       const planned = new Set(plan.planned);
+      const plannable = plan.mode === "plan" && plan.plannable ? new Set(plan.plannable) : null;
       const nowHour = new Date();
       nowHour.setMinutes(0, 0, 0);
       const bars = prices.map((p, idx) => {
@@ -2777,9 +2798,11 @@ class EvSmartChargerDashboard extends HTMLElement {
           cheap.has(p.start) ? "cheap" : "",
           planned.has(p.start) ? "plan" : "",
           has ? "" : "unknown",
+          plannable && !plannable.has(p.start) ? "off" : "",
           new Date(p.start).getTime() === nowHour.getTime() ? "now" : "",
         ].filter(Boolean).join(" ");
-        const label = idx % 3 === 0 ? this._hourLabel(p.start) : "";
+        const step = prices.length > 24 ? 4 : 3;
+        const label = idx % step === 0 ? this._hourLabel(p.start) : "";
         const title = `${this._hourLabel(p.start)}:00 · ${this._formatPrice(p.price, plan.unit)}`;
         return `
           <div class="evsc-np-col" title="${title}">
@@ -2823,10 +2846,12 @@ class EvSmartChargerDashboard extends HTMLElement {
       planSub = parts.join(" · ") || statusText;
     } else if (status === "target_reached" || plan?.neededHours === 0) {
       planValue = this._t("night.no_hours");
+    } else if (plan?.mode === "overview") {
+      planSub = this._t("night.tick_car_ready");
     }
     // Show which target the plan is measured against (the car-ready day's
     // target, not today's), so "target reached" is never a mystery.
-    if (plan && !plan.planned.length && plan.soc !== null && plan.soc !== undefined
+    if (plan && plan.mode === "plan" && !plan.planned.length && plan.soc !== null && plan.soc !== undefined
         && plan.target !== null && plan.target !== undefined) {
       const dayName = plan.deadline
         ? new Date(plan.deadline).toLocaleDateString(this._language(), { weekday: "short" })
@@ -5811,6 +5836,7 @@ class EvSmartChargerDashboard extends HTMLElement {
           box-shadow: 0 0 10px color-mix(in srgb, var(--evsc-sys-purple) 45%, transparent);
         }
         .evsc-np-bar.unknown { opacity: 0.4; }
+        .evsc-np-bar.off { opacity: 0.35; }
         .evsc-np-bar.now { outline: 2px solid var(--evsc-fg); outline-offset: 1px; }
         .evsc-np-tick {
           position: absolute;

@@ -27,7 +27,7 @@ from homeassistant.helpers.event import (
 )
 from homeassistant.util import dt as dt_util
 
-from .charge_planner import NightPlan, build_plan, energy_needed_kwh
+from .charge_planner import NightPlan, build_plan, energy_needed_kwh, window_hours
 from .const import (
     CAR_READY_TIME_DAY_SUFFIX_PREFIX,
     CONF_BATTERY_CAPACITY,
@@ -70,6 +70,7 @@ STATUS_TARGET_REACHED = "target_reached"
 STATUS_PLANNED = "planned"
 STATUS_CHARGING = "charging"
 STATUS_NO_PRICES = "no_prices"
+STATUS_WAITING_FOR_PRICES = "waiting_for_prices"
 
 
 def _parse_time(value: str | None) -> time | None:
@@ -364,7 +365,13 @@ class PlannedNightCharge:
             return False
         return not is_disconnected_status(state)
 
-    def _next_deadline(self, now: datetime) -> tuple[datetime, str]:
+    def _next_deadline(self, now: datetime) -> tuple[datetime | None, str | None]:
+        """Return the next car-ready deadline of a day with car ready ON.
+
+        Days with car ready OFF are skipped (v2.21.0), so with only Thursday
+        ticked a Tuesday evening plans straight towards Thursday morning.
+        Returns (None, None) when no day in the coming week is ticked.
+        """
         local_now = dt_util.as_local(now)
         for offset in range(0, 8):
             day = local_now.date() + timedelta(days=offset)
@@ -372,10 +379,38 @@ class PlannedNightCharge:
             deadline = datetime.combine(
                 day, self._ready_time_for(key), tzinfo=dt_util.DEFAULT_TIME_ZONE
             )
-            if deadline > local_now:
+            if deadline > local_now and self._car_ready_for(key):
                 return deadline, key
-        fallback = local_now + timedelta(hours=12)
-        return fallback, WEEKDAY_KEYS[fallback.weekday()]
+        return None, None
+
+    def _night_hours(self, hours: list[datetime], deadline: datetime | None) -> set[datetime]:
+        """Hours that may be planned: between sunset and sunrise, plus the
+        morning of the deadline day up to the deadline."""
+        cache: dict = {}
+
+        def sun(day):
+            if day not in cache:
+                ref = datetime.combine(day, time(12), tzinfo=dt_util.DEFAULT_TIME_ZONE)
+                rise = self._astral.get_sunrise(ref)
+                sset = self._astral.get_sunset(ref)
+                cache[day] = (
+                    dt_util.as_local(rise) if rise else None,
+                    dt_util.as_local(sset) if sset else None,
+                )
+            return cache[day]
+
+        allowed: set[datetime] = set()
+        for hour in hours:
+            mid = hour + timedelta(minutes=30)
+            rise, sset = sun(mid.date())
+            if rise is None or sset is None:
+                allowed.add(hour)
+                continue
+            if mid < rise or mid >= sset:
+                allowed.add(hour)
+            elif deadline is not None and mid.date() == deadline.date() and hour < deadline:
+                allowed.add(hour)
+        return allowed
 
     def _window_start(self, deadline: datetime) -> datetime:
         """Return the sunset before the deadline."""
@@ -442,27 +477,50 @@ class PlannedNightCharge:
 
         enabled = self.is_enabled()
         deadline, day_key = self._next_deadline(now)
-        window_start = self._window_start(deadline)
-        car_ready = self._car_ready_for(day_key)
         connected = self._connected()
         soc = self._soc()
-        target = self._target_for(day_key)
+        current_hour = hour_start(now)
 
         if self._plan_deadline != deadline:
             self._plan_deadline = deadline
             self._committed.clear()
             self._completed_deadline = None
+            self._completed_target = None
         if not connected:
             self._committed.clear()
             self._completed_deadline = None
-        if connected and not self._was_connected:
-            self.logger.info(
-                f"Car connected: planning to {target:.0f}% by "
-                f"{deadline.strftime('%a %H:%M')}"
-            )
         self._was_connected = connected
 
-        current_hour = hour_start(now)
+        if deadline is None:
+            # Overview: no car-ready day ahead. Show every hour with a known
+            # price from now on and the cheapest ones; never charge.
+            last = max((h for h in self._prices if h >= current_hour), default=None)
+            end = last + timedelta(hours=1) if last else current_hour + timedelta(hours=1)
+            plan = build_plan(
+                window_start=current_hour,
+                deadline=end,
+                prices=self._prices,
+                cheapest_count=NIGHT_PLAN_CHEAPEST_HOURS,
+                needed_kwh=None,
+                power_kw=self._power_kw(),
+            )
+            plan.planned = []
+            self._last_plan = plan
+            if self._active:
+                await self._stop("No car-ready day")
+            self._publish_plan(
+                now, plan, mode="overview", enabled=enabled, connected=connected,
+                completed=False, plan_active=False, soc=soc, target=None,
+                day_key=None, allowed=None,
+            )
+            return
+
+        target = self._target_for(day_key)
+        window_start = current_hour
+        sunset_before = self._window_start(deadline)
+        hours = window_hours(window_start, deadline)
+        allowed = self._night_hours(hours, deadline)
+
         # The latch only holds for the target it was set for: raising the
         # target re-opens the plan, a 1 % drop after a finished charge does not.
         if self._completed_deadline == deadline and (
@@ -477,42 +535,49 @@ class PlannedNightCharge:
             self._completed_target = target
         completed = self._completed_deadline == deadline
 
+        # The plan becomes live once the prices reach the deadline, or at the
+        # sunset before the deadline at the latest (prices missing: plan with
+        # what is known, unknown hours last).
+        covered = all(hour in self._prices for hour in hours)
+        plan_active = covered or now >= sunset_before or bool(self._committed)
+
+        wants_charge = connected and not completed
         needed_kwh = None
-        if connected and car_ready and not completed:
+        if wants_charge:
             needed_kwh = energy_needed_kwh(
                 soc, target, self._capacity_kwh(), NIGHT_PLAN_CHARGE_EFFICIENCY
             )
-        committed = sorted(self._committed)
         plan = build_plan(
             window_start=window_start,
             deadline=deadline,
             prices=self._prices,
             cheapest_count=NIGHT_PLAN_CHEAPEST_HOURS,
-            needed_kwh=needed_kwh if connected and car_ready and not completed else 0.0,
+            needed_kwh=needed_kwh if wants_charge else 0.0,
             power_kw=self._power_kw(),
-            committed=committed,
+            committed=sorted(self._committed),
             earliest=now,
+            allowed=allowed,
         )
-        if connected and car_ready and not completed and needed_kwh is None:
+        if wants_charge and needed_kwh is None:
             # SOC unknown: fall back to the cheapest hours that are left.
             plan.planned = [
                 hour for hour in plan.cheapest if hour + timedelta(hours=1) > now
             ]
             plan.needed_hours = None
             plan.needed_kwh = None
-        if not (connected and car_ready and not completed):
+        if not wants_charge:
             plan.planned = []
             plan.needed_hours = 0 if completed else None
             plan.needed_kwh = 0.0 if completed else None
+        if not plan_active:
+            plan.planned = []
         self._last_plan = plan
 
-        in_window = window_start - timedelta(hours=1) < now < deadline
         should_charge = (
             enabled
-            and connected
-            and car_ready
-            and not completed
-            and in_window
+            and wants_charge
+            and plan_active
+            and now < deadline
             and current_hour in plan.planned
         )
 
@@ -525,7 +590,7 @@ class PlannedNightCharge:
                 reason = "Car disconnected"
             elif completed:
                 reason = "EV target reached"
-            elif not in_window:
+            elif now >= deadline:
                 reason = "Car-ready deadline reached"
             else:
                 reason = "Planned hour ended"
@@ -535,15 +600,9 @@ class PlannedNightCharge:
             self._set_inactive()
 
         self._publish_plan(
-            now,
-            plan,
-            enabled=enabled,
-            car_ready=car_ready,
-            connected=connected,
-            completed=completed,
-            soc=soc,
-            target=target,
-            day_key=day_key,
+            now, plan, mode="plan", enabled=enabled, connected=connected,
+            completed=completed, plan_active=plan_active, soc=soc,
+            target=target, day_key=day_key, allowed=allowed,
         )
 
     async def _start(self, current_hour: datetime, plan: NightPlan) -> None:
@@ -582,19 +641,21 @@ class PlannedNightCharge:
         now: datetime,
         plan: NightPlan,
         *,
+        mode: str,
         enabled: bool,
-        car_ready: bool,
         connected: bool,
         completed: bool,
+        plan_active: bool,
         soc: float | None,
-        target: float,
-        day_key: str,
+        target: float | None,
+        day_key: str | None,
+        allowed: set[datetime] | None,
     ) -> None:
         if not enabled:
             status = STATUS_DISABLED
         elif self._active:
             status = STATUS_CHARGING
-        elif not car_ready:
+        elif mode == "overview":
             status = STATUS_CAR_READY_OFF
         elif completed:
             status = STATUS_TARGET_REACHED
@@ -602,6 +663,8 @@ class PlannedNightCharge:
             status = STATUS_WAITING_FOR_CAR
         elif not plan.prices:
             status = STATUS_NO_PRICES
+        elif not plan_active:
+            status = STATUS_WAITING_FOR_PRICES
         else:
             status = STATUS_PLANNED
 
@@ -617,11 +680,15 @@ class PlannedNightCharge:
             for hour in plan.hours
         ]
         cheapest_prices = [plan.prices[hour] for hour in plan.cheapest if hour in plan.prices]
+        known = [hour for hour in plan.prices]
         attributes = {
+            "mode": mode,
+            "plan_active": plan_active,
             "window_start": plan.window_start.isoformat(),
-            "deadline": plan.deadline.isoformat(),
+            "window_end": plan.deadline.isoformat(),
+            "deadline": plan.deadline.isoformat() if mode == "plan" else None,
             "deadline_day": day_key,
-            "car_ready": car_ready,
+            "car_ready": mode == "plan",
             "connected": connected,
             "soc": soc,
             "target_soc": target,
@@ -629,6 +696,14 @@ class PlannedNightCharge:
             "needed_hours": plan.needed_hours,
             "power_kw": round(self._power_kw(), 2),
             "prices": prices,
+            "prices_until": (
+                (max(known) + timedelta(hours=1)).isoformat() if known else None
+            ),
+            "plannable": (
+                [hour.isoformat() for hour in plan.hours if hour in allowed]
+                if allowed is not None
+                else None
+            ),
             "cheapest": [hour.isoformat() for hour in plan.cheapest],
             "cheapest_average": (
                 round(sum(cheapest_prices) / len(cheapest_prices), 4)

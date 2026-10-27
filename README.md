@@ -914,16 +914,24 @@ When the balancer is **disabled** (the default), Solar Surplus treats the charge
 >
 > - Each weekday has its own **car-ready time** (`time.evsc_car_ready_time_<day>`,
 >   set in the weekly planner, which no longer shows the home target).
-> - The night window runs from the sunset before the car-ready time to the
->   car-ready time. The **5 cheapest hours** of that window are shown in the
->   Night Smart Charge card as soon as the prices are known.
+> - The plan runs from now to the next car-ready time of a day with **Car
+>   ready ON** (days with it OFF are skipped). Only night hours (sunset →
+>   sunrise, plus the morning up to the car-ready time) are used, so the
+>   plan never competes with free solar. The **5 cheapest** of those hours
+>   are shown in the Night Smart Charge card.
+> - The plan goes live once the published prices reach the car-ready time,
+>   and may start at once. If prices are still missing at the sunset before
+>   the car-ready time it plans with the known prices.
+> - With **no car-ready day** ticked the card is an overview: all hours with
+>   a known price from now on and the 5 cheapest of them.
 > - When the car is plugged in, the energy needed to reach that day's EV
 >   target (`battery capacity × (target − SOC) / 0.9`) is turned into hours
 >   at `evsc_night_charge_amperage`, and the **cheapest hours before the
 >   car-ready time** are planned. The charger runs only in those hours and
 >   stops when the target is reached.
-> - **Car ready OFF** for a day means no night charging: the car charges on
->   solar surplus only (profile `solar_surplus`), past the EV target.
+> - **Car ready OFF** for a day means no night charging towards that day:
+>   the car charges on solar surplus (profile `solar_surplus`), past the EV
+>   target.
 > - The plan is published in `sensor.evsc_night_charge_plan` (state:
 >   `planned`, `charging`, `waiting_for_car`, `car_ready_off`,
 >   `target_reached`, `no_prices`, `disabled`; attributes: hourly `prices`,

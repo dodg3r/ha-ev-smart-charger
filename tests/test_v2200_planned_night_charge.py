@@ -217,16 +217,64 @@ async def test_charges_only_in_the_cheapest_needed_hours(hass):
     assert not night.is_active()
 
 
-async def test_car_ready_off_means_no_night_charging(hass):
+async def test_no_car_ready_day_shows_an_overview(hass):
+    """v2.21.0: no car-ready day ahead -> all known hours, no charging."""
     base = _base()
     night, controller = await _component(hass, base)
-    day = WEEKDAY_KEYS[base.weekday()]
-    hass.states.async_set(f"switch.ready_{day}", "off")
+    for day in WEEKDAY_KEYS:
+        hass.states.async_set(f"switch.ready_{day}", "off")
 
     await night._evaluate(_at(base, 3, 0))
     controller.start_charger.assert_not_awaited()
-    assert night.get_plan().planned == []
-    assert night.get_plan().cheapest  # cheapest hours are still shown
+    plan = night.get_plan()
+    assert plan.planned == []
+    assert plan.hours == [_at(base, h) for h in range(3, 7)]
+    assert plan.cheapest == [_at(base, h) for h in range(3, 7)]
+
+
+async def test_skips_days_without_car_ready(hass):
+    """Only the day after tomorrow is ticked: plan towards that morning."""
+    base = _base()
+    night, controller = await _component(hass, base)
+    keys = [WEEKDAY_KEYS[(base.weekday() + i) % 7] for i in range(7)]
+    for key in keys:
+        hass.states.async_set(f"switch.ready_{key}", "off")
+    hass.states.async_set(f"switch.ready_{keys[2]}", "on")
+
+    await night._evaluate(_at(base, 3, 0))
+    plan = night.get_plan()
+    assert plan.deadline == _at(base + timedelta(days=2), 7)
+    # Prices only reach today 07:00 and it is long before the sunset before
+    # the deadline: the plan waits for prices and nothing is charged.
+    assert plan.planned == []
+    controller.start_charger.assert_not_awaited()
+
+
+async def test_missing_prices_plan_goes_live_at_sunset(hass):
+    """Fallback: at the sunset before the deadline plan with known prices."""
+    base = _base()
+    night, controller = await _component(hass, base)
+    keys = [WEEKDAY_KEYS[(base.weekday() + i) % 7] for i in range(7)]
+    for key in keys:
+        hass.states.async_set(f"switch.ready_{key}", "off")
+    hass.states.async_set(f"switch.ready_{keys[1]}", "on")  # tomorrow 07:00
+
+    await night._evaluate(_at(base, 15, 0))
+    assert night.get_plan().planned == []  # waiting for tomorrow's prices
+
+    await night._evaluate(_at(base, 22, 0))  # after sunset, still no prices
+    assert night.get_plan().planned  # planned with unknown prices
+
+
+async def test_night_hours_exclude_daytime(hass):
+    base = _base()
+    night = PlannedNightCharge(hass, "entry", {}, Mock(), _controller())
+    hours = [_at(base, h) for h in (2, 12, 23)]
+    allowed = night._night_hours(hours, _at(base + timedelta(days=1), 7))
+    assert allowed == {_at(base, 2), _at(base, 23)}
+    # On the deadline day the morning up to the deadline may be used.
+    allowed = night._night_hours([_at(base, 12)], _at(base, 16))
+    assert allowed == {_at(base, 12)}
 
 
 async def test_disconnected_car_is_not_planned(hass):

@@ -102,6 +102,7 @@ def build_plan(
     power_kw: float,
     committed: list[datetime] | None = None,
     earliest: datetime | None = None,
+    allowed: set[datetime] | None = None,
 ) -> NightPlan:
     """Build the plan for one night window.
 
@@ -109,7 +110,9 @@ def build_plan(
     window. ``planned`` is filled only when ``needed_kwh`` is known: the
     cheapest hours that cover the need. ``committed`` hours (already started)
     are kept in the plan. Only hours that end after ``earliest`` (usually
-    now) can be planned.
+    now) can be planned. When ``allowed`` is given, only those hours are
+    candidates for both the cheapest hours and the plan (v2.21.0: night
+    hours only, so the plan never competes with free solar).
     """
     hours = window_hours(window_start, deadline)
     window_prices = {hour: prices[hour] for hour in hours if hour in prices}
@@ -119,13 +122,14 @@ def build_plan(
         hours=hours,
         prices=window_prices,
     )
-    plan.cheapest = pick_cheapest(hours, window_prices, cheapest_count)
+    candidates = [hour for hour in hours if allowed is None or hour in allowed]
+    plan.cheapest = pick_cheapest(candidates, window_prices, cheapest_count)
     plan.needed_kwh = None if needed_kwh is None else round(needed_kwh, 2)
     plan.needed_hours = hours_needed(needed_kwh, power_kw)
     if plan.needed_hours is not None:
         open_hours = [
             hour
-            for hour in hours
+            for hour in candidates
             if earliest is None or hour + timedelta(hours=1) > earliest
         ]
         plan.planned = pick_cheapest(

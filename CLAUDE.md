@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.20.1
+**Current Version:** 2.21.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,32 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.21.0 (2026-10-27) — fork dodg3r
+**Night Smart Charge: overview without car ready, skips days without car ready, waits for prices, night hours only**
+
+Agreed with the maintainer:
+- **Overview** when no day in the coming week has car ready ON: the card
+  shows every hour with a known price from now on (to the end of the
+  published prices) and the 5 cheapest; nothing is charged
+  (`mode = "overview"`, status `car_ready_off`, `deadline = None`).
+- **Deadline skips days with car ready OFF** (`_next_deadline`): with only
+  Thursday ticked, Tuesday evening already plans towards Thursday 07:00. The
+  window runs from the current hour to the deadline.
+- **Plan goes live when the prices reach the deadline** (`plan_active`),
+  then it may start at once. Fallback: at the sunset before the deadline it
+  plans with what is known (unknown hours last), so missing Nord Pool data
+  never leaves the car empty. A running hour keeps the plan live. Status
+  `waiting_for_prices` while waiting.
+- **Night hours only** (`_night_hours`, `build_plan(allowed=...)`): only
+  hours between sunset and sunrise, plus the morning of the deadline day up
+  to the deadline, can be cheapest/planned, so the plan never takes the
+  charger from free solar. Daytime bars are dimmed on the card.
+- Plan sensor: new attributes `mode`, `plan_active`, `window_end`,
+  `prices_until`, `plannable`.
+- Tests: overview, skipping days, sunset fallback, night-hour filter.
+
+---
 
 ### v2.20.1 (2026-10-26) — fork dodg3r
 **FIX: "EV target reached" stuck after raising the target**
