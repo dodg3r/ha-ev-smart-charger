@@ -90,6 +90,7 @@ from .const import (
     FUSE_GRID_EXPORT_KEYS,
     FUSE_GRID_IMPORT_KEYS,
     get_charger_model,
+    has_home_battery,
     has_meter_import_power,
     is_three_phase,
 )
@@ -274,6 +275,9 @@ def _build_card_config(entry: ConfigEntry) -> dict[str, Any]:
     # the derived charging-power reading). Single-phase keeps the single keys.
     config["phase_mode"] = PHASE_MODE_THREE if is_three_phase(data) else PHASE_MODE_SINGLE
     config["charger_model"] = get_charger_model(data)
+    # v2.24.0: False when the home battery is display-only (its own control)
+    # or absent — the card then hides the priority pill.
+    config["home_battery_controlled"] = has_home_battery(data)
     if is_three_phase(data):
         for card_key, conf_keys in (
             ("solar_power_entities", (CONF_FV_PRODUCTION, CONF_FV_PRODUCTION_L2, CONF_FV_PRODUCTION_L3)),

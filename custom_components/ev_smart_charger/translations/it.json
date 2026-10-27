@@ -371,11 +371,13 @@
         "data": {
           "has_solar": "Pannelli solari",
           "has_home_battery": "Batteria domestica",
+          "home_battery_control": "Lascia che EV Smart Charger usi la batteria",
           "load_balancing": "Bilanciamento del carico"
         },
         "data_description": {
           "has_solar": "Disattiva se la casa non ha pannelli solari.",
           "has_home_battery": "Attiva se la casa ha una batteria domestica da considerare.",
+          "home_battery_control": "Disattiva se la batteria ha un proprio controllo (ad esempio un ottimizzatore AI). Viene solo mostrata nella dashboard: la ricarica non la attende, non la scarica e le impostazioni della batteria sono nascoste.",
           "load_balancing": "Chi mantiene il carico della casa sotto il limite del contatore durante la ricarica."
         }
       },
@@ -385,11 +387,13 @@
         "data": {
           "has_solar": "Pannelli solari",
           "has_home_battery": "Batteria domestica",
+          "home_battery_control": "Lascia che EV Smart Charger usi la batteria",
           "load_balancing": "Bilanciamento del carico"
         },
         "data_description": {
           "has_solar": "Disattiva se la casa non ha pannelli solari.",
           "has_home_battery": "Attiva se la casa ha una batteria domestica da considerare.",
+          "home_battery_control": "Disattiva se la batteria ha un proprio controllo (ad esempio un ottimizzatore AI). Viene solo mostrata nella dashboard: la ricarica non la attende, non la scarica e le impostazioni della batteria sono nascoste.",
           "load_balancing": "Chi mantiene il carico della casa sotto il limite del contatore durante la ricarica."
         }
       }
@@ -593,11 +597,13 @@
         "data": {
           "has_solar": "Pannelli solari",
           "has_home_battery": "Batteria domestica",
+          "home_battery_control": "Lascia che EV Smart Charger usi la batteria",
           "load_balancing": "Bilanciamento del carico"
         },
         "data_description": {
           "has_solar": "Disattiva se la casa non ha pannelli solari.",
           "has_home_battery": "Attiva se la casa ha una batteria domestica da considerare.",
+          "home_battery_control": "Disattiva se la batteria ha un proprio controllo (ad esempio un ottimizzatore AI). Viene solo mostrata nella dashboard: la ricarica non la attende, non la scarica e le impostazioni della batteria sono nascoste.",
           "load_balancing": "Chi mantiene il carico della casa sotto il limite del contatore durante la ricarica."
         }
       }

@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.23.0"
+VERSION = "2.24.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -239,6 +239,9 @@ CONF_HYBRID_INVERTER_MODE = "hybrid_inverter_mode"
 # get_load_balancing), so no migration is needed.
 CONF_HAS_SOLAR = "has_solar"
 CONF_HAS_HOME_BATTERY = "has_home_battery"
+# v2.24.0: False = the home battery is shown on the dashboard only (it has
+# its own control); the charging logic then runs as if there were no battery.
+CONF_HOME_BATTERY_CONTROL = "home_battery_control"
 CONF_LOAD_BALANCING = "load_balancing"
 LOAD_BALANCING_NONE = "none"
 LOAD_BALANCING_INTEGRATION = "integration"
@@ -736,8 +739,26 @@ def get_expected_entity_count(config: dict) -> int:
 
 
 def has_home_battery(config: dict) -> bool:
-    """Return True if the user configured a home battery SOC sensor (v1.7.0)."""
+    """Return True when the charging logic should use a home battery.
+
+    v1.7.0: a home-battery SOC sensor is mapped. v2.24.0: and the battery is
+    not display-only (``home_battery_control`` False). A display-only battery
+    is still shown on the dashboard (``shows_home_battery``) but every
+    component runs in PV-only mode and the battery helpers are not created.
+    """
+    if not config.get(CONF_SOC_HOME):
+        return False
+    return config.get(CONF_HOME_BATTERY_CONTROL, True) is not False
+
+
+def shows_home_battery(config: dict) -> bool:
+    """Return True when a home-battery SOC sensor is mapped (v2.24.0)."""
     return bool(config.get(CONF_SOC_HOME))
+
+
+def controls_home_battery(config: dict) -> bool:
+    """Return the "let the integration use the battery" answer (v2.24.0)."""
+    return config.get(CONF_HOME_BATTERY_CONTROL, True) is not False
 
 
 def has_solar(config: dict) -> bool:

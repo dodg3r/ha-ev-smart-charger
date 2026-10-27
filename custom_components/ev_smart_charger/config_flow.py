@@ -65,6 +65,7 @@ from .const import (
     FUSE_GRID_VOLTAGE_KEYS,
     MAIN_FUSE_SIZES,
     CONF_HAS_HOME_BATTERY,
+    CONF_HOME_BATTERY_CONTROL,
     CONF_HAS_SOLAR,
     CONF_LOAD_BALANCING,
     DEFAULT_LOAD_BALANCING_FUSE_SIZE,
@@ -78,6 +79,7 @@ from .const import (
     has_solar,
     is_three_phase,
     wants_home_battery,
+    controls_home_battery,
 )
 
 CURRENT_CONTROL_DOMAINS = ["number", "select", "input_number", "input_select"]
@@ -643,6 +645,7 @@ def _features_defaults(current_data: dict[str, Any] | None) -> dict[str, Any]:
     return {
         CONF_HAS_SOLAR: has_solar(current_data),
         CONF_HAS_HOME_BATTERY: wants_home_battery(current_data),
+        CONF_HOME_BATTERY_CONTROL: controls_home_battery(current_data),
         CONF_LOAD_BALANCING: get_load_balancing(current_data),
     }
 
@@ -659,6 +662,10 @@ def _features_schema(hass, current_data: dict[str, Any] | None = None) -> vol.Sc
             ): selector.BooleanSelector(),
             vol.Required(
                 CONF_HAS_HOME_BATTERY, default=defaults[CONF_HAS_HOME_BATTERY]
+            ): selector.BooleanSelector(),
+            vol.Required(
+                CONF_HOME_BATTERY_CONTROL,
+                default=defaults[CONF_HOME_BATTERY_CONTROL],
             ): selector.BooleanSelector(),
             vol.Required(
                 CONF_LOAD_BALANCING, default=defaults[CONF_LOAD_BALANCING]
@@ -683,6 +690,9 @@ def _normalize_features(user_input: dict[str, Any]) -> dict[str, Any]:
     return {
         CONF_HAS_SOLAR: bool(user_input.get(CONF_HAS_SOLAR, True)),
         CONF_HAS_HOME_BATTERY: bool(user_input.get(CONF_HAS_HOME_BATTERY, False)),
+        CONF_HOME_BATTERY_CONTROL: bool(
+            user_input.get(CONF_HOME_BATTERY_CONTROL, True)
+        ),
         CONF_LOAD_BALANCING: load_balancing,
     }
 

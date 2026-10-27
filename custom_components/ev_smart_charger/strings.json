@@ -371,11 +371,13 @@
         "data": {
           "has_solar": "Solar panels",
           "has_home_battery": "Home battery",
+          "home_battery_control": "Let EV Smart Charger use the battery",
           "load_balancing": "Load balancing"
         },
         "data_description": {
           "has_solar": "Turn off if the house has no solar panels.",
           "has_home_battery": "Turn on if the house has a home battery you want to take into account.",
+          "home_battery_control": "Turn off when the battery has its own control (for example an AI optimiser). It is then only shown on the dashboard: charging never waits for it, never draws from it and the battery settings are hidden.",
           "load_balancing": "Who keeps the house load below the main fuse while the car charges."
         }
       },
@@ -385,11 +387,13 @@
         "data": {
           "has_solar": "Solar panels",
           "has_home_battery": "Home battery",
+          "home_battery_control": "Let EV Smart Charger use the battery",
           "load_balancing": "Load balancing"
         },
         "data_description": {
           "has_solar": "Turn off if the house has no solar panels.",
           "has_home_battery": "Turn on if the house has a home battery you want to take into account.",
+          "home_battery_control": "Turn off when the battery has its own control (for example an AI optimiser). It is then only shown on the dashboard: charging never waits for it, never draws from it and the battery settings are hidden.",
           "load_balancing": "Who keeps the house load below the main fuse while the car charges."
         }
       }
@@ -593,11 +597,13 @@
         "data": {
           "has_solar": "Solar panels",
           "has_home_battery": "Home battery",
+          "home_battery_control": "Let EV Smart Charger use the battery",
           "load_balancing": "Load balancing"
         },
         "data_description": {
           "has_solar": "Turn off if the house has no solar panels.",
           "has_home_battery": "Turn on if the house has a home battery you want to take into account.",
+          "home_battery_control": "Turn off when the battery has its own control (for example an AI optimiser). It is then only shown on the dashboard: charging never waits for it, never draws from it and the battery settings are hidden.",
           "load_balancing": "Who keeps the house load below the main fuse while the car charges."
         }
       }

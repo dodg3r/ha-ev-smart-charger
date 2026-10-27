@@ -664,6 +664,9 @@ const FRONTEND_LOCALES = {
     "status.not_charging": "Not charging",
     "hero.forecast_tomorrow": "Tomorrow Forecast",
     "hero.grid_lost": "⚠ Grid lost",
+    "priority.ev": "Car first",
+    "priority.home": "Home battery first",
+    "priority.ev_free": "Targets met · solar surplus",
     "toast.boost.target_reached": "Boost can't start: EV at {ev}% (≥ target {target}%). Raise the target or wait for the battery to drain.",
     "toast.boost.missing_soc": "Boost can't start: EV SOC sensor unavailable. Check the mapped sensor.",
     "toast.dismiss_aria": "Dismiss notification",
@@ -880,6 +883,9 @@ const FRONTEND_LOCALES = {
     "status.not_charging": "Non in carica",
     "hero.forecast_tomorrow": "Forecast Domani",
     "hero.grid_lost": "⚠ Rete assente",
+    "priority.ev": "Prima l'auto",
+    "priority.home": "Prima la batteria",
+    "priority.ev_free": "Obiettivi raggiunti · surplus solare",
     "toast.boost.target_reached": "Boost non può partire: EV al {ev}% (≥ target {target}%). Alza il target o aspetta che la batteria scenda.",
     "toast.boost.missing_soc": "Boost non può partire: sensore SOC EV non disponibile. Controlla la mappatura.",
     "toast.dismiss_aria": "Chiudi notifica",
@@ -1096,6 +1102,9 @@ const FRONTEND_LOCALES = {
     "status.not_charging": "Laadt niet",
     "hero.forecast_tomorrow": "Verwachting morgen",
     "hero.grid_lost": "⚠ Net weg",
+    "priority.ev": "Auto eerst",
+    "priority.home": "Thuisbatterij eerst",
+    "priority.ev_free": "Doelen gehaald · zonne-overschot",
     "toast.boost.target_reached": "Boost kan niet starten: EV op {ev}% (≥ doel {target}%). Verhoog het doel of wacht tot de batterij zakt.",
     "toast.boost.missing_soc": "Boost kan niet starten: EV SOC-sensor niet beschikbaar. Controleer de mapping.",
     "toast.dismiss_aria": "Melding sluiten",
@@ -1286,6 +1295,9 @@ class EvSmartChargerDashboard extends HTMLElement {
       // v1.11.13 pv_forecast_entity regression above).
       phase_mode: config?.phase_mode,
       charger_model: config?.charger_model,
+      // v2.24.0: false = home battery shown only (own control) or absent;
+      // the priority pill is hidden. MUST be whitelisted.
+      home_battery_controlled: config?.home_battery_controlled,
       solar_power_entities: config?.solar_power_entities,
       home_consumption_entities: config?.home_consumption_entities,
       grid_import_entities: config?.grid_import_entities,
@@ -2384,17 +2396,21 @@ class EvSmartChargerDashboard extends HTMLElement {
    * Home → blue, EV_Free → purple. Unknown / unavailable → neutral chip.
    */
   _renderPriorityPill(stateObj) {
-    if (!stateObj?.state) {
-      return `<span class="priority-pill">${this._t("common.unavailable")}</span>`;
-    }
+    // v2.24.0: the pill only means something when the integration balances
+    // the car against a home battery it controls. Hidden otherwise
+    // (no battery, or a display-only battery with its own control).
+    const controlled = this._config?.home_battery_controlled;
+    if (controlled === false) return "";
+    if (controlled === undefined && !this._config?.home_battery_soc_entity) return "";
+    if (!stateObj?.state) return "";
     const raw = String(stateObj.state).trim();
     const modifier = raw.toLowerCase().replace(/\s+/g, "_");
-    const labelMap = {
-      ev: "EV",
-      home: "Home",
-      ev_free: "EV Free",
+    const keyMap = {
+      ev: "priority.ev",
+      home: "priority.home",
+      ev_free: "priority.ev_free",
     };
-    const label = labelMap[modifier] || raw;
+    const label = keyMap[modifier] ? this._t(keyMap[modifier]) : raw;
     return `<span class="priority-pill state-${modifier}">${label}</span>`;
   }
 
@@ -3175,7 +3191,11 @@ class EvSmartChargerDashboard extends HTMLElement {
    */
   _renderAccordion(cat) {
     const open = this._openAccordions.has(cat.id);
-    const itemsHtml = cat.items.map((item) => this._renderSettingItemFromCatalog(item)).join("");
+    const rendered = cat.items
+      .map((item) => this._renderSettingItemFromCatalog(item))
+      .filter((html) => html);
+    if (!rendered.length) return "";
+    const itemsHtml = rendered.join("");
     return `
       <div class="evsc-acc ${open ? "open" : ""}">
         <div class="evsc-acc-head" data-accordion="${cat.id}">
@@ -3184,7 +3204,7 @@ class EvSmartChargerDashboard extends HTMLElement {
             <h3>${this._loc(cat.name)}</h3>
             <p>${this._loc(cat.desc)}</p>
           </div>
-          <div class="evsc-acc-count">${cat.items.length}</div>
+          <div class="evsc-acc-count">${rendered.length}</div>
           <svg class="evsc-acc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
             <polyline points="9 6 15 12 9 18"/>
           </svg>
@@ -3198,6 +3218,9 @@ class EvSmartChargerDashboard extends HTMLElement {
 
   _renderSettingItemFromCatalog(item) {
     const entityId = this._entityId(item.entityKey);
+    // v2.24.0: skip settings whose helper entity is not created for this
+    // install (e.g. the battery settings without a controlled home battery).
+    if (this._hass && entityId && !this._stateObj(entityId)) return "";
     const suffix = DOMAIN_SUFFIXES[item.entityKey]?.[1] || "";
     let control = "";
     if (item.kind === "toggle") {

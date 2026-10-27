@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.23.0
+**Current Version:** 2.24.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,28 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.24.0 (2026-10-27) — fork dodg3r
+**Display-only home battery; priority pill in plain words**
+
+Requested by the maintainer: Dahlbergs' home battery has its own AI control,
+but should still be shown on the dashboard.
+- New setup answer `CONF_HOME_BATTERY_CONTROL` ("Let EV Smart Charger use the
+  battery", default on) in the "What do you have?" step (all three flows).
+- `has_home_battery(config)` is now "SOC sensor mapped AND control not off",
+  so every component (Priority Balancer, Solar Surplus battery support, Night
+  Smart Charge battery mode, helper creation, entity counts) treats a
+  display-only battery as PV-only. New `shows_home_battery()` /
+  `controls_home_battery()`. `CONF_SOC_HOME` and `CONF_BATTERY_POWER` stay
+  mapped, so the dashboard ring and the derived home consumption keep working.
+  Orphan battery helpers are removed by the v2.17.0 cleanup.
+- Card config `home_battery_controlled`; the priority pill is hidden when it
+  is false and reads "Car first / Home battery first / Targets met · solar
+  surplus" otherwise. Settings whose helper entity does not exist are skipped
+  (empty accordions hidden, count follows).
+- Tests: NEW `tests/test_v2240_display_only_battery.py`.
+
+---
 
 ### v2.23.0 (2026-10-27) — fork dodg3r
 **Hero card says each thing once, in plain words; missing prices retried every minute**

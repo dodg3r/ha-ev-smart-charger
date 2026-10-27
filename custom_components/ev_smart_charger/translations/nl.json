@@ -371,11 +371,13 @@
         "data": {
           "has_solar": "Zonnepanelen",
           "has_home_battery": "Thuisbatterij",
+          "home_battery_control": "Laat EV Smart Charger de batterij gebruiken",
           "load_balancing": "Load balancing"
         },
         "data_description": {
           "has_solar": "Uitschakelen als het huis geen zonnepanelen heeft.",
           "has_home_battery": "Inschakelen als het huis een thuisbatterij heeft waarmee rekening moet worden gehouden.",
+          "home_battery_control": "Uitschakelen als de batterij een eigen sturing heeft (bijvoorbeeld een AI-optimalisatie). Ze wordt dan alleen op het dashboard getoond: laden wacht er nooit op, gebruikt haar nooit en de batterij-instellingen worden verborgen.",
           "load_balancing": "Wie de belasting van het huis onder de hoofdzekering houdt tijdens het laden."
         }
       },
@@ -385,11 +387,13 @@
         "data": {
           "has_solar": "Zonnepanelen",
           "has_home_battery": "Thuisbatterij",
+          "home_battery_control": "Laat EV Smart Charger de batterij gebruiken",
           "load_balancing": "Load balancing"
         },
         "data_description": {
           "has_solar": "Uitschakelen als het huis geen zonnepanelen heeft.",
           "has_home_battery": "Inschakelen als het huis een thuisbatterij heeft waarmee rekening moet worden gehouden.",
+          "home_battery_control": "Uitschakelen als de batterij een eigen sturing heeft (bijvoorbeeld een AI-optimalisatie). Ze wordt dan alleen op het dashboard getoond: laden wacht er nooit op, gebruikt haar nooit en de batterij-instellingen worden verborgen.",
           "load_balancing": "Wie de belasting van het huis onder de hoofdzekering houdt tijdens het laden."
         }
       }
@@ -593,11 +597,13 @@
         "data": {
           "has_solar": "Zonnepanelen",
           "has_home_battery": "Thuisbatterij",
+          "home_battery_control": "Laat EV Smart Charger de batterij gebruiken",
           "load_balancing": "Load balancing"
         },
         "data_description": {
           "has_solar": "Uitschakelen als het huis geen zonnepanelen heeft.",
           "has_home_battery": "Inschakelen als het huis een thuisbatterij heeft waarmee rekening moet worden gehouden.",
+          "home_battery_control": "Uitschakelen als de batterij een eigen sturing heeft (bijvoorbeeld een AI-optimalisatie). Ze wordt dan alleen op het dashboard getoond: laden wacht er nooit op, gebruikt haar nooit en de batterij-instellingen worden verborgen.",
           "load_balancing": "Wie de belasting van het huis onder de hoofdzekering houdt tijdens het laden."
         }
       }

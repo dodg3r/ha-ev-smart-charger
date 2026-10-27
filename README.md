@@ -357,6 +357,10 @@ If you do not have a home battery installed, leave the **Home battery SOC** fiel
 - Night Smart Charge always uses **GRID MODE** (BATTERY MODE is disabled).
 - Hybrid Inverter Mode (v1.8.0+) is technically available but stays IDLE in PV-only mode — its entry conditions require a home battery SOC sensor.
 
+### Display-only home battery — v2.24.0+
+
+If your home battery has its own control (for example an AI optimiser) but you still want it on the dashboard, answer **Home battery: on** and turn **Let EV Smart Charger use the battery** off in the "What do you have?" step. The battery SOC (and battery power, if mapped) stays on the dashboard, but the charging logic runs exactly as in PV-only mode: charging never waits for the battery, never draws from it, the battery settings are not created and the priority pill is hidden.
+
 **Reconfigure restriction**: once a home battery sensor has been configured, the field stays required in the reconfigure / options flow. This prevents orphan helper entities from accumulating in the Home Assistant entity registry. To remove a home battery from an existing setup, delete the integration and add it again.
 
 ---
