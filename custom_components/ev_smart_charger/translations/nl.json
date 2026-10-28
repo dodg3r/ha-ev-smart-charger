@@ -868,10 +868,7 @@
     },
     "select": {
       "evsc_active_car": {
-        "name": "Actieve auto",
-        "state": {
-          "guest": "Gast"
-        }
+        "name": "Actieve auto"
       },
       "evsc_charging_profile": {
         "name": "Laadprofiel",

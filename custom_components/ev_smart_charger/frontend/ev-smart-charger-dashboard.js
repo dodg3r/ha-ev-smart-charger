@@ -687,7 +687,6 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Car connected",
     "charger.full": "Fully charged",
     "car.label": "Car",
-    "car.guest": "Guest",
     "reason.surplus_low_need": "Car connected · solar surplus {kw} kW, too little to start (needs {need} kW)",
     "charger.stopped": "Stopped",
     "charger.fuse_paused": "Paused (fuse)",
@@ -909,7 +908,6 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Bil ansluten",
     "charger.full": "Fulladdad",
     "car.label": "Bil",
-    "car.guest": "Gäst",
     "reason.surplus_low_need": "Bil ansluten · solöverskott {kw} kW, för lite för att starta (kräver {need} kW)",
     "charger.stopped": "Stoppad",
     "charger.fuse_paused": "Pausad (säkring)",
@@ -1131,7 +1129,6 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Auto collegata",
     "charger.full": "Carica completa",
     "car.label": "Auto",
-    "car.guest": "Ospite",
     "reason.surplus_low_need": "Auto collegata · surplus {kw} kW, troppo poco per iniziare (servono {need} kW)",
     "charger.stopped": "Fermato",
     "charger.fuse_paused": "In pausa (fusibile)",
@@ -1353,7 +1350,6 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Auto aangesloten",
     "charger.full": "Volledig geladen",
     "car.label": "Auto",
-    "car.guest": "Gast",
     "reason.surplus_low_need": "Auto aangesloten · overschot {kw} kW, te weinig om te starten (nodig {need} kW)",
     "charger.stopped": "Gestopt",
     "charger.fuse_paused": "Gepauzeerd (zekering)",
@@ -2375,13 +2371,23 @@ class EvSmartChargerDashboard extends HTMLElement {
     this._carWithoutSoc = !car.ev_soc_entity;
   }
 
+  /** v2.32.1: the car dropdown alone; in the tab bar or as its own part. */
+  _renderCarSelect(className) {
+    const profiles = this._carProfiles();
+    if (!profiles || profiles.cars.length < 2) return "";
+    const options = profiles.cars.map((c) => {
+      const name = this._escapeHtml(String(c.name));
+      return `<option value="${name}" ${c.name === profiles.active ? "selected" : ""}>${name}</option>`;
+    }).join("");
+    return `<select class="${className}" aria-label="${this._escapeHtml(this._t("car.label"))}" data-car-select="${profiles.entityId}">${options}</select>`;
+  }
+
   _renderCarPicker() {
     const profiles = this._carProfiles();
     if (!profiles || profiles.cars.length < 2) return "";
     const options = profiles.cars.map((c) => {
       const name = this._escapeHtml(String(c.name));
-      const label = c.name === "guest" ? this._escapeHtml(this._t("car.guest")) : name;
-      return `<option value="${name}" ${c.name === profiles.active ? "selected" : ""}>${label}</option>`;
+      return `<option value="${name}" ${c.name === profiles.active ? "selected" : ""}>${name}</option>`;
     }).join("");
     return `
       <div class="evsc-car-bar">
@@ -3313,6 +3319,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     const isDashboard = this._view !== "settings";
     return `
       <div class="evsc-tabs">
+        ${this._renderCarSelect("evsc-tab-car")}
         <button class="evsc-tab ${isDashboard ? "active" : ""}" data-view="dashboard">
           <span class="evsc-tab-dot"></span>${this._label("nav_dashboard")}
         </button>
@@ -4087,7 +4094,6 @@ class EvSmartChargerDashboard extends HTMLElement {
           <div class="aurora aurora-b"></div>
           <div class="grain"></div>`}
 
-          ${embedded ? "" : this._renderCarPicker()}
           ${embedded ? "" : this._renderTabs()}
           ${viewHtml}
           ${diagnosticsHtml}
@@ -5515,6 +5521,29 @@ class EvSmartChargerDashboard extends HTMLElement {
           padding: 6px 14px;
           min-height: 36px;
           max-width: 100%;
+          touch-action: manipulation;
+        }
+        /* v2.32.1: car dropdown as the first item of the tab bar */
+        .evsc-tab-car {
+          appearance: none;
+          -webkit-appearance: none;
+          border: none;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--evsc-fg);
+          background-color: var(--evsc-surface-strong);
+          background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                            linear-gradient(135deg, currentColor 50%, transparent 50%);
+          background-position: right 13px center, right 9px center;
+          background-size: 4px 4px, 4px 4px;
+          background-repeat: no-repeat;
+          border-radius: 999px;
+          padding: 9px 26px 9px 14px;
+          margin-right: 4px;
+          max-width: 140px;
+          text-overflow: ellipsis;
+          cursor: pointer;
           touch-action: manipulation;
         }
         .evsc-tabs {

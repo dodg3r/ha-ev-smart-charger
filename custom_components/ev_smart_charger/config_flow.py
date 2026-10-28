@@ -869,14 +869,9 @@ def _car_schema(car: dict[str, Any] | None = None) -> vol.Schema:
     )
 
 
-_GUEST_LABELS = {"en": "Guest", "it": "Ospite", "nl": "Gast", "sv": "Gäst"}
-
-
-def _cars_list_text(hass, cars: list[dict], active: str | None) -> str:
+def _cars_list_text(cars: list[dict], active: str | None) -> str:
     """The guest profile first (always there, no sensors), then own cars."""
-    lang = (getattr(hass.config, "language", None) or "en") if hass else "en"
-    guest = _GUEST_LABELS.get(lang, _GUEST_LABELS["en"])
-    lines = [f"• {guest}{' ✓' if active == GUEST_CAR else ''} — —"]
+    lines = [f"• {GUEST_CAR}{' ✓' if active == GUEST_CAR else ''} — —"]
     for car in cars:
         mark = " ✓" if car[CONF_CAR_NAME] == active else ""
         lines.append(f"• {car[CONF_CAR_NAME]}{mark} — {car.get(CONF_SOC_CAR) or '—'}")
@@ -964,7 +959,7 @@ class _StepNavigator:
             if action == "done":
                 return await self._go_next("cars")
         placeholders = self._placeholders("cars")
-        placeholders["cars"] = _cars_list_text(self.hass, cars, self._active_car)
+        placeholders["cars"] = _cars_list_text(cars, self._active_car)
         return self.async_show_form(
             step_id=step_id,
             data_schema=_cars_menu_schema(self.hass, cars),

@@ -181,6 +181,12 @@ async def test_removing_every_car_leaves_the_guest(hass):
     assert [c[CONF_CAR_NAME] for c in get_cars(data)] == [GUEST_CAR]
 
 
+def test_lowercase_guest_from_v2320_is_the_guest():
+    data = {**TWO_CARS, CONF_ACTIVE_CAR: "guest"}
+    assert get_active_car_name(data) == GUEST_CAR == "Guest"
+    assert apply_active_car(data)[CONF_SOC_CAR] is None
+
+
 async def test_guest_choice_stays(hass):
     """The user picked the guest: reconfiguring does not change that."""
     flow = await _options_flow_to_cars(hass, {**TWO_CARS, CONF_ACTIVE_CAR: GUEST_CAR})

@@ -723,6 +723,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Entry deleted: remove the auto-dashboard when no other entry is left."""
+    remaining_entries = [
+        e
+        for e in hass.config_entries.async_entries(DOMAIN)
+        if e.entry_id != entry.entry_id and not e.disabled_by
+    ]
+    if remaining_entries:
+        return
+    try:
+        await async_remove_dashboard(hass, remove_resource=True)
+    except Exception as err:
+        _LOGGER.warning("Auto-dashboard removal failed: %s", err)
+
+
 async def _reload_on_update(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload the integration when config entry is updated."""
     _LOGGER.info("🔄 Configuration updated - reloading integration")
@@ -807,18 +822,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.info("🗑️  Unloading platforms")
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-    # Auto-generated dashboard cleanup — only remove when this is the last
-    # active entry. The resource stays registered if other entries remain.
-    remaining_entries = [
-        e
-        for e in hass.config_entries.async_entries(DOMAIN)
-        if e.entry_id != entry.entry_id and not e.disabled_by
-    ]
-    if not remaining_entries:
-        try:
-            await async_remove_dashboard(hass, remove_resource=True)
-        except Exception as err:
-            _LOGGER.warning("Auto-dashboard removal during unload failed: %s", err)
+    # v2.32.1: the auto-generated dashboard is NOT removed on unload. An
+    # unload is also the first half of every reload (switching car, options),
+    # and removing the panel there sent the open dashboard back to the
+    # default one. It is removed in async_remove_entry instead.
 
     if unload_ok:
         entry.runtime_data = None

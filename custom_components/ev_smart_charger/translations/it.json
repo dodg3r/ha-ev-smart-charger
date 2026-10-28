@@ -868,10 +868,7 @@
     },
     "select": {
       "evsc_active_car": {
-        "name": "Auto attiva",
-        "state": {
-          "guest": "Ospite"
-        }
+        "name": "Auto attiva"
       },
       "evsc_charging_profile": {
         "name": "Profilo di ricarica",

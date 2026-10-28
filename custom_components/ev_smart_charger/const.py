@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.32.0"
+VERSION = "2.32.1"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -752,7 +752,7 @@ CONF_ACTIVE_CAR = "active_car"
 CONF_CAR_NAME = "name"
 CAR_FIELDS = (CONF_SOC_CAR, CONF_EV_SOC_LIMIT, CONF_BATTERY_CAPACITY)
 DEFAULT_CAR_NAME = "Car 1"
-GUEST_CAR = "guest"
+GUEST_CAR = "Guest"
 # Names a user car may not take (they read as the guest profile).
 RESERVED_CAR_NAMES = frozenset({"guest", "gäst", "gast", "ospite"})
 HELPER_ACTIVE_CAR_SUFFIX = "evsc_active_car"
@@ -802,7 +802,9 @@ def get_active_car_name(config: dict) -> str:
     or the guest when there is none."""
     own = [car[CONF_CAR_NAME] for car in get_own_cars(config)]
     active = config.get(CONF_ACTIVE_CAR)
-    if active == GUEST_CAR or active in own:
+    if isinstance(active, str) and active.casefold() in RESERVED_CAR_NAMES:
+        return GUEST_CAR  # v2.32.0 stored it as "guest"
+    if active in own:
         return active
     return own[0] if own else GUEST_CAR
 

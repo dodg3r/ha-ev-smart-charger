@@ -868,10 +868,7 @@
     },
     "select": {
       "evsc_active_car": {
-        "name": "Active car",
-        "state": {
-          "guest": "Guest"
-        }
+        "name": "Active car"
       },
       "evsc_charging_profile": {
         "name": "Charging profile",

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.32.0
+**Current Version:** 2.32.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,24 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.32.1 (2026-10-28) — fork dodg3r
+**FIX: switching car left the dashboard; car dropdown in the tab bar; "Guest"**
+
+Requested by the maintainer.
+- Choosing a car reloads the entry, and `async_unload_entry` removed the
+  auto-dashboard (single entry → "last entry"), so the panel vanished and the
+  browser fell back to the default dashboard. The removal moved to the new
+  `async_remove_entry` (entry deleted); an unload/reload keeps the panel.
+- Dashboard: the car dropdown is the first item of the tab bar, left of
+  Overview (`_renderCarSelect`, `.evsc-tab-car`), without a label; the
+  standalone bar stays for the embedded `car` section.
+- `GUEST_CAR = "Guest"` (shown as is everywhere); an entry that stored
+  `"guest"` in v2.32.0 still resolves to the guest profile. The select state
+  translations and the `car.guest` locale key are gone.
+- Tests: legacy `"guest"` active car.
+
+---
 
 ### v2.32.0 (2026-10-28) — fork dodg3r
 **Car profiles at the end of the setup; a Guest profile without sensors**
