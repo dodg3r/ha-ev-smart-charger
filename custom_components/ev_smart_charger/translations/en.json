@@ -34,6 +34,7 @@
         "description": "Map the sensors used by Solar Surplus, Priority Balancer, and Night Smart Charge. In three-phase mode you map three sensors per quantity (one per phase).",
         "data": {
           "soc_car": "EV battery SOC",
+          "ev_soc_limit": "EV charge limit (optional)",
           "soc_home": "Home battery SOC",
           "fv_production": "Solar production",
           "home_consumption": "Home consumption",
@@ -51,6 +52,7 @@
         },
         "data_description": {
           "soc_car": "Sensor with the EV state of charge in percent.",
+          "ev_soc_limit": "Sensor with the car's own charge limit in percent (e.g. the target battery charge level from the car's integration). Its value counts as full: EV targets are capped to it and a car at the limit is not started. Leave empty for 100 %.",
           "soc_home": "Sensor with the home battery state of charge in percent. Shown because you answered that the house has a home battery; answer no in the first step to remove it.",
           "fv_production": "Sensor with current PV production in watts. In three-phase mode: phase L1, or the TOTAL production if you only have a total sensor (then leave L2 and L3 empty).",
           "home_consumption": "Home consumption on phase L1 in watts, or the TOTAL if you only have a total sensor (then leave L2 and L3 empty). Leave empty if you mapped import power per phase in the meter step: home consumption is then computed as production + grid import − EV charging power (− battery charging if a battery power sensor is mapped).",
@@ -184,6 +186,7 @@
         "description": "Update the energy and SOC sensors used by the integration. In three-phase mode you map three sensors per quantity (one per phase).",
         "data": {
           "soc_car": "EV battery SOC",
+          "ev_soc_limit": "EV charge limit (optional)",
           "soc_home": "Home battery SOC",
           "fv_production": "Solar production",
           "home_consumption": "Home consumption",
@@ -201,6 +204,7 @@
         },
         "data_description": {
           "soc_car": "Sensor with the EV state of charge in percent.",
+          "ev_soc_limit": "Sensor with the car's own charge limit in percent (e.g. the target battery charge level from the car's integration). Its value counts as full: EV targets are capped to it and a car at the limit is not started. Leave empty for 100 %.",
           "soc_home": "Sensor with the home battery state of charge in percent. Shown because you answered that the house has a home battery; answer no in the first step to remove it.",
           "fv_production": "Sensor with current PV production in watts. In three-phase mode: phase L1, or the TOTAL production if you only have a total sensor (then leave L2 and L3 empty).",
           "home_consumption": "Home consumption on phase L1 in watts, or the TOTAL if you only have a total sensor (then leave L2 and L3 empty). Leave empty if you mapped import power per phase in the meter step: home consumption is then computed as production + grid import − EV charging power (− battery charging if a battery power sensor is mapped).",
@@ -430,6 +434,7 @@
         "description": "Update the energy and SOC sensors used by the integration. In three-phase mode you map three sensors per quantity (one per phase).",
         "data": {
           "soc_car": "EV battery SOC",
+          "ev_soc_limit": "EV charge limit (optional)",
           "soc_home": "Home battery SOC",
           "fv_production": "Solar production",
           "home_consumption": "Home consumption",
@@ -447,6 +452,7 @@
         },
         "data_description": {
           "soc_car": "Sensor with the EV state of charge in percent.",
+          "ev_soc_limit": "Sensor with the car's own charge limit in percent (e.g. the target battery charge level from the car's integration). Its value counts as full: EV targets are capped to it and a car at the limit is not started. Leave empty for 100 %.",
           "soc_home": "Sensor with the home battery state of charge in percent. Shown because you answered that the house has a home battery; answer no in the first step to remove it.",
           "fv_production": "Sensor with current PV production in watts. In three-phase mode: phase L1, or the TOTAL production if you only have a total sensor (then leave L2 and L3 empty).",
           "home_consumption": "Home consumption on phase L1 in watts, or the TOTAL if you only have a total sensor (then leave L2 and L3 empty). Leave empty if you mapped import power per phase in the meter step: home consumption is then computed as production + grid import − EV charging power (− battery charging if a battery power sensor is mapped).",

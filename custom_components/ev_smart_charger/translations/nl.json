@@ -34,6 +34,7 @@
         "description": "Koppel de sensoren die door Solar Surplus, Priority Balancer en Night Smart Charge worden gebruikt. In driefase koppel je drie sensoren per grootheid (één per fase).",
         "data": {
           "soc_car": "EV-batterij-SOC",
+          "ev_soc_limit": "EV-laadlimiet (optioneel)",
           "soc_home": "Thuisbatterij-SOC",
           "fv_production": "Zonneproductie",
           "home_consumption": "Woningverbruik",
@@ -51,6 +52,7 @@
         },
         "data_description": {
           "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
+          "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten (bijv. het doel-laadniveau van de auto-integratie). De waarde telt als vol: EV-doelen worden hierop begrensd en een auto op de limiet wordt niet gestart. Leeg laten voor 100 %.",
           "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Sensor met de actuele PV-productie in watt.",
           "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: het huisverbruik wordt dan berekend als opwek + netafname − laadvermogen (− batterijladen als een batterijvermogensensor is gekoppeld).",
@@ -184,6 +186,7 @@
         "description": "Werk de energie- en SOC-sensoren bij die door de integratie worden gebruikt. In driefase koppel je drie sensoren per grootheid (één per fase).",
         "data": {
           "soc_car": "EV-batterij-SOC",
+          "ev_soc_limit": "EV-laadlimiet (optioneel)",
           "soc_home": "Thuisbatterij-SOC",
           "fv_production": "Zonneproductie",
           "home_consumption": "Woningverbruik",
@@ -201,6 +204,7 @@
         },
         "data_description": {
           "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
+          "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten (bijv. het doel-laadniveau van de auto-integratie). De waarde telt als vol: EV-doelen worden hierop begrensd en een auto op de limiet wordt niet gestart. Leeg laten voor 100 %.",
           "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Sensor met de actuele PV-productie in watt.",
           "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: het huisverbruik wordt dan berekend als opwek + netafname − laadvermogen (− batterijladen als een batterijvermogensensor is gekoppeld).",
@@ -430,6 +434,7 @@
         "description": "Werk de energie- en SOC-sensoren bij die door de integratie worden gebruikt. In driefase koppel je drie sensoren per grootheid (één per fase).",
         "data": {
           "soc_car": "EV-batterij-SOC",
+          "ev_soc_limit": "EV-laadlimiet (optioneel)",
           "soc_home": "Thuisbatterij-SOC",
           "fv_production": "Zonneproductie",
           "home_consumption": "Woningverbruik",
@@ -447,6 +452,7 @@
         },
         "data_description": {
           "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
+          "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten (bijv. het doel-laadniveau van de auto-integratie). De waarde telt als vol: EV-doelen worden hierop begrensd en een auto op de limiet wordt niet gestart. Leeg laten voor 100 %.",
           "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Sensor met de actuele PV-productie in watt.",
           "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: het huisverbruik wordt dan berekend als opwek + netafname − laadvermogen (− batterijladen als een batterijvermogensensor is gekoppeld).",

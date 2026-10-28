@@ -28,7 +28,7 @@ from .const import (
     PRIORITY_BOOST_CHARGE,
 )
 from .localization import translate_runtime
-from .power_model import is_disconnected_status
+from .power_model import cap_ev_target, is_disconnected_status, read_ev_soc_limit
 from .runtime import EVSCRuntimeData
 from .utils import state_helper
 from .utils.logging_helper import EVSCLogger
@@ -251,8 +251,9 @@ class BoostCharge:
         return self._boost_active
 
     def get_target_soc(self) -> int | None:
-        """Return configured boost target SOC."""
-        return state_helper.get_int(self.hass, self._boost_target_soc_entity, default=None)
+        """Return configured boost target SOC (v2.30.0: capped to the car's limit)."""
+        target = state_helper.get_int(self.hass, self._boost_target_soc_entity, default=None)
+        return cap_ev_target(target, read_ev_soc_limit(self.hass, self.config))
 
     def get_target_amperage(self) -> int | None:
         """Return configured boost amperage."""

@@ -1557,6 +1557,8 @@ class EvSmartChargerDashboard extends HTMLElement {
       entity_prefix: config?.entity_prefix || "",
       charging_power_entity: config?.charging_power_entity,
       ev_soc_entity: config?.ev_soc_entity,
+      // v2.30.0: the car's own charge limit; its value counts as full.
+      ev_soc_limit_entity: config?.ev_soc_limit_entity,
       home_battery_soc_entity: config?.home_battery_soc_entity,
       solar_power_entity: config?.solar_power_entity,
       grid_import_entity: config?.grid_import_entity,
@@ -1899,7 +1901,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     if (this._isOn(entityId)) return { ok: true };
 
     const evSoc = this._numericState(this._config.ev_soc_entity);
-    const target = this._numericState(this._entityId("boostTargetSoc"));
+    const target = this._capToEvLimit(this._numericState(this._entityId("boostTargetSoc")));
     // v2.22.0: an unknown SOC no longer blocks Boost; it then charges until
     // the car is unplugged.
     if (evSoc != null && target != null && evSoc >= target) {
@@ -2293,6 +2295,10 @@ class EvSmartChargerDashboard extends HTMLElement {
 
   /** v2.23.0: the target the current session charges towards. */
   _activeEvTarget() {
+    return this._capToEvLimit(this._rawActiveEvTarget());
+  }
+
+  _rawActiveEvTarget() {
     if (this._isOn(this._entityId("boostEnabled"))) {
       return this._numericState(this._entityId("boostTargetSoc"));
     }
@@ -2301,6 +2307,25 @@ class EvSmartChargerDashboard extends HTMLElement {
       return Number(plan.target);
     }
     return this._numericState(this._entityId("todayEvTarget"));
+  }
+
+  /** v2.30.0: the car's own charge limit in %, or null (= 100 %). */
+  _evSocLimit() {
+    const limit = this._numericState(this._config.ev_soc_limit_entity);
+    return limit != null && limit > 0 && limit <= 100 ? limit : null;
+  }
+
+  _capToEvLimit(target) {
+    const limit = this._evSocLimit();
+    if (target == null || limit == null) return target;
+    return Math.min(target, limit);
+  }
+
+  /** v2.30.0: at or above the car's own limit (or 100 % without one). */
+  _isEvFull(ev) {
+    if (ev == null) return false;
+    const limit = this._evSocLimit();
+    return ev >= (limit != null ? limit : 100);
   }
 
   /** v2.23.0: main-fuse state for the status line, or null. */
@@ -2354,6 +2379,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     if (up.includes("NIGHT CHARGE COOLDOWN") || up.includes("NIGHT SMART CHARGE")) {
       return this._t("reason.night_charge");
     }
+    if (up.includes("CAR FULL")) return this._t("charger.full");
     if (up.includes("TARGET")) return this._t("reason.target_reached");
     if (up.includes("SUNSET")) return this._t("reason.sunset");
     if (up.startsWith("ERROR") || up.includes("SENSOR")) return this._t("reason.sensor");
@@ -2444,7 +2470,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     if (conn === "none") return this._t("charger.no_car");
     if (this._fuseNote()?.kind === "paused") return this._t("charger.fuse_paused");
     const ev = this._numericState(this._config.ev_soc_entity);
-    if (conn === "complete" || (ev != null && ev >= 100)) return this._t("charger.full");
+    if (conn === "complete" || this._isEvFull(ev)) return this._t("charger.full");
     if (conn === "connected") return this._t("charger.connected");
     return this._t("charger.idle");
   }
@@ -2693,7 +2719,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       isCharging
       && derivedKw != null
       && derivedKw > 0
-      && !(evPct != null && evPct >= 100);
+      && !this._isEvFull(evPct);
     // v2.23.0: the ring always shows the EV SOC and the target it charges
     // towards; power and current live in the tiles.
     void isActuallyCharging;
@@ -4093,7 +4119,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       isCharging
       && derivedKw != null
       && derivedKw > 0
-      && !(evPct != null && evPct >= 100);
+      && !this._isEvFull(evPct);
     void isActuallyCharging;
     const { headline: ringHeadline, sub: ringSub } = this._ringText(evPct);
 

@@ -53,7 +53,12 @@ from .const import (
     has_home_battery,
 )
 from .localization import translate_runtime
-from .power_model import ChargingModel, is_disconnected_status
+from .power_model import (
+    ChargingModel,
+    is_disconnected_status,
+    is_ev_full,
+    read_ev_soc_limit,
+)
 from .runtime import EVSCRuntimeData
 from .utils.logging_helper import EVSCLogger
 from .utils.notification_service import NotificationService
@@ -167,6 +172,7 @@ class SolarSurplusAutomation:
         self._battery_support_active = False  # Flag for home battery support mode
         self._surplus_stable_since = None  # Timestamp when surplus became stable (for hysteresis)
         self._deadband_start_time = None  # Timestamp when dead band first detected (opportunistic start)
+        self._car_full_logged = False  # v2.30.0: log "car full" once per episode
         self._waiting_for_surplus_decrease = False  # Flag for surplus drop delay in EV_FREE mode
         self._surplus_decrease_start_time = None  # Timestamp when surplus drop started
 
@@ -1055,6 +1061,13 @@ class SolarSurplusAutomation:
             self.logger.info("No charger status sensor - proceeding (status optional)")
         charger_is_on = await self.charger_controller.is_charging()
 
+        # === 7b. Car full (v2.30.0) ===
+        # With the car's own charge limit mapped, a car at or above it is full:
+        # do not start it (the car would only pause the session). A running
+        # session is left alone; the car stops drawing by itself.
+        if await self._car_full_skip(charger_is_on):
+            return
+
         # === 8. Priority Balancer Decision ===
         priority = None
         if self.priority_balancer.is_enabled():
@@ -1550,6 +1563,41 @@ class SolarSurplusAutomation:
             f"SOC stale (continue) [{context}] - age={age_label}, "
             f"entity={stale_info.get('entity')} - continuing by policy"
         )
+
+    async def _car_full_skip(self, charger_is_on: bool) -> bool:
+        """Skip the tick when the car is at its own charge limit (v2.30.0).
+
+        Only acts when a charge-limit sensor is mapped and the charger is off.
+        Returns True when the tick was handled (caller returns).
+        """
+        limit = read_ev_soc_limit(self.hass, self.config)
+        if limit is None or charger_is_on:
+            self._car_full_logged = False
+            return False
+        soc = await self.priority_balancer.get_ev_current_soc()
+        if not is_ev_full(soc, limit):
+            self._car_full_logged = False
+            return False
+        if self._has_control():
+            self._release_control("Car full")
+            self._handle_control_loss("Car full")
+        if not self._car_full_logged:
+            self.logger.info(
+                f"{self.logger.EV} Car full ({soc:.0f}% >= limit {limit:.0f}%) - not starting"
+            )
+            self._car_full_logged = True
+        else:
+            self.logger.debug(f"Car full ({soc:.0f}% >= {limit:.0f}%) - skipping")
+        await self._update_diagnostic_sensor(
+            "SKIPPED: Car full",
+            {
+                "reason": "EV at its own charge limit",
+                "ev_soc": soc,
+                "ev_soc_limit": limit,
+                "last_check": dt_util.now().isoformat(),
+            },
+        )
+        return True
 
     async def _enforce_ev_target_hard_cap(self, context: str, charger_is_on: bool | None = None) -> bool:
         """

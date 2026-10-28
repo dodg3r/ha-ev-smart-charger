@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.29.1"
+VERSION = "2.30.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -146,6 +146,11 @@ CONF_PV_FORECAST = "pv_forecast"
 # battery. When mapped and OFF (sustained), the night session stops. Unmapped =
 # byte-for-byte legacy behaviour.
 CONF_GRID_AVAILABLE = "grid_available"
+# v2.30.0: optional sensor with the car's own charge limit (e.g. the Volvo
+# "target battery charge level"). When mapped, that value counts as full:
+# every EV target is capped to it and Solar Surplus does not start a full car.
+# Unmapped or unreadable = 100 % (unchanged behaviour).
+CONF_EV_SOC_LIMIT = "ev_soc_limit"
 
 # Phase mode + per-phase sensors (v2.0.0). The existing keys above act as L1
 # (so single-phase installs are byte-for-byte unchanged); L2/L3 are only mapped

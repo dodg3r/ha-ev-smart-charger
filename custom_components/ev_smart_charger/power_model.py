@@ -27,6 +27,7 @@ from .const import (
     CONF_CHARGING_POWER_L2,
     CONF_CHARGING_POWER_L3,
     CONF_EV_CHARGER_STATUS,
+    CONF_EV_SOC_LIMIT,
     CONF_FV_PRODUCTION,
     CONF_FV_PRODUCTION_L2,
     CONF_FV_PRODUCTION_L3,
@@ -149,6 +150,28 @@ def is_ev_paused_status(status: str | None) -> bool:
     return key in _EV_PAUSED_STATUSES or key.replace("_", "") in _EV_PAUSED_STATUSES
 
 
+# v2.30.0: statuses that mean "no session is open" (OCPP vocabulary). Used to
+# skip a stop press that the charger would only reject.
+_SESSION_IDLE_STATUSES = frozenset({"preparing", "idle", "finishing", "available"})
+
+
+def is_session_closed_status(status: str | None) -> bool:
+    """True when the status clearly says no charging session is open.
+
+    Unknown / unavailable statuses return False (we cannot tell).
+    """
+    if not status:
+        return False
+    key = _status_key(status)
+    if key in ("unknown", "unavailable", "none"):
+        return False
+    return (
+        key in _SESSION_IDLE_STATUSES
+        or is_disconnected_status(status)
+        or is_charge_complete_status(status)
+    )
+
+
 def is_disconnected_status(status: str | None) -> bool:
     """True when the textual charger status unambiguously means 'no EV plugged'.
 
@@ -169,6 +192,41 @@ def is_charge_complete_status(status: str | None) -> bool:
     if not status:
         return False
     return str(status).strip().lower() in _CHARGE_COMPLETE_STATUSES
+
+
+# ---------------------------------------------------------------------------
+# v2.30.0 — the car's own charge limit counts as full
+# ---------------------------------------------------------------------------
+def read_ev_soc_limit(hass: HomeAssistant, config) -> float | None:
+    """The car's charge limit in %, or None when unmapped / unreadable.
+
+    Values outside 1..100 are ignored (None), so a broken reading never
+    blocks charging.
+    """
+    entity = (config or {}).get(CONF_EV_SOC_LIMIT)
+    if not entity:
+        return None
+    # Quiet read: a car integration that is offline must not log every tick.
+    value = _parse_number(get_state(hass, entity))
+    if value is None or value <= 0 or value > 100:
+        return None
+    return float(value)
+
+
+def cap_ev_target(target, limit: float | None):
+    """Cap an EV target to the car's limit (unchanged when there is none)."""
+    if target is None or limit is None:
+        return target
+    if target > limit:
+        return type(target)(limit) if isinstance(target, int) else float(limit)
+    return target
+
+
+def is_ev_full(soc: float | None, limit: float | None) -> bool:
+    """True when the EV SOC is at or above the car's limit (or 100 %)."""
+    if soc is None:
+        return False
+    return soc >= (limit if limit is not None else 100.0)
 
 # Per-quantity config keys, ordered L1, L2, L3. L1 reuses the existing single-phase
 # key so single-phase installs read exactly the same entity as before.

@@ -20,6 +20,7 @@ from .const import (
     PRIORITY_EV_FREE,
     has_home_battery,
 )
+from .power_model import cap_ev_target, read_ev_soc_limit
 from .runtime import EVSCRuntimeData
 from .utils.logging_helper import EVSCLogger
 from .utils import state_helper
@@ -334,12 +335,16 @@ class PriorityBalancer:
             return default_value
 
     def get_ev_target_for_today(self) -> int:
-        """Get EV target SOC for current day."""
-        return self._get_target_for_today(
+        """Get EV target SOC for current day.
+
+        v2.30.0: capped to the car's own charge limit when one is mapped.
+        """
+        target = self._get_target_for_today(
             self._ev_min_soc_entities,
             DEFAULT_EV_MIN_SOC_WEEKDAY,
             DEFAULT_EV_MIN_SOC_WEEKEND
         )
+        return cap_ev_target(target, read_ev_soc_limit(self.hass, self.config))
 
     def get_home_target_for_today(self) -> int:
         """Get Home battery target SOC for current day."""

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.29.1
+**Current Version:** 2.30.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,32 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.30.0 (2026-10-28) — fork dodg3r
+**The car's charge limit counts as full; no start/stop presses the charger would reject**
+
+Requested by the maintainer (Dahlbergs, Growatt THOR + Volvo EX40).
+- NEW optional `CONF_EV_SOC_LIMIT` (sensors step, all three flows, cleared →
+  None via `_OPTIONAL_PHASE_POWER_KEYS`), e.g.
+  `sensor.volvo_ex40_malbatteriets_laddningsniva`. `power_model`:
+  `read_ev_soc_limit()` (1–100 or None), `cap_ev_target()`, `is_ev_full()`.
+- Targets capped to the limit: `PriorityBalancer.get_ev_target_for_today`,
+  `PlannedNightCharge._target_for`, `BoostCharge.get_target_soc`.
+- Solar Surplus `_car_full_skip()` (step 7b): limit mapped, charger off and
+  SOC ≥ limit → no start, control released, diagnostic `SKIPPED: Car full`
+  (logged once per episode). A running session is left to the car.
+- Dashboard: `ev_soc_limit_entity` (card config + whitelist), "Fully
+  charged" at the limit (`_isEvFull`), targets capped (`_capToEvLimit`),
+  `CAR FULL` diagnostic shown as fully charged.
+- Button chargers: `power_model.is_session_closed_status()` (preparing /
+  idle / finishing / available / disconnected / complete). The controller
+  skips a start press while the status shows an open session
+  (`_start_press_needed`) and a stop press while it shows none and nothing
+  draws (`_stop_press_needed`); both still press within the settle window of
+  the opposite command, and an unknown status always presses.
+- Tests: NEW `tests/test_v2300_car_limit.py`.
+
+---
 
 ### v2.29.1 (2026-10-28) — fork dodg3r
 **FIX: start pressed every minute while the car had paused the session (Growatt THOR, `suspended_ev`)**

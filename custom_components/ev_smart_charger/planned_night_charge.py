@@ -57,7 +57,12 @@ from .const import (
     PRIORITY_NIGHT_CHARGE,
     WEEKDAY_KEYS,
 )
-from .power_model import ChargingModel, is_disconnected_status
+from .power_model import (
+    ChargingModel,
+    cap_ev_target,
+    is_disconnected_status,
+    read_ev_soc_limit,
+)
 from .price_source import (
     PRICE_SOURCE_NOT_MAPPED,
     PRICE_SOURCE_UNSUPPORTED,
@@ -363,9 +368,13 @@ class PlannedNightCharge:
         default = DEFAULT_EV_MIN_SOC_WEEKEND if weekend else DEFAULT_EV_MIN_SOC_WEEKDAY
         entity = self._entity(f"evsc_ev_min_soc_{day_key}")
         if not entity:
-            return float(default)
+            return cap_ev_target(
+                float(default), read_ev_soc_limit(self.hass, self.config)
+            )
         value = state_helper.get_float(self.hass, entity, None)
-        return float(default) if value is None else float(value)
+        target = float(default) if value is None else float(value)
+        # v2.30.0: never plan past the car's own charge limit.
+        return cap_ev_target(target, read_ev_soc_limit(self.hass, self.config))
 
     def _soc(self) -> float | None:
         if not self._soc_entity:

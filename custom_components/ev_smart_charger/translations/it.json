@@ -34,6 +34,7 @@
         "description": "Mappa i sensori usati da Solar Surplus, Priority Balancer e Night Smart Charge. In trifase mappi tre sensori per grandezza (uno per fase).",
         "data": {
           "soc_car": "SOC batteria EV",
+          "ev_soc_limit": "Limite di carica EV (opzionale)",
           "soc_home": "SOC batteria casa",
           "fv_production": "Produzione solare",
           "home_consumption": "Consumo casa",
@@ -51,6 +52,7 @@
         },
         "data_description": {
           "soc_car": "Sensore con lo stato di carica EV in percentuale.",
+          "ev_soc_limit": "Sensore con il limite di carica dell'auto in percentuale (ad es. il livello di carica obiettivo dall'integrazione dell'auto). Il suo valore conta come carica completa: gli obiettivi EV vengono limitati a questo valore e un'auto al limite non viene avviata. Lascia vuoto per 100 %.",
           "soc_home": "Sensore con lo stato di carica della batteria domestica in percentuale. Mostrato perché hai indicato di avere una batteria domestica; rispondi no nel primo passo per rimuoverla.",
           "fv_production": "Sensore con la produzione FV corrente in watt.",
           "home_consumption": "Sensore con il consumo di casa in watt, preferibilmente senza includere la ricarica EV. Lascia vuoto se hai mappato la potenza prelevata per fase nel passo del contatore: il consumo viene calcolato come produzione + import − potenza di ricarica EV (− carica della batteria se è mappato un sensore di potenza batteria).",
@@ -184,6 +186,7 @@
         "description": "Aggiorna i sensori energia e SOC usati dall'integrazione. In trifase mappi tre sensori per grandezza (uno per fase).",
         "data": {
           "soc_car": "SOC batteria EV",
+          "ev_soc_limit": "Limite di carica EV (opzionale)",
           "soc_home": "SOC batteria casa",
           "fv_production": "Produzione solare",
           "home_consumption": "Consumo casa",
@@ -201,6 +204,7 @@
         },
         "data_description": {
           "soc_car": "Sensore con lo stato di carica EV in percentuale.",
+          "ev_soc_limit": "Sensore con il limite di carica dell'auto in percentuale (ad es. il livello di carica obiettivo dall'integrazione dell'auto). Il suo valore conta come carica completa: gli obiettivi EV vengono limitati a questo valore e un'auto al limite non viene avviata. Lascia vuoto per 100 %.",
           "soc_home": "Sensore con lo stato di carica della batteria domestica in percentuale. Mostrato perché hai indicato di avere una batteria domestica; rispondi no nel primo passo per rimuoverla.",
           "fv_production": "Sensore con la produzione FV corrente in watt.",
           "home_consumption": "Sensore con il consumo di casa in watt, preferibilmente senza includere la ricarica EV. Lascia vuoto se hai mappato la potenza prelevata per fase nel passo del contatore: il consumo viene calcolato come produzione + import − potenza di ricarica EV (− carica della batteria se è mappato un sensore di potenza batteria).",
@@ -430,6 +434,7 @@
         "description": "Aggiorna i sensori energia e SOC usati dall'integrazione. In trifase mappi tre sensori per grandezza (uno per fase).",
         "data": {
           "soc_car": "SOC batteria EV",
+          "ev_soc_limit": "Limite di carica EV (opzionale)",
           "soc_home": "SOC batteria casa",
           "fv_production": "Produzione solare",
           "home_consumption": "Consumo casa",
@@ -447,6 +452,7 @@
         },
         "data_description": {
           "soc_car": "Sensore con lo stato di carica EV in percentuale.",
+          "ev_soc_limit": "Sensore con il limite di carica dell'auto in percentuale (ad es. il livello di carica obiettivo dall'integrazione dell'auto). Il suo valore conta come carica completa: gli obiettivi EV vengono limitati a questo valore e un'auto al limite non viene avviata. Lascia vuoto per 100 %.",
           "soc_home": "Sensore con lo stato di carica della batteria domestica in percentuale. Mostrato perché hai indicato di avere una batteria domestica; rispondi no nel primo passo per rimuoverla.",
           "fv_production": "Sensore con la produzione FV corrente in watt.",
           "home_consumption": "Sensore con il consumo di casa in watt, preferibilmente senza includere la ricarica EV. Lascia vuoto se hai mappato la potenza prelevata per fase nel passo del contatore: il consumo viene calcolato come produzione + import − potenza di ricarica EV (− carica della batteria se è mappato un sensore di potenza batteria).",

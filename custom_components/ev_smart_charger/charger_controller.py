@@ -34,7 +34,7 @@ from .const import (
     uses_charger_buttons,
 )
 from .fuse_math import highest_level_at_or_below
-from .power_model import is_session_open_status
+from .power_model import is_session_closed_status, is_session_open_status
 from .runtime import EVSCRuntimeData
 from .utils.amperage_helper import AmperageCalculator
 from .utils.logging_helper import EVSCLogger
@@ -351,6 +351,51 @@ class ChargerController:
             return False
         state = self.hass.states.get(status_entity)
         return state is not None and is_session_open_status(state.state)
+
+    def _status_state(self) -> Optional[str]:
+        status_entity = self.config.get(CONF_EV_CHARGER_STATUS)
+        if not status_entity:
+            return None
+        state = self.hass.states.get(status_entity)
+        return state.state if state is not None else None
+
+    def _recent_command(self, on: bool) -> bool:
+        """True when ``on`` was the last button command, within the settle window."""
+        if self._commanded_on is not on or self._last_command_time is None:
+            return False
+        elapsed = (dt_util.now() - self._last_command_time).total_seconds()
+        return elapsed < CHARGER_BUTTON_STATE_SETTLE_SECONDS
+
+    def _start_press_needed(self) -> bool:
+        """v2.30.0: no start press while the charger already has a session.
+
+        The charger only rejects it ("a transaction is already active").
+        Right after a stop press the status can still read 'charging' for a
+        moment, so then the press is sent anyway.
+        """
+        if self._recent_command(False):
+            return True
+        return not self._session_open()
+
+    def _stop_press_needed(self) -> bool:
+        """v2.30.0: no stop press when no session is open and nothing draws.
+
+        The charger only rejects it ("no active transaction"). Right after a
+        start press the status still reads 'preparing', so then the press is
+        sent anyway. An unknown or unavailable status always sends it.
+        """
+        if self._recent_command(True):
+            return True
+        if not is_session_closed_status(self._status_state()):
+            return True
+        if self._runtime_data is not None and self._runtime_data.power_model is not None:
+            self._measured_power_w = self._runtime_data.power_model.read_charging_power(
+                self.hass
+            )
+        return (
+            self._measured_power_w is not None
+            and self._measured_power_w > CHARGING_POWER_DRAWING_FLOOR_W
+        )
 
     def button_charger_on(self) -> bool:
         """Synchronous on/off answer for a button-controlled charger.
@@ -754,6 +799,14 @@ class ChargerController:
         """
         if self._fuse_ceiling() == 0:
             raise FuseLimitError("Main fuse limit: charger must stay off")
+        if self._uses_buttons and not self._start_press_needed():
+            self._record_command(True)
+            self.logger.info(
+                "Start not needed - the charger already has an open session "
+                "(status '%s')",
+                self._status_state(),
+            )
+            return True
         try:
             if self._uses_buttons:
                 await self._call_service(
@@ -802,6 +855,14 @@ class ChargerController:
     async def _turn_off_charger_switch(self) -> None:
         """Turn the charger off through its switch or its stop button."""
         if self._uses_buttons:
+            if not self._stop_press_needed():
+                self._record_command(False)
+                self.logger.info(
+                    "Stop not needed - the charger has no open session "
+                    "(status '%s')",
+                    self._status_state(),
+                )
+                return
             try:
                 await self._call_service(
                     "button",

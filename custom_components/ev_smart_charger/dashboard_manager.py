@@ -77,6 +77,7 @@ from .const import (
     CONF_PV_FORECAST,
     CONF_PV_FORECAST_TOMORROW,
     CONF_SOC_CAR,
+    CONF_EV_SOC_LIMIT,
     CONF_SOC_HOME,
     DASHBOARD_ICON,
     DASHBOARD_TITLE,
@@ -229,6 +230,8 @@ def _build_card_config(entry: ConfigEntry) -> dict[str, Any]:
 
     mapping = {
         "ev_soc_entity": CONF_SOC_CAR,
+        # v2.30.0: the car's own charge limit (counts as full on the card).
+        "ev_soc_limit_entity": CONF_EV_SOC_LIMIT,
         "home_battery_soc_entity": CONF_SOC_HOME,
         "solar_power_entity": CONF_FV_PRODUCTION,
         "home_consumption_entity": CONF_HOME_CONSUMPTION,

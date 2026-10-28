@@ -40,6 +40,7 @@ from .const import (
     CONF_PV_FORECAST,
     CONF_PV_FORECAST_TOMORROW,
     CONF_SOC_CAR,
+    CONF_EV_SOC_LIMIT,
     SOC_INPUT_DOMAINS,
     CONF_SOC_HOME,
     CHARGER_MODEL_GENERIC,
@@ -171,6 +172,8 @@ _OPTIONAL_PHASE_POWER_KEYS = (
     # v2.18.0: optional when they can be derived from the meter step.
     CONF_GRID_IMPORT,
     CONF_HOME_CONSUMPTION,
+    # v2.30.0: optional car charge limit.
+    CONF_EV_SOC_LIMIT,
 )
 
 
@@ -333,6 +336,10 @@ def _sensor_schema(
 
     fields: dict[Any, Any] = {
         vol.Required(CONF_SOC_CAR, **_field_config(current_data.get(CONF_SOC_CAR))): _entity_selector(SOC_INPUT_DOMAINS),
+        # v2.30.0: optional car charge limit — its value counts as full.
+        vol.Optional(
+            CONF_EV_SOC_LIMIT, **_field_config(current_data.get(CONF_EV_SOC_LIMIT))
+        ): _entity_selector(SOC_INPUT_DOMAINS),
     }
     if home_battery:
         fields[
