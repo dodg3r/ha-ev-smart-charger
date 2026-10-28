@@ -34,6 +34,7 @@ from .const import (
     uses_charger_buttons,
 )
 from .fuse_math import highest_level_at_or_below
+from .power_model import is_session_open_status
 from .runtime import EVSCRuntimeData
 from .utils.amperage_helper import AmperageCalculator
 from .utils.logging_helper import EVSCLogger
@@ -319,6 +320,12 @@ class ChargerController:
         has_signal = self._measured_power_w is not None or bool(
             self.config.get(CONF_EV_CHARGER_STATUS)
         )
+        # v2.29.1: an open session counts as on even when the car draws
+        # nothing (status 'suspended_ev' = the car paused itself, e.g. full).
+        # Otherwise every automation sees "off" and presses start again,
+        # which the charger rejects ("a transaction is already active").
+        if self._session_open():
+            return True
         if power_model is not None and has_signal:
             drawing = power_model.is_charging(self.hass)
             now = dt_util.now()
@@ -336,6 +343,14 @@ class ChargerController:
                 return True
             return False
         return self._commanded_on
+
+    def _session_open(self) -> bool:
+        """True when the mapped status sensor reports an open charging session."""
+        status_entity = self.config.get(CONF_EV_CHARGER_STATUS)
+        if not status_entity:
+            return False
+        state = self.hass.states.get(status_entity)
+        return state is not None and is_session_open_status(state.state)
 
     def button_charger_on(self) -> bool:
         """Synchronous on/off answer for a button-controlled charger.
@@ -758,6 +773,18 @@ class ChargerController:
             return False
         except Exception as ex:
             await self._refresh_state()
+            # v2.29.1: an OCPP charger rejects a start while a session is
+            # open ("a transaction is already active", e.g. the car paused
+            # itself when full). The session is there: nothing to start.
+            message = str(ex).lower()
+            if self._uses_buttons and (
+                "already active" in message or "session already" in message
+            ):
+                self._record_command(True)
+                self.logger.info(
+                    "Start not needed - the charger already has an open session"
+                )
+                return True
             if self._charger_already_running():
                 self.logger.warning(
                     "Charger rejected switch.turn_on (%s) but is already "

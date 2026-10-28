@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.29.0
+**Current Version:** 2.29.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,29 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.29.1 (2026-10-28) — fork dodg3r
+**FIX: start pressed every minute while the car had paused the session (Growatt THOR, `suspended_ev`)**
+
+Log from Dahlbergs 11:09–13:07: the car was full and the THOR reported
+`suspended_ev` with an open OCPP transaction and 0 W. In button mode the
+controller's on/off follows the measured draw after the settle window, so it
+read "off"; Solar Surplus (fallback mode, EV SOC unavailable) pressed start
+65 times and the Growatt integration rejected each press ("a transaction is
+already active"). No command reached the charger, but every attempt was an
+ERROR.
+- `power_model.is_session_open_status()` (`charging`, `charger_charging`,
+  `suspended_ev`, `suspended_evse`, case/space/dash tolerant) and
+  `is_ev_paused_status()`.
+- `ChargerController._button_mode_is_on`: after the settle window an open
+  session counts as on (`_session_open()`), whatever the draw; a stop press
+  still wins inside the settle window.
+- `_turn_on_charger_switch`: in button mode a rejection containing "already
+  active" / "session already" records the command as on and logs INFO
+  instead of an error.
+- Tests: NEW `tests/test_v2291_open_session.py`.
+
+---
 
 ### v2.29.0 (2026-10-28) — fork dodg3r
 **Adjustable Solar Surplus start threshold**

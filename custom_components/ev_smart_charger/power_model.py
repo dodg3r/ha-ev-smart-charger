@@ -111,6 +111,44 @@ _CHARGE_COMPLETE_STATUSES = frozenset(
 )
 
 
+# v2.29.1: statuses that mean a charging session (OCPP transaction) is open,
+# whether or not the car draws right now. 'suspended_ev' = the car paused the
+# charge itself (full, or its own charge limit). A start command is pointless
+# then: OCPP chargers reject it ("a transaction is already active").
+_SESSION_OPEN_STATUSES = frozenset(
+    {
+        "charger_charging",  # Tuya
+        "charging",
+        "suspended_ev",
+        "suspendedev",
+        "suspended_evse",
+        "suspendedevse",
+    }
+)
+
+_EV_PAUSED_STATUSES = frozenset({"suspended_ev", "suspendedev"})
+
+
+def _status_key(status: str | None) -> str:
+    return str(status).strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def is_session_open_status(status: str | None) -> bool:
+    """True when the status says a charging session is open (drawing or paused)."""
+    if not status:
+        return False
+    key = _status_key(status)
+    return key in _SESSION_OPEN_STATUSES or key.replace("_", "") in _SESSION_OPEN_STATUSES
+
+
+def is_ev_paused_status(status: str | None) -> bool:
+    """True when the car itself paused the session (full or its own limit)."""
+    if not status:
+        return False
+    key = _status_key(status)
+    return key in _EV_PAUSED_STATUSES or key.replace("_", "") in _EV_PAUSED_STATUSES
+
+
 def is_disconnected_status(status: str | None) -> bool:
     """True when the textual charger status unambiguously means 'no EV plugged'.
 
