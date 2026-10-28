@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.30.0"
+VERSION = "2.31.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -715,7 +715,8 @@ HYBRID_STATE_HARD_EXIT = "HARD_EXIT"
 # v2.13.0 adds 1 always-created number (evsc_offgrid_max_amperage) → 74.
 # v2.20.0 adds 7 per-day car-ready times + 1 night charge plan sensor → 82.
 # v2.29.0 adds 1 always-created number (evsc_solar_start_offset) → 83.
-TOTAL_INTEGRATION_ENTITIES = 83
+# v2.31.0 adds 1 always-created select (evsc_active_car) → 84.
+TOTAL_INTEGRATION_ENTITIES = 84
 # Verified count (v2.3.0): 53 entities when running in PV-only mode.
 # Unchanged in v2.1.0: the discharge number is battery-only (skipped in PV-only mode).
 # v2.3.0 (issue #32): evsc_night_pv_handoff_threshold is NOT battery-only → +1 → 53.
@@ -731,7 +732,68 @@ TOTAL_INTEGRATION_ENTITIES = 83
 # v2.13.0 (issue #57): the off-grid amperage cap is NOT battery-only → +1 → 60.
 # v2.20.0: 7 per-day car-ready times + plan sensor are NOT battery-only → 68.
 # v2.29.0: the solar start offset is NOT battery-only → 69.
-TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 69
+# v2.31.0: the active-car select is NOT battery-only → 70.
+TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 70
+
+
+# ---------------------------------------------------------------------------
+# v2.31.0: car profiles
+#
+# A profile holds the car's own sensors: EV SOC, the car's charge limit and
+# the battery capacity. The legacy top-level keys (CONF_SOC_CAR,
+# CONF_EV_SOC_LIMIT, CONF_BATTERY_CAPACITY) always hold the ACTIVE car, so
+# every component keeps reading them unchanged; choosing another car copies
+# its fields there and reloads the entry. An entry without CONF_CARS has one
+# implicit car built from the legacy keys.
+# ---------------------------------------------------------------------------
+CONF_CARS = "cars"
+CONF_ACTIVE_CAR = "active_car"
+CONF_CAR_NAME = "name"
+CAR_FIELDS = (CONF_SOC_CAR, CONF_EV_SOC_LIMIT, CONF_BATTERY_CAPACITY)
+DEFAULT_CAR_NAME = "Car 1"
+HELPER_ACTIVE_CAR_SUFFIX = "evsc_active_car"
+
+
+def _car_from_legacy(config: dict, name: str) -> dict:
+    car = {CONF_CAR_NAME: name}
+    for key in CAR_FIELDS:
+        car[key] = config.get(key)
+    if car.get(CONF_BATTERY_CAPACITY) is None:
+        car[CONF_BATTERY_CAPACITY] = DEFAULT_BATTERY_CAPACITY
+    return car
+
+
+def get_cars(config: dict) -> list[dict]:
+    """Return the car profiles (at least one: the legacy keys)."""
+    cars = [
+        dict(car)
+        for car in (config.get(CONF_CARS) or [])
+        if isinstance(car, dict) and car.get(CONF_CAR_NAME)
+    ]
+    if cars:
+        return cars
+    return [_car_from_legacy(config, config.get(CONF_ACTIVE_CAR) or DEFAULT_CAR_NAME)]
+
+
+def get_active_car_name(config: dict) -> str:
+    """Return the active car's name (falls back to the first profile)."""
+    cars = get_cars(config)
+    names = [car[CONF_CAR_NAME] for car in cars]
+    active = config.get(CONF_ACTIVE_CAR)
+    return active if active in names else names[0]
+
+
+def apply_active_car(config: dict, name: str | None = None) -> dict:
+    """Return config with the chosen (or active) car copied to the legacy keys."""
+    data = dict(config)
+    cars = get_cars(data)
+    wanted = name or get_active_car_name(data)
+    car = next((c for c in cars if c[CONF_CAR_NAME] == wanted), cars[0])
+    data[CONF_CARS] = cars
+    data[CONF_ACTIVE_CAR] = car[CONF_CAR_NAME]
+    for key in CAR_FIELDS:
+        data[key] = car.get(key)
+    return data
 
 
 def uses_charger_buttons(config: dict) -> bool:

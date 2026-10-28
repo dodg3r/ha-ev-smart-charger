@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.30.0
+**Current Version:** 2.31.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,44 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.31.0 (2026-10-28) — fork dodg3r
+**Car profiles; start requirement in the status line; steady "fully charged"**
+
+Requested by the maintainer.
+- **Car profiles**: `CONF_CARS` (list of `{name, soc_car, ev_soc_limit,
+  battery_capacity}`) and `CONF_ACTIVE_CAR`; `const.get_cars()` (an entry
+  without profiles is one implicit car, `DEFAULT_CAR_NAME`),
+  `get_active_car_name()`, `apply_active_car()`. The legacy keys
+  (`CAR_FIELDS`) always hold the ACTIVE car, so components read them
+  unchanged.
+- NEW select `evsc_active_car` (`EVSCCarSelect`, not restored: the choice
+  lives in the entry). Choosing a car copies its fields to the legacy keys
+  with `async_update_entry`; the entry's update listener reloads.
+  Attribute `cars` lists each car's sensors. `TOTAL_INTEGRATION_ENTITIES`
+  83 → 84, `_NO_BATTERY` 69 → 70.
+- Config flow: logical step `cars` (reconfigure `reconfigure_cars` /
+  `reconfigure_car`, options `cars` / `car`; not in the initial flow) before
+  the dashboard step. A list action (continue / add / edit / remove) and a
+  car form (name, SOC, charge limit, capacity; `car_name_required`,
+  `car_name_exists`). `_seed_cars()` updates the active car from the sensors
+  / external steps; `_with_cars()` stores the list on the final step.
+  Texts EN/IT/NL.
+- Dashboard: car dropdown above the tabs when there are 2+ cars
+  (`_renderCarPicker`, `data-car-select` → `select.select_option`; embedded
+  section `car`); `_applyCarProfile()` points `ev_soc_entity` /
+  `ev_soc_limit_entity` at the active car from the select's attributes.
+- Status line: "too little to start (needs X kW)" from the new Solar
+  Surplus diagnostic attribute `start_threshold_w` (fallback: start
+  threshold × phase voltage); a car at its limit shows "Fully charged"
+  before the Solar Surplus reason (it alternated with "too little surplus").
+- Solar Surplus `_car_full_skip` also skips when the session is open but
+  nothing is drawn; `ChargingModel.is_charging` status fallback treats
+  `suspended_ev` as not drawing.
+- Tests: NEW `tests/test_v2310_car_profiles.py`; cars step in the
+  options/reconfigure walkthroughs, counts, select count.
+
+---
 
 ### v2.30.0 (2026-10-28) — fork dodg3r
 **The car's charge limit counts as full; no start/stop presses the charger would reject**

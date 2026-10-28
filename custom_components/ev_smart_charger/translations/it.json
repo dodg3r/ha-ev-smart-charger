@@ -400,6 +400,28 @@
           "home_battery_control": "Disattiva se la batteria ha un proprio controllo (ad esempio un ottimizzatore AI). Viene solo mostrata nella dashboard: la ricarica non la attende, non la scarica e le impostazioni della batteria sono nascoste.",
           "load_balancing": "Chi mantiene il carico della casa sotto il limite del contatore durante la ricarica."
         }
+      },
+      "reconfigure_cars": {
+        "title": "Profili auto - Passo {step}/{total_steps}",
+        "description": "Ogni auto ha i propri sensori: SOC della batteria, limite di carica dell'auto e capacità della batteria. L'auto attiva si sceglie nella dashboard (o con il selettore Auto attiva).\n\n{cars}\n\nScegli un'azione, oppure Continua.",
+        "data": {
+          "car_action": "Azione"
+        }
+      },
+      "reconfigure_car": {
+        "title": "Profilo auto",
+        "description": "Dai all'auto un nome a piacere, ad es. la targa.",
+        "data": {
+          "name": "Nome",
+          "soc_car": "SOC batteria",
+          "ev_soc_limit": "Limite di carica (opzionale)",
+          "battery_capacity": "Capacità batteria (kWh)"
+        },
+        "data_description": {
+          "soc_car": "Sensore con lo stato di carica di quest'auto in percentuale.",
+          "ev_soc_limit": "Sensore con il limite di carica dell'auto in percentuale. Il suo valore conta come carica completa.",
+          "battery_capacity": "Capacità utile della batteria, usata per pianificare la ricarica notturna."
+        }
       }
     },
     "error": {
@@ -409,7 +431,9 @@
       "invalid_domain": "L'entita deve appartenere al dominio `number` o `input_number`.",
       "fuse_phase_reading_required": "Mappa almeno la corrente o la potenza prelevata del contatore per questa fase.",
       "fuse_charger_current_required": "Mappa la corrente del caricatore (sensore con attributi L1/L2/L3 o sensori per fase).",
-      "charger_control_required": "Mappa uno switch del charger oppure entrambi i pulsanti di avvio e arresto ricarica."
+      "charger_control_required": "Mappa uno switch del charger oppure entrambi i pulsanti di avvio e arresto ricarica.",
+      "car_name_required": "Inserisci un nome.",
+      "car_name_exists": "Un'altra auto ha già questo nome."
     },
     "abort": {
       "already_configured": "Un'altra istanza di EV Smart Charger usa gia questo charger switch.",
@@ -612,6 +636,28 @@
           "home_battery_control": "Disattiva se la batteria ha un proprio controllo (ad esempio un ottimizzatore AI). Viene solo mostrata nella dashboard: la ricarica non la attende, non la scarica e le impostazioni della batteria sono nascoste.",
           "load_balancing": "Chi mantiene il carico della casa sotto il limite del contatore durante la ricarica."
         }
+      },
+      "cars": {
+        "title": "Profili auto - Passo {step}/{total_steps}",
+        "description": "Ogni auto ha i propri sensori: SOC della batteria, limite di carica dell'auto e capacità della batteria. L'auto attiva si sceglie nella dashboard (o con il selettore Auto attiva).\n\n{cars}\n\nScegli un'azione, oppure Continua.",
+        "data": {
+          "car_action": "Azione"
+        }
+      },
+      "car": {
+        "title": "Profilo auto",
+        "description": "Dai all'auto un nome a piacere, ad es. la targa.",
+        "data": {
+          "name": "Nome",
+          "soc_car": "SOC batteria",
+          "ev_soc_limit": "Limite di carica (opzionale)",
+          "battery_capacity": "Capacità batteria (kWh)"
+        },
+        "data_description": {
+          "soc_car": "Sensore con lo stato di carica di quest'auto in percentuale.",
+          "ev_soc_limit": "Sensore con il limite di carica dell'auto in percentuale. Il suo valore conta come carica completa.",
+          "battery_capacity": "Capacità utile della batteria, usata per pianificare la ricarica notturna."
+        }
       }
     },
     "error": {
@@ -621,7 +667,9 @@
       "invalid_domain": "L'entita deve appartenere al dominio `number` o `input_number`.",
       "fuse_phase_reading_required": "Mappa almeno la corrente o la potenza prelevata del contatore per questa fase.",
       "fuse_charger_current_required": "Mappa la corrente del caricatore (sensore con attributi L1/L2/L3 o sensori per fase).",
-      "charger_control_required": "Mappa uno switch del charger oppure entrambi i pulsanti di avvio e arresto ricarica."
+      "charger_control_required": "Mappa uno switch del charger oppure entrambi i pulsanti di avvio e arresto ricarica.",
+      "car_name_required": "Inserisci un nome.",
+      "car_name_exists": "Un'altra auto ha già questo nome."
     }
   },
   "entity": {
@@ -795,6 +843,9 @@
       }
     },
     "select": {
+      "evsc_active_car": {
+        "name": "Auto attiva"
+      },
       "evsc_charging_profile": {
         "name": "Profilo di ricarica",
         "state": {

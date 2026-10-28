@@ -120,7 +120,16 @@ async def test_below_limit_or_running_is_not_skipped(hass, automation, mock_prio
     mock_priority_balancer.get_ev_current_soc = AsyncMock(return_value=85.0)
     assert await automation._car_full_skip(charger_is_on=False) is False
     mock_priority_balancer.get_ev_current_soc = AsyncMock(return_value=95.0)
+    hass.states.async_set("sensor.charger_status", "charging")
     assert await automation._car_full_skip(charger_is_on=True) is False
+
+
+async def test_full_car_paused_session_is_skipped(hass, automation, mock_priority_balancer):
+    """v2.31.0: an open session the car paused (nothing drawn) counts as off."""
+    hass.states.async_set(LIMIT, "90")
+    hass.states.async_set("sensor.charger_status", "suspended_ev")
+    mock_priority_balancer.get_ev_current_soc = AsyncMock(return_value=90.0)
+    assert await automation._car_full_skip(charger_is_on=True) is True
 
 
 async def test_no_limit_sensor_is_legacy(hass, automation, mock_priority_balancer):

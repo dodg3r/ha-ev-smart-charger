@@ -448,6 +448,8 @@ The charger switch entity (or the start button, in button mode) is used as the u
 | EV charging power (v2.2.0) | No | `W` |
 | Grid available (v2.6.0) | No | `binary_sensor` |
 
+**Car profiles (v2.31.0):** several cars can share the charger. Under *Configure* (or *Reconfigure*) the step **Car profiles** adds, edits and removes cars; each car has a free name (e.g. its registration number), its own battery SOC sensor, charge limit sensor and battery capacity. The active car is chosen in the dropdown at the top of the dashboard (or with `select.…_evsc_active_car`); switching reloads the integration with that car's sensors. Daily targets and car-ready times are shared by all cars.
+
 **EV charge limit (v2.30.0):** optional sensor with the car's own charge limit, e.g. the "target battery charge level" from the car's integration (`sensor.volvo_ex40_malbatteriets_laddningsniva`). Its value counts as full: every EV target (daily, night plan, Boost) is capped to it, Solar Surplus does not start a car that is at the limit, and the dashboard shows "Fully charged" there. Unmapped or unreadable = 100 %, as before.
 
 **EV battery SOC (v2.13.0 — [issue #58](https://github.com/antbald/ha-ev-smart-charger/issues/58)):** the two SOC fields accept a `sensor`, a `number` **or an `input_number`**. EV SOC is architecturally required — the Priority Balancer's daily targets, Night Smart Charge's stop conditions and Boost's target all key off it — but many EVs expose no SOC at all over any Home Assistant integration. Those owners can create an `input_number` helper, map it directly here, and keep it up to date manually or from their own automation. Before v2.13.0 the field was a sensor-only selector, forcing a template-sensor wrapper around the helper.

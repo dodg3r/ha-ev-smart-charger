@@ -400,6 +400,28 @@
           "home_battery_control": "Turn off when the battery has its own control (for example an AI optimiser). It is then only shown on the dashboard: charging never waits for it, never draws from it and the battery settings are hidden.",
           "load_balancing": "Who keeps the house load below the main fuse while the car charges."
         }
+      },
+      "reconfigure_cars": {
+        "title": "Car profiles - Step {step}/{total_steps}",
+        "description": "Each car has its own sensors: battery SOC, the car's own charge limit and the battery capacity. The active car is chosen on the dashboard (or with the Active car select).\n\n{cars}\n\nPick an action, or Continue.",
+        "data": {
+          "car_action": "Action"
+        }
+      },
+      "reconfigure_car": {
+        "title": "Car profile",
+        "description": "Name the car freely, e.g. its registration number.",
+        "data": {
+          "name": "Name",
+          "soc_car": "Battery SOC",
+          "ev_soc_limit": "Charge limit (optional)",
+          "battery_capacity": "Battery capacity (kWh)"
+        },
+        "data_description": {
+          "soc_car": "Sensor with this car's state of charge in percent.",
+          "ev_soc_limit": "Sensor with the car's own charge limit in percent. Its value counts as full.",
+          "battery_capacity": "Usable battery capacity, used to plan night charging."
+        }
       }
     },
     "error": {
@@ -409,7 +431,9 @@
       "invalid_domain": "Entity must belong to the `number` or `input_number` domain.",
       "fuse_phase_reading_required": "Map at least the meter current or the meter import power for this phase.",
       "fuse_charger_current_required": "Map the charger current (a sensor with L1/L2/L3 attributes, or per-phase sensors).",
-      "charger_control_required": "Map either a charger switch or both the start and stop charging buttons."
+      "charger_control_required": "Map either a charger switch or both the start and stop charging buttons.",
+      "car_name_required": "Enter a name.",
+      "car_name_exists": "Another car already has this name."
     },
     "abort": {
       "already_configured": "Another EV Smart Charger entry already uses this charger switch.",
@@ -612,6 +636,28 @@
           "home_battery_control": "Turn off when the battery has its own control (for example an AI optimiser). It is then only shown on the dashboard: charging never waits for it, never draws from it and the battery settings are hidden.",
           "load_balancing": "Who keeps the house load below the main fuse while the car charges."
         }
+      },
+      "cars": {
+        "title": "Car profiles - Step {step}/{total_steps}",
+        "description": "Each car has its own sensors: battery SOC, the car's own charge limit and the battery capacity. The active car is chosen on the dashboard (or with the Active car select).\n\n{cars}\n\nPick an action, or Continue.",
+        "data": {
+          "car_action": "Action"
+        }
+      },
+      "car": {
+        "title": "Car profile",
+        "description": "Name the car freely, e.g. its registration number.",
+        "data": {
+          "name": "Name",
+          "soc_car": "Battery SOC",
+          "ev_soc_limit": "Charge limit (optional)",
+          "battery_capacity": "Battery capacity (kWh)"
+        },
+        "data_description": {
+          "soc_car": "Sensor with this car's state of charge in percent.",
+          "ev_soc_limit": "Sensor with the car's own charge limit in percent. Its value counts as full.",
+          "battery_capacity": "Usable battery capacity, used to plan night charging."
+        }
       }
     },
     "error": {
@@ -621,7 +667,9 @@
       "invalid_domain": "Entity must belong to the `number` or `input_number` domain.",
       "fuse_phase_reading_required": "Map at least the meter current or the meter import power for this phase.",
       "fuse_charger_current_required": "Map the charger current (a sensor with L1/L2/L3 attributes, or per-phase sensors).",
-      "charger_control_required": "Map either a charger switch or both the start and stop charging buttons."
+      "charger_control_required": "Map either a charger switch or both the start and stop charging buttons.",
+      "car_name_required": "Enter a name.",
+      "car_name_exists": "Another car already has this name."
     }
   },
   "entity": {
@@ -795,6 +843,9 @@
       }
     },
     "select": {
+      "evsc_active_car": {
+        "name": "Active car"
+      },
       "evsc_charging_profile": {
         "name": "Charging profile",
         "state": {

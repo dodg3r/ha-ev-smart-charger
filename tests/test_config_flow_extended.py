@@ -226,6 +226,9 @@ async def test_options_flow_updates_entry_data(hass) -> None:
             CONF_ENERGY_FORECAST_TARGET: "number.energy_target",
         }
     )
+    # v2.31.0: car profiles step
+    assert result["step_id"] == "cars"
+    result = await flow.async_step_cars({"car_action": "done"})
     assert result["step_id"] == "dashboard"
 
     with patch.object(hass.config_entries, "async_update_entry") as update_entry:
@@ -393,6 +396,9 @@ async def test_reconfigure_flow_updates_entry_data(hass) -> None:
             CONF_ENERGY_FORECAST_TARGET: "number.energy_target",
         }
     )
+    # v2.31.0: car profiles step
+    assert result["step_id"] == "reconfigure_cars"
+    result = await flow.async_step_reconfigure_cars({"car_action": "done"})
     assert result["step_id"] == "reconfigure_dashboard"
 
     with patch.object(hass.config_entries, "async_update_entry") as update_entry:

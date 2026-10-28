@@ -1400,6 +1400,8 @@ class SolarSurplusAutomation:
                 # v2.29.0: thresholds after the user offset
                 "start_threshold_a": round(self._start_threshold(), 2),
                 "stop_threshold_a": round(self._stop_threshold(), 2),
+                # v2.31.0: start requirement in W for the dashboard status line
+                "start_threshold_w": round(self._start_threshold() * self._effective_voltage),
                 "grid_import_delay_s": grid_import_delay,
                 "grid_import_timer_started_ts": self._last_grid_import_high,
                 "grid_import_elapsed_s": None,
@@ -1571,7 +1573,9 @@ class SolarSurplusAutomation:
         Returns True when the tick was handled (caller returns).
         """
         limit = read_ev_soc_limit(self.hass, self.config)
-        if limit is None or charger_is_on:
+        # v2.31.0: a session the car has paused (open, nothing drawn) counts
+        # as not charging here; only real draw keeps Solar Surplus in charge.
+        if limit is None or (charger_is_on and self._power_model.is_charging(self.hass)):
             self._car_full_logged = False
             return False
         soc = await self.priority_balancer.get_ev_current_soc()

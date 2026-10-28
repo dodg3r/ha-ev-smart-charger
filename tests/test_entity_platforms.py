@@ -176,7 +176,8 @@ async def test_select_platform_coerces_legacy_profiles_and_registers_runtime(
 
     await select_platform.async_setup_entry(hass, entry, async_add_entities)
 
-    assert len(entities) == 1
+    # v2.31.0: + the active-car select
+    assert len(entities) == 2
 
     entity = entities[0]
     assert entity.options == CHARGING_PROFILES

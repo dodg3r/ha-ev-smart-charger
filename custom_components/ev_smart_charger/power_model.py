@@ -684,6 +684,10 @@ class ChargingModel:
         # explicitly not-drawing as the Tuya statuses above.
         if is_disconnected_status(status) or is_charge_complete_status(status):
             return False
+        # v2.31.0: the car paused the session itself (e.g. full): open, but
+        # nothing is drawn.
+        if is_ev_paused_status(status):
+            return False
         return True
 
     def is_plugged_in(self, hass: HomeAssistant) -> bool:

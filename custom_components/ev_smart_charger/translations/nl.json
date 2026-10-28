@@ -400,6 +400,28 @@
           "home_battery_control": "Uitschakelen als de batterij een eigen sturing heeft (bijvoorbeeld een AI-optimalisatie). Ze wordt dan alleen op het dashboard getoond: laden wacht er nooit op, gebruikt haar nooit en de batterij-instellingen worden verborgen.",
           "load_balancing": "Wie de belasting van het huis onder de hoofdzekering houdt tijdens het laden."
         }
+      },
+      "reconfigure_cars": {
+        "title": "Autoprofielen - Stap {step}/{total_steps}",
+        "description": "Elke auto heeft eigen sensoren: batterij-SOC, de eigen laadlimiet van de auto en de batterijcapaciteit. De actieve auto kies je op het dashboard (of met de select Actieve auto).\n\n{cars}\n\nKies een actie, of Doorgaan.",
+        "data": {
+          "car_action": "Actie"
+        }
+      },
+      "reconfigure_car": {
+        "title": "Autoprofiel",
+        "description": "Geef de auto een vrije naam, bijv. het kenteken.",
+        "data": {
+          "name": "Naam",
+          "soc_car": "Batterij-SOC",
+          "ev_soc_limit": "Laadlimiet (optioneel)",
+          "battery_capacity": "Batterijcapaciteit (kWh)"
+        },
+        "data_description": {
+          "soc_car": "Sensor met de laadtoestand van deze auto in procenten.",
+          "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten. De waarde telt als vol.",
+          "battery_capacity": "Bruikbare batterijcapaciteit, gebruikt voor het plannen van nachtladen."
+        }
       }
     },
     "error": {
@@ -409,7 +431,9 @@
       "invalid_domain": "De entiteit moet tot het domein `number` of `input_number` behoren.",
       "fuse_phase_reading_required": "Koppel voor deze fase minstens de meterstroom of het afgenomen vermogen.",
       "fuse_charger_current_required": "Koppel de laadstroom (sensor met L1/L2/L3-attributen of sensoren per fase).",
-      "charger_control_required": "Koppel een lader-schakelaar of zowel de start- als de stopknop."
+      "charger_control_required": "Koppel een lader-schakelaar of zowel de start- als de stopknop.",
+      "car_name_required": "Vul een naam in.",
+      "car_name_exists": "Een andere auto heeft deze naam al."
     },
     "abort": {
       "already_configured": "Een andere EV Smart Charger-configuratie gebruikt deze laderschakelaar al.",
@@ -612,6 +636,28 @@
           "home_battery_control": "Uitschakelen als de batterij een eigen sturing heeft (bijvoorbeeld een AI-optimalisatie). Ze wordt dan alleen op het dashboard getoond: laden wacht er nooit op, gebruikt haar nooit en de batterij-instellingen worden verborgen.",
           "load_balancing": "Wie de belasting van het huis onder de hoofdzekering houdt tijdens het laden."
         }
+      },
+      "cars": {
+        "title": "Autoprofielen - Stap {step}/{total_steps}",
+        "description": "Elke auto heeft eigen sensoren: batterij-SOC, de eigen laadlimiet van de auto en de batterijcapaciteit. De actieve auto kies je op het dashboard (of met de select Actieve auto).\n\n{cars}\n\nKies een actie, of Doorgaan.",
+        "data": {
+          "car_action": "Actie"
+        }
+      },
+      "car": {
+        "title": "Autoprofiel",
+        "description": "Geef de auto een vrije naam, bijv. het kenteken.",
+        "data": {
+          "name": "Naam",
+          "soc_car": "Batterij-SOC",
+          "ev_soc_limit": "Laadlimiet (optioneel)",
+          "battery_capacity": "Batterijcapaciteit (kWh)"
+        },
+        "data_description": {
+          "soc_car": "Sensor met de laadtoestand van deze auto in procenten.",
+          "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten. De waarde telt als vol.",
+          "battery_capacity": "Bruikbare batterijcapaciteit, gebruikt voor het plannen van nachtladen."
+        }
       }
     },
     "error": {
@@ -621,7 +667,9 @@
       "invalid_domain": "De entiteit moet tot het domein `number` of `input_number` behoren.",
       "fuse_phase_reading_required": "Koppel voor deze fase minstens de meterstroom of het afgenomen vermogen.",
       "fuse_charger_current_required": "Koppel de laadstroom (sensor met L1/L2/L3-attributen of sensoren per fase).",
-      "charger_control_required": "Koppel een lader-schakelaar of zowel de start- als de stopknop."
+      "charger_control_required": "Koppel een lader-schakelaar of zowel de start- als de stopknop.",
+      "car_name_required": "Vul een naam in.",
+      "car_name_exists": "Een andere auto heeft deze naam al."
     }
   },
   "entity": {
@@ -795,6 +843,9 @@
       }
     },
     "select": {
+      "evsc_active_car": {
+        "name": "Actieve auto"
+      },
       "evsc_charging_profile": {
         "name": "Laadprofiel",
         "state": {

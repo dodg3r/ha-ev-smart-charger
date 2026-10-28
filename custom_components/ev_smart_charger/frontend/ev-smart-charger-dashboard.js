@@ -175,6 +175,8 @@ const DOMAIN_SUFFIXES = {
   nightPlan: ["sensor", "evsc_night_charge_plan"],
   // v2.15.0: main fuse protection (only exists when a fuse size is set).
   fuseHeadroom: ["sensor", "evsc_fuse_headroom"],
+  // v2.31.0: active car profile
+  activeCar: ["select", "evsc_active_car"],
 };
 
 // Daily helper entities — generated programmatically (saves ~50 lines of boilerplate).
@@ -194,7 +196,7 @@ for (const day of DAYS) {
 // =====================================================================
 // v2.28.0: parts of the dashboard that can be shown on their own with
 // `sections: [...]` in the card config.
-const EMBED_SECTIONS = ["hero", "controls", "weekly", "night", "profile", "settings"];
+const EMBED_SECTIONS = ["car", "hero", "controls", "weekly", "night", "profile", "settings"];
 
 const SETTINGS_CATALOG = [
   {
@@ -684,6 +686,8 @@ const FRONTEND_LOCALES = {
     "charger.no_car": "No car",
     "charger.connected": "Car connected",
     "charger.full": "Fully charged",
+    "car.label": "Car",
+    "reason.surplus_low_need": "Car connected · solar surplus {kw} kW, too little to start (needs {need} kW)",
     "charger.stopped": "Stopped",
     "charger.fuse_paused": "Paused (fuse)",
     "charger.idle": "Not charging",
@@ -903,6 +907,8 @@ const FRONTEND_LOCALES = {
     "charger.no_car": "Ingen bil",
     "charger.connected": "Bil ansluten",
     "charger.full": "Fulladdad",
+    "car.label": "Bil",
+    "reason.surplus_low_need": "Bil ansluten · solöverskott {kw} kW, för lite för att starta (kräver {need} kW)",
     "charger.stopped": "Stoppad",
     "charger.fuse_paused": "Pausad (säkring)",
     "charger.idle": "Laddar inte",
@@ -1122,6 +1128,8 @@ const FRONTEND_LOCALES = {
     "charger.no_car": "Nessuna auto",
     "charger.connected": "Auto collegata",
     "charger.full": "Carica completa",
+    "car.label": "Auto",
+    "reason.surplus_low_need": "Auto collegata · surplus {kw} kW, troppo poco per iniziare (servono {need} kW)",
     "charger.stopped": "Fermato",
     "charger.fuse_paused": "In pausa (fusibile)",
     "charger.idle": "Non in carica",
@@ -1341,6 +1349,8 @@ const FRONTEND_LOCALES = {
     "charger.no_car": "Geen auto",
     "charger.connected": "Auto aangesloten",
     "charger.full": "Volledig geladen",
+    "car.label": "Auto",
+    "reason.surplus_low_need": "Auto aangesloten · overschot {kw} kW, te weinig om te starten (nodig {need} kW)",
     "charger.stopped": "Gestopt",
     "charger.fuse_paused": "Gepauzeerd (zekering)",
     "charger.idle": "Laadt niet",
@@ -2321,6 +2331,58 @@ class EvSmartChargerDashboard extends HTMLElement {
     return Math.min(target, limit);
   }
 
+  /** v2.31.0: start requirement of Solar Surplus in W, or null. */
+  _solarStartNeedW() {
+    const attrs = this._stateObj(this._entityId("solarDiagnostic"))?.attributes || {};
+    const w = Number(attrs.start_threshold_w);
+    if (Number.isFinite(w) && w > 0) return w;
+    const a = Number(attrs.start_threshold_a);
+    if (!Number.isFinite(a) || a <= 0) return null;
+    const volts = this._config.phase_mode === "three" ? 3 * VOLTAGE_EU : VOLTAGE_EU;
+    return a * volts;
+  }
+
+  _escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[ch]);
+  }
+
+  /** v2.31.0: car profiles from the active-car select, or null. */
+  _carProfiles() {
+    const st = this._stateObj(this._entityId("activeCar"));
+    const cars = st?.attributes?.cars;
+    if (!st || !Array.isArray(cars) || !cars.length) return null;
+    return { entityId: st.entity_id, active: st.state, cars };
+  }
+
+  /**
+   * v2.31.0: the card follows the active car's sensors, also before the
+   * stored card config is rewritten after a car switch.
+   */
+  _applyCarProfile() {
+    const profiles = this._carProfiles();
+    if (!profiles) return;
+    const car = profiles.cars.find((c) => c.name === profiles.active);
+    if (!car) return;
+    if (car.ev_soc_entity) this._config.ev_soc_entity = car.ev_soc_entity;
+    this._config.ev_soc_limit_entity = car.ev_soc_limit_entity || undefined;
+  }
+
+  _renderCarPicker() {
+    const profiles = this._carProfiles();
+    if (!profiles || profiles.cars.length < 2) return "";
+    const options = profiles.cars.map((c) => {
+      const name = this._escapeHtml(String(c.name));
+      return `<option value="${name}" ${c.name === profiles.active ? "selected" : ""}>${name}</option>`;
+    }).join("");
+    return `
+      <div class="evsc-car-bar">
+        <label class="evsc-car-label" for="evsc-car-select">${this._t("car.label")}</label>
+        <select id="evsc-car-select" class="evsc-car-select" data-car-select="${profiles.entityId}">${options}</select>
+      </div>`;
+  }
+
   /** v2.30.0: at or above the car's own limit (or 100 % without one). */
   _isEvFull(ev) {
     if (ev == null) return false;
@@ -2388,6 +2450,13 @@ class EvSmartChargerDashboard extends HTMLElement {
       const m = d.match(/(-?\d+(?:\.\d+)?)\s*W/i);
       const w = m ? Number(m[1]) : NaN;
       if (Number.isFinite(w) && w > 0) {
+        const needW = this._solarStartNeedW();
+        if (needW != null) {
+          return this._tf("reason.surplus_low_need", {
+            kw: (w / 1000).toFixed(1),
+            need: (needW / 1000).toFixed(1),
+          });
+        }
         return this._tf("reason.surplus_low", { kw: (w / 1000).toFixed(1) });
       }
       return this._t("reason.waiting_surplus");
@@ -2435,6 +2504,11 @@ class EvSmartChargerDashboard extends HTMLElement {
     if (fuse?.kind === "paused") return { text: fuse.text, tone: "alert" };
     if (conn === "complete") {
       return { text: this._t("status.complete"), tone: "done" };
+    }
+    // v2.31.0: same answer as the charger tile, whatever Solar Surplus
+    // reports on this tick (it alternated with "too little surplus").
+    if (this._isEvFull(this._numericState(this._config.ev_soc_entity))) {
+      return { text: this._t("charger.full"), tone: "done" };
     }
     if (isOn("boostEnabled")) {
       return { text: this._t("status.boost_starting"), tone: "idle" };
@@ -2938,6 +3012,13 @@ class EvSmartChargerDashboard extends HTMLElement {
     root.querySelectorAll("[data-time][data-minutes]").forEach((node) => {
       node.addEventListener("click", () => {
         this._adjustTime(node.dataset.time, Number(node.dataset.minutes));
+      });
+    });
+
+    // v2.31.0: active car
+    root.querySelectorAll("[data-car-select]").forEach((node) => {
+      node.addEventListener("change", () => {
+        this._setSelect(node.dataset.carSelect, node.value);
       });
     });
 
@@ -3816,6 +3897,7 @@ class EvSmartChargerDashboard extends HTMLElement {
 
     if (this._sections) {
       const parts = {
+        car: () => this._renderCarPicker(),
         hero: () => heroHtml,
         controls: () => controlsHtml,
         weekly: () => this._renderWeeklyPlannerV2(),
@@ -3860,6 +3942,8 @@ class EvSmartChargerDashboard extends HTMLElement {
       `;
       return;
     }
+
+    this._applyCarProfile();
 
     const forceChargeId = this._entityId("forceCharge");
     const manualStopId = this._entityId("manualStop");
@@ -3994,6 +4078,7 @@ class EvSmartChargerDashboard extends HTMLElement {
           <div class="aurora aurora-b"></div>
           <div class="grain"></div>`}
 
+          ${embedded ? "" : this._renderCarPicker()}
           ${embedded ? "" : this._renderTabs()}
           ${viewHtml}
           ${diagnosticsHtml}
@@ -4068,7 +4153,13 @@ class EvSmartChargerDashboard extends HTMLElement {
         np.planned.join(","), np.neededHours, np.deadline, new Date().getHours()].join("|")
       : "";
 
+    const carProfiles = this._carProfiles();
+    const carKey = carProfiles
+      ? `${carProfiles.active}|${carProfiles.cars.map((c) => c.name).join(",")}`
+      : "";
+
     return JSON.stringify({
+      car: carKey,
       view: this._view,
       acc: [...(this._openAccordions || [])].sort(),
       sel: select,
@@ -5390,6 +5481,33 @@ class EvSmartChargerDashboard extends HTMLElement {
          * ============================================================ */
 
         /* Top tab bar */
+        .evsc-car-bar {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          margin: 0 auto 10px;
+        }
+        .evsc-car-label {
+          font-size: 0.78rem;
+          font-weight: 600;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: var(--evsc-fg-mid);
+        }
+        .evsc-car-select {
+          appearance: auto;
+          font: inherit;
+          font-weight: 600;
+          color: var(--evsc-fg);
+          background: var(--evsc-surface);
+          border: 1px solid var(--evsc-stroke);
+          border-radius: 999px;
+          padding: 6px 14px;
+          min-height: 36px;
+          max-width: 100%;
+          touch-action: manipulation;
+        }
         .evsc-tabs {
           display: inline-flex;
           align-items: center;
