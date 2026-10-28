@@ -191,9 +191,13 @@ for (const day of DAYS) {
 // has a kind ("toggle" | "stepper" | "time" | "info"), an entityKey
 // resolved via DOMAIN_SUFFIXES, and EN/IT/NL strings for the labels.
 // =====================================================================
+// v2.28.0: parts of the dashboard that can be shown on their own with
+// `sections: [...]` in the card config.
+const EMBED_SECTIONS = ["hero", "controls", "weekly", "night", "profile", "settings"];
+
 const SETTINGS_CATALOG = [
   {
-    id: "solar", iconClass: "sun", icon: "☀",
+    id: "solar", iconClass: "sun", icon: "☀", requires: "solar",
     name: { en: "Solar Surplus", it: "Surplus solare", nl: "Zonneoverschot", sv: "Solöverskott" },
     desc: {
       en: "Solar surplus calculation, grid import protection, daytime home battery fallback",
@@ -316,7 +320,7 @@ const SETTINGS_CATALOG = [
     ],
   },
   {
-    id: "battery", iconClass: "bat", icon: "🔋",
+    id: "battery", iconClass: "bat", icon: "🔋", requires: "battery",
     name: { en: "Home Battery Support", it: "Supporto batteria di casa", nl: "Thuisbatterij-ondersteuning", sv: "Stöd från husbatteriet" },
     desc: {
       en: "Fallback on home battery when solar surplus is insufficient",
@@ -364,7 +368,7 @@ const SETTINGS_CATALOG = [
     ],
   },
   {
-    id: "hybrid", iconClass: "hyb", icon: "⚡",
+    id: "hybrid", iconClass: "hyb", icon: "⚡", requires: "solar",
     name: { en: "Hybrid Inverter Mode", it: "Hybrid Inverter Mode", nl: "Hybride-omvormermodus", sv: "Hybridväxelriktarläge" },
     desc: {
       en: "Curtailment discovery for zero-export hybrid inverters (Deye, Sunsynk, Solis…)",
@@ -382,7 +386,7 @@ const SETTINGS_CATALOG = [
           sv: "Testar med 6 A för att hitta dold solkapacitet i system med nollexport. Frivilligt.",
         },
         hint: { en: "Default off", it: "Default off", nl: "Standaard uit", sv: "Standard av" } },
-      { entityKey: "hybridBatteryFullThreshold", kind: "stepper",
+      { entityKey: "hybridBatteryFullThreshold", kind: "stepper", requires: "hybridOn",
         name: { en: "Battery Full Threshold", it: "Soglia batteria piena", nl: "Drempel batterij vol", sv: "Gräns för fullt batteri" },
         desc: {
           en: "Home battery SOC above which the system considers the inverter in curtailment and attempts probing.",
@@ -391,7 +395,7 @@ const SETTINGS_CATALOG = [
           sv: "SOC i husbatteriet över vilken växelriktaren antas strypa solelen och ett test görs.",
         },
         hint: { en: "Default 95 % · Range 80–100", it: "Default 95 % · Range 80–100", nl: "Standaard 95 % · Bereik 80–100", sv: "Standard 95 % · Intervall 80–100" } },
-      { entityKey: "hybridProbeDuration", kind: "stepper",
+      { entityKey: "hybridProbeDuration", kind: "stepper", requires: "hybridOn",
         name: { en: "Probe Duration", it: "Durata probing", nl: "Probing-duur", sv: "Testtid" },
         desc: {
           en: "Total probing window length at 6 A. Below this threshold the probe is too short to be significant.",
@@ -400,7 +404,7 @@ const SETTINGS_CATALOG = [
           sv: "Hur länge testet med 6 A pågår. Kortare än så ger inget pålitligt svar.",
         },
         hint: { en: "Default 60 s · Range 30–180", it: "Default 60 s · Range 30–180", nl: "Standaard 60 s · Bereik 30–180", sv: "Standard 60 s · Intervall 30–180" } },
-      { entityKey: "hybridMaxImportDuration", kind: "stepper",
+      { entityKey: "hybridMaxImportDuration", kind: "stepper", requires: "hybridOn",
         name: { en: "Max Import Duration", it: "Durata max import", nl: "Max. importduur", sv: "Längsta import" },
         desc: {
           en: "Maximum grid-import time tolerated during probing before aborting and entering cooldown.",
@@ -409,7 +413,7 @@ const SETTINGS_CATALOG = [
           sv: "Längsta nätimport som tolereras under testet innan det avbryts och pausas.",
         },
         hint: { en: "Default 60 s · Range 30–120", it: "Default 60 s · Range 30–120", nl: "Standaard 60 s · Bereik 30–120", sv: "Standard 60 s · Intervall 30–120" } },
-      { entityKey: "hybridMaxFailedProbes", kind: "stepper",
+      { entityKey: "hybridMaxFailedProbes", kind: "stepper", requires: "hybridOn",
         name: { en: "Max Failed Probes", it: "Probing falliti max", nl: "Max. mislukte probings", sv: "Max misslyckade tester" },
         desc: {
           en: "Maximum failed probes in a 30-minute window before entering long cooldown (15 min).",
@@ -418,7 +422,7 @@ const SETTINGS_CATALOG = [
           sv: "Antal misslyckade tester på 30 minuter innan en lång paus (15 min).",
         },
         hint: { en: "Default 5 · Range 1–10", it: "Default 5 · Range 1–10", nl: "Standaard 5 · Bereik 1–10", sv: "Standard 5 · Intervall 1–10" } },
-      { entityKey: "maxBatteryDischargeForEv", kind: "stepper",
+      { entityKey: "maxBatteryDischargeForEv", kind: "stepper", requires: ["hybridOn", "battery"],
         name: { en: "Max Battery Discharge for EV", it: "Scarica max batteria per EV", nl: "Max. batterijontlading voor EV", sv: "Högsta batteriurladdning till bilen" },
         desc: {
           en: "Watts of home-battery discharge allowed to cover the EV charging floor. Detects battery-discharge masking during probing and lets Solar Surplus ride out brief PV dips without stop-start cycling. Requires the signed battery-power sensor (Configure → Hybrid Inverter Mode). 0 = off.",
@@ -1577,6 +1581,8 @@ class EvSmartChargerDashboard extends HTMLElement {
       // v2.24.0: false = home battery shown only (own control) or absent;
       // the priority pill is hidden. MUST be whitelisted.
       home_battery_controlled: config?.home_battery_controlled,
+      // v2.28.0: false = no solar panels; Solar Surplus / Hybrid settings hidden.
+      has_solar: config?.has_solar,
       solar_power_entities: config?.solar_power_entities,
       home_consumption_entities: config?.home_consumption_entities,
       grid_import_entities: config?.grid_import_entities,
@@ -1592,6 +1598,10 @@ class EvSmartChargerDashboard extends HTMLElement {
       charger_current_entity: config?.charger_current_entity,
       charger_current_entities: config?.charger_current_entities,
     };
+
+    // v2.28.0: `sections` renders only those parts of the dashboard as a
+    // plain card (no tabs, no background), for use on any other view.
+    this._sections = this._normalizeSections(config?.sections);
 
     // v1.11.4: capture the build version injected by dashboard_manager.py.
     // Manual users who omit `_build_version` from their card YAML get "unknown".
@@ -1725,7 +1735,19 @@ class EvSmartChargerDashboard extends HTMLElement {
   }
 
   getCardSize() {
+    if (this._sections) {
+      const sizes = { hero: 5, controls: 4, weekly: 4, night: 6, profile: 2, settings: 10 };
+      return this._sections.reduce((n, s) => n + (sizes[s] || 3), 0);
+    }
     return 12;
+  }
+
+  _normalizeSections(raw) {
+    if (raw == null || raw === "") return null;
+    const list = (Array.isArray(raw) ? raw : String(raw).split(","))
+      .map((s) => String(s).trim().toLowerCase())
+      .filter((s) => EMBED_SECTIONS.includes(s));
+    return list.length ? list : null;
   }
 
   _entityId(key) {
@@ -3530,7 +3552,22 @@ class EvSmartChargerDashboard extends HTMLElement {
    * Render one accordion (category) for the Settings view. Items are
    * rendered from SETTINGS_CATALOG via _renderSettingItemFromCatalog.
    */
+  /**
+   * v2.28.0: settings that only make sense for some installs. "solar" and
+   * "battery" come from the setup answers (card config), "hybridOn" from the
+   * Hybrid Inverter Mode switch: its parameters show only while it is on.
+   */
+  _meetsRequirement(req) {
+    if (!req) return true;
+    if (Array.isArray(req)) return req.every((r) => this._meetsRequirement(r));
+    if (req === "solar") return this._config.has_solar !== false;
+    if (req === "battery") return this._config.home_battery_controlled !== false;
+    if (req === "hybridOn") return this._isOn(this._entityId("hybridMode"));
+    return true;
+  }
+
   _renderAccordion(cat) {
+    if (!this._meetsRequirement(cat.requires)) return "";
     const open = this._openAccordions.has(cat.id);
     const rendered = cat.items
       .map((item) => this._renderSettingItemFromCatalog(item))
@@ -3558,6 +3595,7 @@ class EvSmartChargerDashboard extends HTMLElement {
   }
 
   _renderSettingItemFromCatalog(item) {
+    if (!this._meetsRequirement(item.requires)) return "";
     const entityId = this._entityId(item.entityKey);
     // v2.24.0: skip settings whose helper entity is not created for this
     // install (e.g. the battery settings without a controlled home battery).
@@ -3696,9 +3734,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       ${boostGroup}
     `;
 
-    return `
-      <div class="evsc-dash-grid">
-        <div class="evsc-stack">
+    const heroHtml = `
           <div class="${heroWrapClasses.join(" ")}">
             ${heroBanner}
             <header class="evsc-hero-v2">
@@ -3722,28 +3758,49 @@ class EvSmartChargerDashboard extends HTMLElement {
                 </div>
               </div>
             </header>
-          </div>
+          </div>`;
 
+    const controlsHtml = `
           <section class="evsc-card evsc-override-card">
             <div class="evsc-card-head">
               <span class="evsc-card-title">${this._label("override_title")}</span>
               <span class="evsc-card-eyebrow">${this._label("override_hint")}</span>
             </div>
             <div class="evsc-stack-inner">${overrideStack}</div>
-          </section>
-        </div>
+          </section>`;
 
-        <div class="evsc-stack">
-          ${this._renderWeeklyPlannerV2()}
-          ${this._renderNightCardV2()}
-
+    const profileHtml = `
           <section class="evsc-card">
             <div class="evsc-card-head">
               <span class="evsc-card-title">${this._label("profile_label")}</span>
               <span class="evsc-card-eyebrow">${this._label("profile_hint")}</span>
             </div>
             ${this._renderSelectChips(ids.chargingProfileId, this._t("control.charging_profile"), this._t("control.mode_strategy"))}
-          </section>
+          </section>`;
+
+    if (this._sections) {
+      const parts = {
+        hero: () => heroHtml,
+        controls: () => controlsHtml,
+        weekly: () => this._renderWeeklyPlannerV2(),
+        night: () => this._renderNightCardV2(),
+        profile: () => profileHtml,
+        settings: () => `<div class="evsc-settings-list">${SETTINGS_CATALOG.map((cat) => this._renderAccordion(cat)).join("")}</div>`,
+      };
+      return `<div class="evsc-dash-grid">${this._sections.map((s) => parts[s]()).join("")}</div>`;
+    }
+
+    return `
+      <div class="evsc-dash-grid">
+        <div class="evsc-stack">
+          ${heroHtml}
+          ${controlsHtml}
+        </div>
+
+        <div class="evsc-stack">
+          ${this._renderWeeklyPlannerV2()}
+          ${this._renderNightCardV2()}
+          ${profileHtml}
         </div>
       </div>
     `;
@@ -3885,22 +3942,23 @@ class EvSmartChargerDashboard extends HTMLElement {
     // change, language switch, prefix resolved) → full innerHTML
     // replacement. v1.11.3 removed toggle / number / time changes from
     // the structural key — those now use the fast path above.
-    const viewHtml = this._view === "settings"
+    const embedded = !!this._sections;
+    const viewHtml = (this._view === "settings" && !embedded)
       ? this._renderSettingsView()
       : this._renderDashboardView(ids, displayValues, priorityState);
 
-    const diagnosticsHtml = this._view === "settings"
+    const diagnosticsHtml = (this._view === "settings" && !embedded)
       ? this._renderDiagnostics(diagnostic, solarDiagnostic, hybridDiagnostic, cachedEvSoc)
       : "";
 
     const html = `
       <ha-card>
-        <div class="dashboard-shell">
-          <div class="aurora aurora-a"></div>
+        <div class="dashboard-shell${embedded ? " is-embedded" : ""}">
+          ${embedded ? "" : `<div class="aurora aurora-a"></div>
           <div class="aurora aurora-b"></div>
-          <div class="grain"></div>
+          <div class="grain"></div>`}
 
-          ${this._renderTabs()}
+          ${embedded ? "" : this._renderTabs()}
           ${viewHtml}
           ${diagnosticsHtml}
         </div>
@@ -3990,6 +4048,8 @@ class EvSmartChargerDashboard extends HTMLElement {
       ch: chargingOnForKey,
       gl: gridLost,
       np: nightPlanKey,
+      // v2.28.0: the hybrid parameters appear / disappear with the switch.
+      hy: states[this._entityId("hybridMode")]?.state === "on",
     });
   }
 
@@ -5272,6 +5332,14 @@ class EvSmartChargerDashboard extends HTMLElement {
           .hero-ring { width: 180px; height: 180px; }
           .dashboard-shell { padding: 16px; }
         }
+
+        /* v2.28.0: a single section on another view — plain card, no
+           background, tight padding. */
+        .dashboard-shell.is-embedded {
+          padding: 12px;
+          max-width: none;
+        }
+        .dashboard-shell.is-embedded .evsc-dash-grid { gap: 12px; }
 
         @media (max-width: 540px) {
           .hero-card { padding: 18px 18px; }

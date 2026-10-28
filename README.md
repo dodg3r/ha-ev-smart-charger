@@ -1305,12 +1305,29 @@ charging_power_entity: sensor.current_charging_power
 pv_forecast_entity: sensor.pv_forecast_tomorrow
 ```
 
+**One part of the dashboard as its own card (v2.28.0).** Add `sections` to show
+only those parts, without the tabs and the background. Easiest: open the
+auto-dashboard → edit → raw configuration editor, copy the card and add
+`sections`:
+
+```yaml
+type: custom:ev-smart-charger-dashboard
+entity_prefix: ev_smart_charger_<entry_id_lowercased>
+ev_soc_entity: sensor.tesla_battery
+sections: [hero, night]
+```
+
+Parts: `hero` (status ring and tiles), `controls` (Stop / Boost), `weekly`
+(weekly planner), `night` (night plan and prices), `profile` (charging
+profile), `settings` (all settings).
+
 **Full configuration reference:**
 
 | Parameter | Required | Description |
 |---|:---:|---|
 | `entity_prefix` | **Yes** | Prefix that matches the integration's config entry. Lowercase. Find it in your entity IDs (the part between `ev_smart_charger_` and `_evsc_*`). |
 | `title` | No | Card title shown in the header. |
+| `sections` | No | v2.28.0: list of parts to show on their own (`hero`, `controls`, `weekly`, `night`, `profile`, `settings`). Omit for the full dashboard. |
 | `ev_soc_entity` | No | Sensor for current EV battery level — drives the outer SOC ring. |
 | `home_battery_soc_entity` | No | Sensor for current home battery level — drives the inner SOC ring. |
 | `solar_power_entity` | No | Sensor for solar production. |

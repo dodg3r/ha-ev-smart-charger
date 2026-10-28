@@ -91,6 +91,7 @@ from .const import (
     FUSE_GRID_IMPORT_KEYS,
     get_charger_model,
     has_home_battery,
+    has_solar,
     has_meter_import_power,
     is_three_phase,
 )
@@ -278,6 +279,9 @@ def _build_card_config(entry: ConfigEntry) -> dict[str, Any]:
     # v2.24.0: False when the home battery is display-only (its own control)
     # or absent — the card then hides the priority pill.
     config["home_battery_controlled"] = has_home_battery(data)
+    # v2.28.0: without solar panels the Solar Surplus and Hybrid settings
+    # are hidden.
+    config["has_solar"] = has_solar(data)
     if is_three_phase(data):
         for card_key, conf_keys in (
             ("solar_power_entities", (CONF_FV_PRODUCTION, CONF_FV_PRODUCTION_L2, CONF_FV_PRODUCTION_L3)),

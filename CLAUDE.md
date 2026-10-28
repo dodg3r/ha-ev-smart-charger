@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.27.0
+**Current Version:** 2.28.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,26 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.28.0 (2026-10-28) — fork dodg3r
+**Dashboard parts as their own cards; settings that do not apply are hidden**
+
+Requested by the maintainer. Frontend + card config only.
+- Card option `sections` (list or comma string of `hero`, `controls`,
+  `weekly`, `night`, `profile`, `settings`; `EMBED_SECTIONS`,
+  `_normalizeSections`): renders only those parts in that order, without
+  tabs, aurora background or diagnostics (`.dashboard-shell.is-embedded`);
+  `getCardSize()` follows the parts. `_renderDashboardView` builds the parts
+  (`heroHtml`, `controlsHtml`, `profileHtml`) once for both layouts.
+- `SETTINGS_CATALOG` entries take `requires` (`solar`, `battery`,
+  `hybridOn`, or a list), checked by `_meetsRequirement()`: Solar Surplus and
+  Hybrid need `has_solar` (new card config key from `dashboard_manager`),
+  Home Battery Support needs `home_battery_controlled`, the Hybrid parameters
+  show only while the Hybrid switch is on (only the toggle otherwise; `hy`
+  in the structural key).
+- README: `sections` documented under manual usage.
+
+---
 
 ### v2.27.0 (2026-10-27) — fork dodg3r
 **Weekly planner: one toggle for "car ready" on all days**
