@@ -703,6 +703,9 @@
       "evsc_spike_response_delay": {
         "name": "Ritardo risposta picchi di consumo"
       },
+      "evsc_solar_start_offset": {
+        "name": "Offset avvio solare"
+      },
       "evsc_offgrid_max_amperage": {
         "name": "Amperaggio massimo off-grid"
       },

@@ -703,6 +703,9 @@
       "evsc_spike_response_delay": {
         "name": "Reactievertraging verbruikspieken"
       },
+      "evsc_solar_start_offset": {
+        "name": "Startoffset zon"
+      },
       "evsc_offgrid_max_amperage": {
         "name": "Maximale stroomsterkte off-grid"
       },

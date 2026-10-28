@@ -30,6 +30,9 @@ from .const import (
     HELPER_MAX_BATTERY_DISCHARGE_FOR_EV_SUFFIX,
     HELPER_SOLAR_MAX_AMPERAGE_SUFFIX,
     HELPER_OFFGRID_MAX_AMPERAGE_SUFFIX,
+    HELPER_SOLAR_START_OFFSET_SUFFIX,
+    SOLAR_START_OFFSET_MIN,
+    SOLAR_START_OFFSET_MAX,
     HELPER_NIGHTTIME_SUNSET_OFFSET_SUFFIX,
     HELPER_NIGHTTIME_SUNRISE_OFFSET_SUFFIX,
     HELPER_SPIKE_RESPONSE_DELAY_SUFFIX,
@@ -135,6 +138,7 @@ class SolarSurplusAutomation:
         self._battery_support_sunset_buffer_entity = None
         self._solar_max_amperage_entity = None
         self._offgrid_max_amperage_entity = None
+        self._solar_start_offset_entity = None
         # v2.6.0 (issue #42): nighttime window offsets (minutes). 0 = astronomical.
         self._nighttime_sunset_offset_entity = None
         self._nighttime_sunrise_offset_entity = None
@@ -476,6 +480,7 @@ class SolarSurplusAutomation:
             self._max_battery_discharge_entity = self._find_entity_by_suffix(HELPER_MAX_BATTERY_DISCHARGE_FOR_EV_SUFFIX)
         self._solar_max_amperage_entity = self._find_entity_by_suffix(HELPER_SOLAR_MAX_AMPERAGE_SUFFIX)
         self._offgrid_max_amperage_entity = self._find_entity_by_suffix(HELPER_OFFGRID_MAX_AMPERAGE_SUFFIX)
+        self._solar_start_offset_entity = self._find_entity_by_suffix(HELPER_SOLAR_START_OFFSET_SUFFIX)
         self._solar_surplus_diagnostic_sensor_entity = self._find_entity_by_suffix("evsc_solar_surplus_diagnostic")
         if self._runtime_data is not None:
             self._solar_surplus_diagnostic_sensor_obj = self._runtime_data.get_entity(
@@ -677,6 +682,44 @@ class SolarSurplusAutomation:
         )
         return production >= baseline - tolerance
 
+    # --- v2.29.0: adjustable start threshold -------------------------------
+
+    def _start_offset_amps(self) -> float:
+        """User offset on the start / stop thresholds, clamped (0 when unset)."""
+        entity = getattr(self, "_solar_start_offset_entity", None)
+        if not entity:
+            return 0.0
+        offset = get_float(self.hass, entity, 0.0)
+        return max(SOLAR_START_OFFSET_MIN, min(SOLAR_START_OFFSET_MAX, offset))
+
+    def _start_threshold(self) -> float:
+        """Surplus (A) needed to start or increase: 6.5 A + offset."""
+        return SURPLUS_START_THRESHOLD + self._start_offset_amps()
+
+    def _stop_threshold(self) -> float:
+        """Surplus (A) needed to keep charging: 5.5 A + offset."""
+        return SURPLUS_STOP_THRESHOLD + self._start_offset_amps()
+
+    def _import_allowance_w(self) -> float:
+        """Grid import (W) the lowered threshold deliberately accepts.
+
+        With a negative offset the charger runs at its 6 A floor on less
+        surplus than it draws; the gap comes from the grid. Without this
+        allowance grid-import protection would stop the charger again after
+        its delay and Solar Surplus would restart it — a start/stop loop.
+        The allowance covers the gap at the stop threshold, so protection
+        and the stop threshold agree. 0 when the offset is 0 or positive.
+        """
+        floor = self._amp_levels[0]
+        gap = floor - self._stop_threshold()
+        if self._start_offset_amps() >= 0 or gap <= 0:
+            return 0.0
+        return gap * self._effective_voltage
+
+    def _effective_grid_threshold(self, base: float) -> float:
+        """Configured grid-import threshold plus the offset allowance."""
+        return (base or 0.0) + self._import_allowance_w()
+
     async def _spike_conditions_met(self) -> tuple[bool, float, float]:
         """Re-verify every fast-path precondition against live state.
 
@@ -686,7 +729,9 @@ class SolarSurplusAutomation:
         stands the fast path down.
         """
         grid_import = self._power_model.read_grid_import(self.hass)
-        grid_threshold = get_float(self.hass, self._grid_import_threshold_entity)
+        grid_threshold = self._effective_grid_threshold(
+            get_float(self.hass, self._grid_import_threshold_entity)
+        )
 
         if self._get_spike_response_delay() <= 0:
             return False, grid_import, grid_threshold
@@ -767,7 +812,10 @@ class SolarSurplusAutomation:
 
         # Level that zeroes the import: new draw = current draw - import (plus
         # a small margin so the landing level doesn't leave a residual trickle).
-        import_amps = (grid_import + SPIKE_STEP_DOWN_MARGIN_W) / self._effective_voltage
+        # v2.29.0: the import a lowered start threshold accepts is not part of
+        # the spike, so only the import above it is removed.
+        excess_import = max(0.0, grid_import - self._import_allowance_w())
+        import_amps = (excess_import + SPIKE_STEP_DOWN_MARGIN_W) / self._effective_voltage
         max_allowed = current_amps - import_amps
         candidates = [level for level in self._amp_levels if level <= max_allowed]
         target = candidates[-1] if candidates else 0
@@ -1256,12 +1304,12 @@ class SolarSurplusAutomation:
         # When charger is OFF and surplus is in dead band (5.5-6.5A) for a prolonged
         # period, override target to 6A. This prevents the charger from sitting idle
         # for 30+ minutes when there's ~1200-1400W of usable surplus.
-        if not charger_is_on and target_amps == 0 and surplus_amps >= SURPLUS_STOP_THRESHOLD:
+        if not charger_is_on and target_amps == 0 and surplus_amps >= self._stop_threshold():
             if self._deadband_start_time is None:
                 self._deadband_start_time = dt_util.now()
                 self.logger.info(
                     f"Surplus in dead band ({surplus_amps:.2f}A, "
-                    f"range {SURPLUS_STOP_THRESHOLD}-{SURPLUS_START_THRESHOLD}A) - "
+                    f"range {self._stop_threshold()}-{self._start_threshold()}A) - "
                     f"Starting {SURPLUS_DEADBAND_START_DELAY}s timer for opportunistic start"
                 )
             else:
@@ -1312,7 +1360,10 @@ class SolarSurplusAutomation:
             )
 
         # === 13. Get Configuration Values ===
-        grid_threshold = get_float(self.hass, self._grid_import_threshold_entity)
+        # v2.29.0: plus the import a lowered start threshold accepts.
+        grid_threshold = self._effective_grid_threshold(
+            get_float(self.hass, self._grid_import_threshold_entity)
+        )
         grid_import_delay = get_float(self.hass, self._grid_import_delay_entity)
         surplus_drop_delay = get_float(self.hass, self._surplus_drop_delay_entity)
 
@@ -1333,6 +1384,9 @@ class SolarSurplusAutomation:
                 "battery_support_active": self._battery_support_active,
                 "use_home_battery_enabled": get_bool(self.hass, self._use_home_battery_entity),
                 "grid_threshold_w": grid_threshold,
+                # v2.29.0: thresholds after the user offset
+                "start_threshold_a": round(self._start_threshold(), 2),
+                "stop_threshold_a": round(self._stop_threshold(), 2),
                 "grid_import_delay_s": grid_import_delay,
                 "grid_import_timer_started_ts": self._last_grid_import_high,
                 "grid_import_elapsed_s": None,
@@ -1408,7 +1462,7 @@ class SolarSurplusAutomation:
                 self._surplus_decrease_start_time = dt_util.now()
                 self._waiting_for_surplus_decrease = True
                 self.logger.warning(
-                    f"EV_FREE mode: Insufficient surplus ({surplus_amps:.2f}A < {SURPLUS_STOP_THRESHOLD}A) - "
+                    f"EV_FREE mode: Insufficient surplus ({surplus_amps:.2f}A < {self._stop_threshold()}A) - "
                     f"Starting {surplus_drop_delay}s delay before stopping"
                 )
                 return
@@ -1847,17 +1901,20 @@ class SolarSurplusAutomation:
             Target amperage in amps
 
         Hysteresis Logic:
-        - Start threshold: 6.5A (SURPLUS_START_THRESHOLD)
-        - Stop threshold: 5.5A (SURPLUS_STOP_THRESHOLD)
+        - Start threshold: 6.5A (SURPLUS_START_THRESHOLD) + user offset
+        - Stop threshold: 5.5A (SURPLUS_STOP_THRESHOLD) + user offset
         - Dead band: 5.5A - 6.5A (maintain current level, no changes)
         """
         # ALWAYS calculate from surplus first (effective voltage = 230 V single,
         # 690 V three-phase → surplus_amps stays a valid per-phase amperage)
         surplus_amps = surplus_watts / self._effective_voltage
         is_charging = current_amperage > 0
+        # v2.29.0: thresholds shifted by the user offset (6.5 / 5.5 A at 0).
+        start_threshold = self._start_threshold()
+        stop_threshold = self._stop_threshold()
 
         # CASE 1: Surplus sufficient to START or INCREASE (>= 6.5A)
-        if surplus_amps >= SURPLUS_START_THRESHOLD:
+        if surplus_amps >= start_threshold:
             target = self._amp_levels[0]
             for level in self._amp_levels:
                 if level <= surplus_amps:
@@ -1868,7 +1925,7 @@ class SolarSurplusAutomation:
 
         # CASE 2: Surplus in DEAD BAND (5.5A - 6.5A)
         # Maintain current level - don't increase, don't decrease
-        if surplus_amps >= SURPLUS_STOP_THRESHOLD:
+        if surplus_amps >= stop_threshold:
             if is_charging:
                 # issue #51: the dead-band "maintain" rule is only valid at the
                 # FLOOR — it exists to prevent stop/start oscillation around the
@@ -1881,7 +1938,7 @@ class SolarSurplusAutomation:
                     # At the floor — maintain to prevent oscillation (original intent).
                     self.logger.debug(
                         f"Surplus in hysteresis band ({surplus_amps:.2f}A, "
-                        f"range {SURPLUS_STOP_THRESHOLD}-{SURPLUS_START_THRESHOLD}A) "
+                        f"range {stop_threshold}-{start_threshold}A) "
                         f"and at floor {floor}A - maintaining"
                     )
                     return current_amperage
@@ -1902,7 +1959,7 @@ class SolarSurplusAutomation:
                 # Not charging yet - wait for surplus to exceed START threshold
                 self.logger.debug(
                     f"Surplus in hysteresis band ({surplus_amps:.2f}A) but not charging - "
-                    f"Waiting for {SURPLUS_START_THRESHOLD}A to start"
+                    f"Waiting for {start_threshold}A to start"
                 )
                 # Check if battery support can activate
                 if self._battery_support_active:
@@ -1918,7 +1975,7 @@ class SolarSurplusAutomation:
         if self._battery_support_active:
             battery_amps = int(get_float(self.hass, self._battery_support_amperage_entity, 16))
             self.logger.info(
-                f"Surplus insufficient ({surplus_amps:.1f}A < {SURPLUS_STOP_THRESHOLD}A), "
+                f"Surplus insufficient ({surplus_amps:.1f}A < {stop_threshold}A), "
                 f"using battery support at {battery_amps}A"
             )
             return battery_amps

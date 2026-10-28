@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.28.0
+**Current Version:** 2.29.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,30 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.29.0 (2026-10-28) — fork dodg3r
+**Adjustable Solar Surplus start threshold**
+
+Requested by the maintainer: on three-phase 6 A is ~4.1 kW, so solar charging
+rarely starts in autumn.
+- New number `evsc_solar_start_offset` (A, −4…+4, 0.5 A steps, default 0,
+  outside `_NUMBER_DEFS` so the generic 1 A rewrite does not touch it).
+  `TOTAL_INTEGRATION_ENTITIES` 82 → 83, `_NO_BATTERY` 68 → 69.
+- Solar Surplus: `_start_threshold()` / `_stop_threshold()` = 6.5 / 5.5 A +
+  offset, used in `_calculate_target_amperage`, the dead-band start and the
+  EV_FREE log. Level selection is unchanged (never below the 6 A floor).
+- `_import_allowance_w()`: with a negative offset, (6 A − stop threshold) ×
+  effective voltage is added to the grid-import threshold
+  (`_effective_grid_threshold`) for the periodic grid-import protection and
+  the spike fast path, and the spike step-down removes only the import above
+  it — otherwise protection would stop the charger at the floor and Solar
+  Surplus restart it (start/stop loop). 0 for offset ≥ 0.
+- Diagnostic: `start_threshold_a`, `stop_threshold_a`.
+- Dashboard: "Solar Start Threshold" stepper in the Solar accordion
+  (EN/IT/NL/SV); entity name EN/IT/NL.
+- Tests: NEW `tests/test_v2290_solar_start_offset.py`; entity counts.
+
+---
 
 ### v2.28.0 (2026-10-28) — fork dodg3r
 **Dashboard parts as their own cards; settings that do not apply are hidden**

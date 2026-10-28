@@ -131,6 +131,7 @@ const DOMAIN_SUFFIXES = {
   spikeResponseDelay: ["number", "evsc_spike_response_delay"],
   solarMaxAmperage: ["number", "evsc_solar_max_amperage"],
   offgridMaxAmperage: ["number", "evsc_offgrid_max_amperage"],
+  solarStartOffset: ["number", "evsc_solar_start_offset"],
   useHomeBattery: ["switch", "evsc_use_home_battery"],
   homeBatteryMinSoc: ["number", "evsc_home_battery_min_soc"],
   batterySupportAmperage: ["number", "evsc_battery_support_amperage"],
@@ -251,6 +252,15 @@ const SETTINGS_CATALOG = [
           sv: "Sekunder att vänta innan laddaren stoppas när överskottet minskar. Skyddar mot förbipasserande moln.",
         },
         hint: { en: "Default 30 s · Cloud filter", it: "Default 30 s · Filtro nuvole", nl: "Standaard 30 s · Wolkenfilter", sv: "Standard 30 s · Molnfilter" } },
+      { entityKey: "solarStartOffset", kind: "stepper",
+        name: { en: "Solar Start Threshold", it: "Soglia di avvio solare", nl: "Startdrempel zon", sv: "Startgräns solladdning" },
+        desc: {
+          en: "Shifts the surplus needed to start (6.5 A) and to keep charging (5.5 A). Negative starts on less sun: the charger cannot go below 6 A, so the missing part comes from the grid, and grid import protection allows exactly that much. Positive waits for more sun.",
+          it: "Sposta il surplus necessario per avviare (6,5 A) e per continuare (5,5 A). Negativo avvia con meno sole: il caricatore non scende sotto 6 A, quindi la parte mancante arriva dalla rete e la protezione import la consente. Positivo attende piu sole.",
+          nl: "Verschuift het overschot dat nodig is om te starten (6,5 A) en door te laden (5,5 A). Negatief start bij minder zon: de lader kan niet onder 6 A, dus het ontbrekende deel komt van het net en de netimportbeveiliging staat precies dat toe. Positief wacht op meer zon.",
+          sv: "Flyttar överskottet som krävs för att starta (6,5 A) och fortsätta ladda (5,5 A). Minus startar på mindre sol: laddaren kan inte gå under 6 A, så resten tas från nätet och skyddet mot nätimport tillåter just så mycket. Plus väntar på mer sol.",
+        },
+        hint: { en: "Default 0 A · −4 to +4 A · −2 A ≈ 1.4 kW grid on three-phase", it: "Default 0 A · da −4 a +4 A · −2 A ≈ 1,4 kW rete in trifase", nl: "Standaard 0 A · −4 tot +4 A · −2 A ≈ 1,4 kW net bij driefase", sv: "Standard 0 A · −4 till +4 A · −2 A ≈ 1,4 kW från nätet på trefas" } },
       { entityKey: "solarMaxAmperage", kind: "stepper",
         name: { en: "Solar Max Amperage", it: "Amperaggio max solare", nl: "Maximale zonnestroom", sv: "Högsta ström sol" },
         desc: {

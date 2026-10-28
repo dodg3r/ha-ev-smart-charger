@@ -24,6 +24,10 @@ from .const import (
     DEFAULT_SOLAR_MAX_AMPERAGE,
     DEFAULT_OFFGRID_MAX_AMPERAGE,
     HELPER_OFFGRID_MAX_AMPERAGE_SUFFIX,
+    HELPER_SOLAR_START_OFFSET_SUFFIX,
+    DEFAULT_SOLAR_START_OFFSET,
+    SOLAR_START_OFFSET_MIN,
+    SOLAR_START_OFFSET_MAX,
     DEFAULT_MAX_BATTERY_DISCHARGE_FOR_EV,
     HELPER_MAX_BATTERY_DISCHARGE_FOR_EV_SUFFIX,
     DEFAULT_EV_MIN_SOC_WEEKDAY,
@@ -183,6 +187,19 @@ async def async_setup_entry(
                     default_value=DEFAULT_HOME_MIN_SOC, unit="%",
                 )
             )
+
+    # v2.29.0: Solar Surplus start-threshold offset. Added outside _NUMBER_DEFS
+    # so the generic 1 A step rewrite does not apply (it is an offset, 0.5 A).
+    entities.append(
+        EVSCNumber(
+            runtime_data, entry.entry_id,
+            HELPER_SOLAR_START_OFFSET_SUFFIX,
+            "EVSC Solar Start Offset",
+            "mdi:tune-vertical",
+            min_value=SOLAR_START_OFFSET_MIN, max_value=SOLAR_START_OFFSET_MAX, step=0.5,
+            default_value=DEFAULT_SOLAR_START_OFFSET, unit="A",
+        )
+    )
 
     # v2.14.0: main-fuse safety margin, only when fuse protection is set up.
     # Kept at 0.5 A steps regardless of charger model (it is a margin, not a
