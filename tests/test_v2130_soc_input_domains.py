@@ -18,14 +18,18 @@ def test_soc_fields_accept_plain_helpers():
     assert "number" in SOC_INPUT_DOMAINS
 
     # And the config flow really offers them (a constant nobody wires up is a
-    # regression waiting to happen).
-    schema = _sensor_schema()
-    soc_selectors = {
-        str(key): value.config["domain"]
-        for key, value in schema.schema.items()
-        if str(key) in ("soc_car", "soc_home")
-    }
-    assert soc_selectors == {
-        "soc_car": SOC_INPUT_DOMAINS,
+    # regression waiting to happen). v2.32.0: the car SOC lives in the car
+    # profile form, the home battery SOC in the sensors step.
+    from custom_components.ev_smart_charger.config_flow import _car_schema
+
+    def selectors(schema, keys):
+        return {
+            str(key): value.config["domain"]
+            for key, value in schema.schema.items()
+            if str(key) in keys
+        }
+
+    assert selectors(_sensor_schema(), ("soc_car", "soc_home")) == {
         "soc_home": SOC_INPUT_DOMAINS,
     }
+    assert selectors(_car_schema(), ("soc_car",)) == {"soc_car": SOC_INPUT_DOMAINS}

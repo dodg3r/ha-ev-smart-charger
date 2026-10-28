@@ -687,6 +687,7 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Car connected",
     "charger.full": "Fully charged",
     "car.label": "Car",
+    "car.guest": "Guest",
     "reason.surplus_low_need": "Car connected · solar surplus {kw} kW, too little to start (needs {need} kW)",
     "charger.stopped": "Stopped",
     "charger.fuse_paused": "Paused (fuse)",
@@ -908,6 +909,7 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Bil ansluten",
     "charger.full": "Fulladdad",
     "car.label": "Bil",
+    "car.guest": "Gäst",
     "reason.surplus_low_need": "Bil ansluten · solöverskott {kw} kW, för lite för att starta (kräver {need} kW)",
     "charger.stopped": "Stoppad",
     "charger.fuse_paused": "Pausad (säkring)",
@@ -1129,6 +1131,7 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Auto collegata",
     "charger.full": "Carica completa",
     "car.label": "Auto",
+    "car.guest": "Ospite",
     "reason.surplus_low_need": "Auto collegata · surplus {kw} kW, troppo poco per iniziare (servono {need} kW)",
     "charger.stopped": "Fermato",
     "charger.fuse_paused": "In pausa (fusibile)",
@@ -1350,6 +1353,7 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Auto aangesloten",
     "charger.full": "Volledig geladen",
     "car.label": "Auto",
+    "car.guest": "Gast",
     "reason.surplus_low_need": "Auto aangesloten · overschot {kw} kW, te weinig om te starten (nodig {need} kW)",
     "charger.stopped": "Gestopt",
     "charger.fuse_paused": "Gepauzeerd (zekering)",
@@ -2365,8 +2369,10 @@ class EvSmartChargerDashboard extends HTMLElement {
     if (!profiles) return;
     const car = profiles.cars.find((c) => c.name === profiles.active);
     if (!car) return;
-    if (car.ev_soc_entity) this._config.ev_soc_entity = car.ev_soc_entity;
+    // v2.32.0: the guest profile has no sensors, so both are always set.
+    this._config.ev_soc_entity = car.ev_soc_entity || undefined;
     this._config.ev_soc_limit_entity = car.ev_soc_limit_entity || undefined;
+    this._carWithoutSoc = !car.ev_soc_entity;
   }
 
   _renderCarPicker() {
@@ -2374,7 +2380,8 @@ class EvSmartChargerDashboard extends HTMLElement {
     if (!profiles || profiles.cars.length < 2) return "";
     const options = profiles.cars.map((c) => {
       const name = this._escapeHtml(String(c.name));
-      return `<option value="${name}" ${c.name === profiles.active ? "selected" : ""}>${name}</option>`;
+      const label = c.name === "guest" ? this._escapeHtml(this._t("car.guest")) : name;
+      return `<option value="${name}" ${c.name === profiles.active ? "selected" : ""}>${label}</option>`;
     }).join("");
     return `
       <div class="evsc-car-bar">
@@ -4006,7 +4013,9 @@ class EvSmartChargerDashboard extends HTMLElement {
     const _evSocNum = this._numericState(this._config.ev_soc_entity);
     void _chargerStatusState; void _chargingPowerKw; void _evSocNum;
     const chargingPower = this._chargerStateText();
-    const evSoc = this._displayValue(this._config.ev_soc_entity, this._t("fallback.ev_soc_entity"));
+    const evSoc = this._carWithoutSoc
+      ? "—"
+      : this._displayValue(this._config.ev_soc_entity, this._t("fallback.ev_soc_entity"));
     const homeBatterySoc = this._displayValue(
       this._config.home_battery_soc_entity,
       this._t("fallback.home_battery_soc_entity"),

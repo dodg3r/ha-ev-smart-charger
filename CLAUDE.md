@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.31.0
+**Current Version:** 2.32.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,35 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.32.0 (2026-10-28) — fork dodg3r
+**Car profiles at the end of the setup; a Guest profile without sensors**
+
+Requested by the maintainer.
+- The car's sensors (EV SOC, charge limit, battery capacity) left the
+  sensors / external steps; they are only set in the car profiles step,
+  now also in the initial flow (logical step `cars` before `dashboard`,
+  initial step ids `cars` / `car`).
+- Guest profile `GUEST_CAR = "guest"` (`const.guest_car()`, no sensors,
+  default capacity) always exists: `get_cars()` = guest + `get_own_cars()`.
+  `CONF_CARS` holds only own cars; an entry without the key but with an EV
+  SOC sensor (before v2.32.0) keeps it as car "Car 1". Names in
+  `RESERVED_CAR_NAMES` (guest/gäst/gast/ospite) are refused
+  (`car_name_reserved`).
+- Active car: finishing the step without a car → guest; the first car
+  created when there were none becomes active; otherwise the choice stays
+  (`_with_cars`, `_had_own_cars`). Removing the active car → first own car,
+  else guest. Every own car can be removed.
+- Without SOC: Priority Balancer, the cached EV SOC monitor and sensor and
+  the night plan run without the sensor (the night plan uses the 5
+  cheapest hours); the "SOC sensor not configured" message is DEBUG.
+- Select `evsc_active_car` lists `guest` first (state translation
+  Guest/Ospite/Gast); the dashboard picker shows "Gäst"/"Guest"
+  (`car.guest`), and the SOC reads "—" for a profile without SOC.
+- Tests: initial walkthroughs pass the cars step; guest tests in
+  `tests/test_v2310_car_profiles.py`.
+
+---
 
 ### v2.31.0 (2026-10-28) — fork dodg3r
 **Car profiles; start requirement in the status line; steady "fully charged"**

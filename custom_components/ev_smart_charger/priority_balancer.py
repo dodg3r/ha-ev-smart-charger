@@ -117,7 +117,11 @@ class PriorityBalancer:
         # Discover cached EV SOC sensor (v1.4.0)
         self._soc_car = resolve_entity(HELPER_CACHED_EV_SOC_SUFFIX)
 
-        if not self._soc_car:
+        if not self._soc_car_source:
+            # v2.32.0: guest profile / car without a SOC sensor.
+            self._soc_car = None
+            self.logger.info("No EV SOC sensor for the active car - SOC unknown")
+        elif not self._soc_car:
             self.logger.error("Cached EV SOC sensor not found in runtime data")
         else:
             self.logger.info(
@@ -375,7 +379,9 @@ class PriorityBalancer:
             SOC value (0-100)
         """
         if not sensor_entity:
-            self.logger.warning(
+            # v2.32.0: the guest car profile has no SOC sensor; that is a
+            # normal state, so this stays out of the regular log.
+            self.logger.debug(
                 f"{sensor_name} SOC sensor not configured, assuming {default_value}%"
             )
             return default_value

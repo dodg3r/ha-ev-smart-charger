@@ -47,7 +47,6 @@ def _base_flow_payloads() -> tuple[dict, dict, dict, dict, dict]:
             CONF_EV_CHARGER_STATUS: "sensor.charger_status",
         },
         {
-            CONF_SOC_CAR: "sensor.car_soc",
             CONF_SOC_HOME: "sensor.home_soc",
             CONF_FV_PRODUCTION: "sensor.solar",
             CONF_HOME_CONSUMPTION: "sensor.home_use",
@@ -103,7 +102,6 @@ async def test_config_flow_validates_missing_energy_target_entity(hass) -> None:
     result = await hass.config_entries.flow.async_configure(
         flow_id,
         {
-            CONF_BATTERY_CAPACITY: DEFAULT_BATTERY_CAPACITY,
             CONF_ENERGY_FORECAST_TARGET: "number.missing_target",
         },
     )

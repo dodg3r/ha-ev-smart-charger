@@ -403,12 +403,34 @@
       },
       "reconfigure_cars": {
         "title": "Car profiles - Step {step}/{total_steps}",
-        "description": "Each car has its own sensors: battery SOC, the car's own charge limit and the battery capacity. The active car is chosen on the dashboard (or with the Active car select).\n\n{cars}\n\nPick an action, or Continue.",
+        "description": "Add the cars you charge here. Each car has its own sensors: battery SOC, the car's own charge limit and the battery capacity. The Guest profile always exists: it has no sensors and charges in the cheapest night hours, for a visitor's car. The active car is chosen on the dashboard (or with the Active car select).\n\n{cars}\n\nPick an action, or Continue (without a car only the Guest profile is created).",
         "data": {
           "car_action": "Action"
         }
       },
       "reconfigure_car": {
+        "title": "Car profile",
+        "description": "Name the car freely, e.g. its registration number.",
+        "data": {
+          "name": "Name",
+          "soc_car": "Battery SOC",
+          "ev_soc_limit": "Charge limit (optional)",
+          "battery_capacity": "Battery capacity (kWh)"
+        },
+        "data_description": {
+          "soc_car": "Sensor with this car's state of charge in percent.",
+          "ev_soc_limit": "Sensor with the car's own charge limit in percent. Its value counts as full.",
+          "battery_capacity": "Usable battery capacity, used to plan night charging."
+        }
+      },
+      "cars": {
+        "title": "Car profiles - Step {step}/{total_steps}",
+        "description": "Add the cars you charge here. Each car has its own sensors: battery SOC, the car's own charge limit and the battery capacity. The Guest profile always exists: it has no sensors and charges in the cheapest night hours, for a visitor's car. The active car is chosen on the dashboard (or with the Active car select).\n\n{cars}\n\nPick an action, or Continue (without a car only the Guest profile is created).",
+        "data": {
+          "car_action": "Action"
+        }
+      },
+      "car": {
         "title": "Car profile",
         "description": "Name the car freely, e.g. its registration number.",
         "data": {
@@ -433,7 +455,8 @@
       "fuse_charger_current_required": "Map the charger current (a sensor with L1/L2/L3 attributes, or per-phase sensors).",
       "charger_control_required": "Map either a charger switch or both the start and stop charging buttons.",
       "car_name_required": "Enter a name.",
-      "car_name_exists": "Another car already has this name."
+      "car_name_exists": "Another car already has this name.",
+      "car_name_reserved": "This name is used by the Guest profile."
     },
     "abort": {
       "already_configured": "Another EV Smart Charger entry already uses this charger switch.",
@@ -639,7 +662,7 @@
       },
       "cars": {
         "title": "Car profiles - Step {step}/{total_steps}",
-        "description": "Each car has its own sensors: battery SOC, the car's own charge limit and the battery capacity. The active car is chosen on the dashboard (or with the Active car select).\n\n{cars}\n\nPick an action, or Continue.",
+        "description": "Add the cars you charge here. Each car has its own sensors: battery SOC, the car's own charge limit and the battery capacity. The Guest profile always exists: it has no sensors and charges in the cheapest night hours, for a visitor's car. The active car is chosen on the dashboard (or with the Active car select).\n\n{cars}\n\nPick an action, or Continue (without a car only the Guest profile is created).",
         "data": {
           "car_action": "Action"
         }
@@ -669,7 +692,8 @@
       "fuse_charger_current_required": "Map the charger current (a sensor with L1/L2/L3 attributes, or per-phase sensors).",
       "charger_control_required": "Map either a charger switch or both the start and stop charging buttons.",
       "car_name_required": "Enter a name.",
-      "car_name_exists": "Another car already has this name."
+      "car_name_exists": "Another car already has this name.",
+      "car_name_reserved": "This name is used by the Guest profile."
     }
   },
   "entity": {
@@ -844,7 +868,10 @@
     },
     "select": {
       "evsc_active_car": {
-        "name": "Active car"
+        "name": "Active car",
+        "state": {
+          "guest": "Guest"
+        }
       },
       "evsc_charging_profile": {
         "name": "Charging profile",

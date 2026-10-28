@@ -9,7 +9,6 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
-    CAR_FIELDS,
     CONF_ACTIVE_CAR,
     CONF_CAR_NAME,
     CONF_CARS,
@@ -78,9 +77,11 @@ from .const import (
     LOAD_BALANCING_INTEGRATION,
     LOAD_BALANCING_NONE,
     LOAD_BALANCING_OPTIONS,
+    GUEST_CAR,
+    RESERVED_CAR_NAMES,
     apply_active_car,
     get_active_car_name,
-    get_cars,
+    get_own_cars,
     get_load_balancing,
     get_main_fuse_size,
     has_meter_import_power,
@@ -341,13 +342,9 @@ def _sensor_schema(
     """
     current_data = current_data or {}
 
-    fields: dict[Any, Any] = {
-        vol.Required(CONF_SOC_CAR, **_field_config(current_data.get(CONF_SOC_CAR))): _entity_selector(SOC_INPUT_DOMAINS),
-        # v2.30.0: optional car charge limit — its value counts as full.
-        vol.Optional(
-            CONF_EV_SOC_LIMIT, **_field_config(current_data.get(CONF_EV_SOC_LIMIT))
-        ): _entity_selector(SOC_INPUT_DOMAINS),
-    }
+    # v2.32.0: the car's own sensors (SOC, charge limit) live in the car
+    # profiles at the end of the flow, not here.
+    fields: dict[Any, Any] = {}
     if home_battery:
         fields[
             vol.Required(CONF_SOC_HOME, **_field_config(current_data.get(CONF_SOC_HOME)))
@@ -593,15 +590,7 @@ def _external_connectors_schema(current_data: dict[str, Any] | None = None) -> v
     current_data = current_data or {}
     return vol.Schema(
         {
-            vol.Required(
-                CONF_BATTERY_CAPACITY,
-                **_field_config(
-                    current_data.get(CONF_BATTERY_CAPACITY, DEFAULT_BATTERY_CAPACITY)
-                ),
-            ): vol.All(
-                vol.Coerce(float),
-                vol.Range(min=MIN_BATTERY_CAPACITY, max=MAX_BATTERY_CAPACITY),
-            ),
+            # v2.32.0: the battery capacity belongs to the car profile.
             vol.Optional(
                 CONF_ENERGY_FORECAST_TARGET,
                 **_field_config(current_data.get(CONF_ENERGY_FORECAST_TARGET)),
@@ -760,7 +749,7 @@ _STEP_ORDER = (
     "forecast",
     "notifications",
     "external",
-    # v2.31.0: car profiles (reconfigure / options only)
+    # v2.31.0: car profiles (v2.32.0: in the initial flow too)
     "cars",
     "dashboard",
 )
@@ -779,6 +768,7 @@ _STEP_IDS: dict[str, dict[str, str]] = {
         "forecast": "pv_forecast",
         "notifications": "notifications",
         "external": "external_connectors",
+        "cars": "cars",
         "dashboard": "dashboard",
     },
     "reconfigure": {
@@ -844,11 +834,10 @@ def _cars_menu_schema(hass, cars: list[dict]) -> vol.Schema:
         options.append(
             {"value": f"edit:{index}", "label": labels["edit"].format(name=car[CONF_CAR_NAME])}
         )
-    if len(cars) > 1:
-        for index, car in enumerate(cars):
-            options.append(
-                {"value": f"remove:{index}", "label": labels["remove"].format(name=car[CONF_CAR_NAME])}
-            )
+    for index, car in enumerate(cars):
+        options.append(
+            {"value": f"remove:{index}", "label": labels["remove"].format(name=car[CONF_CAR_NAME])}
+        )
     return vol.Schema(
         {
             vol.Required(_CAR_ACTION, default="done"): selector.SelectSelector(
@@ -880,8 +869,14 @@ def _car_schema(car: dict[str, Any] | None = None) -> vol.Schema:
     )
 
 
-def _cars_list_text(cars: list[dict], active: str | None) -> str:
-    lines = []
+_GUEST_LABELS = {"en": "Guest", "it": "Ospite", "nl": "Gast", "sv": "Gäst"}
+
+
+def _cars_list_text(hass, cars: list[dict], active: str | None) -> str:
+    """The guest profile first (always there, no sensors), then own cars."""
+    lang = (getattr(hass.config, "language", None) or "en") if hass else "en"
+    guest = _GUEST_LABELS.get(lang, _GUEST_LABELS["en"])
+    lines = [f"• {guest}{' ✓' if active == GUEST_CAR else ''} — —"]
     for car in cars:
         mark = " ✓" if car[CONF_CAR_NAME] == active else ""
         lines.append(f"• {car[CONF_CAR_NAME]}{mark} — {car.get(CONF_SOC_CAR) or '—'}")
@@ -935,23 +930,16 @@ class _StepNavigator:
     _editing_car: int | None = None
     _active_car: str | None = None
 
+    _had_own_cars = False
+
     def _seed_cars(self) -> list[dict]:
-        """Car list for the editor: stored profiles, the active one updated
-        with what the sensors / external steps just set."""
+        """The user's own cars for the editor (v2.32.0: the guest profile is
+        implicit and has no sensors to edit)."""
         if self.cars_info is None:
             base = self._base_data()
-            cars = get_cars(base)
+            self.cars_info = get_own_cars(base)
             self._active_car = get_active_car_name(base)
-            edited = _merge_entry_data(
-                base,
-                getattr(self, "sensor_info", {}) or {},
-                getattr(self, "external_info", {}) or {},
-            )
-            for car in cars:
-                if car[CONF_CAR_NAME] == self._active_car:
-                    for key in CAR_FIELDS:
-                        car[key] = edited.get(key)
-            self.cars_info = cars
+            self._had_own_cars = bool(self.cars_info)
         return self.cars_info
 
     def _car_editor_step_id(self) -> str:
@@ -968,15 +956,15 @@ class _StepNavigator:
             if action.startswith("edit:"):
                 self._editing_car = int(action.split(":", 1)[1])
                 return await getattr(self, f"async_step_{self._car_editor_step_id()}")()
-            if action.startswith("remove:") and len(cars) > 1:
-                removed = cars.pop(int(action.split(":", 1)[1]))
-                if removed[CONF_CAR_NAME] == self._active_car:
-                    self._active_car = cars[0][CONF_CAR_NAME]
+            if action.startswith("remove:"):
+                index = int(action.split(":", 1)[1])
+                if 0 <= index < len(cars):
+                    cars.pop(index)
                 return await self._cars_step(None)
             if action == "done":
                 return await self._go_next("cars")
         placeholders = self._placeholders("cars")
-        placeholders["cars"] = _cars_list_text(cars, self._active_car)
+        placeholders["cars"] = _cars_list_text(self.hass, cars, self._active_car)
         return self.async_show_form(
             step_id=step_id,
             data_schema=_cars_menu_schema(self.hass, cars),
@@ -997,6 +985,8 @@ class _StepNavigator:
             ]
             if not car[CONF_CAR_NAME]:
                 errors[CONF_CAR_NAME] = "car_name_required"
+            elif car[CONF_CAR_NAME].casefold() in RESERVED_CAR_NAMES:
+                errors[CONF_CAR_NAME] = "car_name_reserved"
             elif car[CONF_CAR_NAME] in others:
                 errors[CONF_CAR_NAME] = "car_name_exists"
             if not errors:
@@ -1020,10 +1010,18 @@ class _StepNavigator:
     def _with_cars(self, data: dict[str, Any]) -> dict[str, Any]:
         """Store the edited car list; the legacy keys follow the active car."""
         if self.cars_info is None:
-            return data
+            return apply_active_car(data)
         data = dict(data)
         data[CONF_CARS] = self.cars_info
-        return apply_active_car(data, self._active_car)
+        names = [car[CONF_CAR_NAME] for car in self.cars_info]
+        active = self._active_car
+        if active == GUEST_CAR and not self._had_own_cars and names:
+            # The first car created becomes the active one; after that the
+            # choice stays where the user put it.
+            active = names[0]
+        elif active != GUEST_CAR and active not in names:
+            active = names[0] if names else GUEST_CAR
+        return apply_active_car(data, active)
 
 
 
@@ -1211,10 +1209,17 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders=self._placeholders("external"),
         )
 
+    async def async_step_cars(self, user_input: dict[str, Any] | None = None):
+        """v2.32.0: car profiles; continuing without a car keeps the guest."""
+        return await self._cars_step(user_input)
+
+    async def async_step_car(self, user_input: dict[str, Any] | None = None):
+        return await self._car_step(user_input)
+
     async def async_step_dashboard(self, user_input: dict[str, Any] | None = None):
         """Final step: auto-generate the Lovelace dashboard (v1.9.0+)."""
         if user_input is not None:
-            data = _apply_features(
+            data = self._with_cars(_apply_features(
                 _merge_entry_data(
                     {},
                     self.init_info,
@@ -1229,7 +1234,7 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
                     self.external_info,
                     user_input,
                 )
-            )
+            ))
             title = self.init_info.get(CONF_NAME, DEFAULT_NAME)
             return self.async_create_entry(title=title, data=data)
 

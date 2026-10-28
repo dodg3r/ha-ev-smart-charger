@@ -403,12 +403,34 @@
       },
       "reconfigure_cars": {
         "title": "Autoprofielen - Stap {step}/{total_steps}",
-        "description": "Elke auto heeft eigen sensoren: batterij-SOC, de eigen laadlimiet van de auto en de batterijcapaciteit. De actieve auto kies je op het dashboard (of met de select Actieve auto).\n\n{cars}\n\nKies een actie, of Doorgaan.",
+        "description": "Voeg hier de auto's toe die je laadt. Elke auto heeft eigen sensoren: batterij-SOC, de eigen laadlimiet van de auto en de batterijcapaciteit. Het profiel Gast bestaat altijd: het heeft geen sensoren en laadt in de goedkoopste nachturen, voor de auto van een bezoeker. De actieve auto kies je op het dashboard (of met de select Actieve auto).\n\n{cars}\n\nKies een actie, of Doorgaan (zonder auto wordt alleen het profiel Gast aangemaakt).",
         "data": {
           "car_action": "Actie"
         }
       },
       "reconfigure_car": {
+        "title": "Autoprofiel",
+        "description": "Geef de auto een vrije naam, bijv. het kenteken.",
+        "data": {
+          "name": "Naam",
+          "soc_car": "Batterij-SOC",
+          "ev_soc_limit": "Laadlimiet (optioneel)",
+          "battery_capacity": "Batterijcapaciteit (kWh)"
+        },
+        "data_description": {
+          "soc_car": "Sensor met de laadtoestand van deze auto in procenten.",
+          "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten. De waarde telt als vol.",
+          "battery_capacity": "Bruikbare batterijcapaciteit, gebruikt voor het plannen van nachtladen."
+        }
+      },
+      "cars": {
+        "title": "Autoprofielen - Stap {step}/{total_steps}",
+        "description": "Voeg hier de auto's toe die je laadt. Elke auto heeft eigen sensoren: batterij-SOC, de eigen laadlimiet van de auto en de batterijcapaciteit. Het profiel Gast bestaat altijd: het heeft geen sensoren en laadt in de goedkoopste nachturen, voor de auto van een bezoeker. De actieve auto kies je op het dashboard (of met de select Actieve auto).\n\n{cars}\n\nKies een actie, of Doorgaan (zonder auto wordt alleen het profiel Gast aangemaakt).",
+        "data": {
+          "car_action": "Actie"
+        }
+      },
+      "car": {
         "title": "Autoprofiel",
         "description": "Geef de auto een vrije naam, bijv. het kenteken.",
         "data": {
@@ -433,7 +455,8 @@
       "fuse_charger_current_required": "Koppel de laadstroom (sensor met L1/L2/L3-attributen of sensoren per fase).",
       "charger_control_required": "Koppel een lader-schakelaar of zowel de start- als de stopknop.",
       "car_name_required": "Vul een naam in.",
-      "car_name_exists": "Een andere auto heeft deze naam al."
+      "car_name_exists": "Een andere auto heeft deze naam al.",
+      "car_name_reserved": "Deze naam wordt gebruikt door het profiel Gast."
     },
     "abort": {
       "already_configured": "Een andere EV Smart Charger-configuratie gebruikt deze laderschakelaar al.",
@@ -639,7 +662,7 @@
       },
       "cars": {
         "title": "Autoprofielen - Stap {step}/{total_steps}",
-        "description": "Elke auto heeft eigen sensoren: batterij-SOC, de eigen laadlimiet van de auto en de batterijcapaciteit. De actieve auto kies je op het dashboard (of met de select Actieve auto).\n\n{cars}\n\nKies een actie, of Doorgaan.",
+        "description": "Voeg hier de auto's toe die je laadt. Elke auto heeft eigen sensoren: batterij-SOC, de eigen laadlimiet van de auto en de batterijcapaciteit. Het profiel Gast bestaat altijd: het heeft geen sensoren en laadt in de goedkoopste nachturen, voor de auto van een bezoeker. De actieve auto kies je op het dashboard (of met de select Actieve auto).\n\n{cars}\n\nKies een actie, of Doorgaan (zonder auto wordt alleen het profiel Gast aangemaakt).",
         "data": {
           "car_action": "Actie"
         }
@@ -669,7 +692,8 @@
       "fuse_charger_current_required": "Koppel de laadstroom (sensor met L1/L2/L3-attributen of sensoren per fase).",
       "charger_control_required": "Koppel een lader-schakelaar of zowel de start- als de stopknop.",
       "car_name_required": "Vul een naam in.",
-      "car_name_exists": "Een andere auto heeft deze naam al."
+      "car_name_exists": "Een andere auto heeft deze naam al.",
+      "car_name_reserved": "Deze naam wordt gebruikt door het profiel Gast."
     }
   },
   "entity": {
@@ -844,7 +868,10 @@
     },
     "select": {
       "evsc_active_car": {
-        "name": "Actieve auto"
+        "name": "Actieve auto",
+        "state": {
+          "guest": "Gast"
+        }
       },
       "evsc_charging_profile": {
         "name": "Laadprofiel",

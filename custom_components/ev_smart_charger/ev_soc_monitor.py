@@ -57,6 +57,10 @@ class EVSOCMonitor:
     async def async_setup(self):
         """Setup: discover cache sensor and start polling timer."""
         self.logger.info("Setting up EV SOC Monitor")
+        if not self._source_entity:
+            # v2.32.0: guest profile / car without a SOC sensor.
+            self.logger.info("No EV SOC sensor for the active car - monitor not started")
+            return
 
         if self._runtime_data is not None:
             self._cache_entity = self._runtime_data.get_entity_id(HELPER_CACHED_EV_SOC_SUFFIX)

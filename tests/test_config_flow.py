@@ -116,7 +116,6 @@ async def test_form(hass: HomeAssistant):
     result5 = await hass.config_entries.flow.async_configure(
         result4["flow_id"],
         {
-            CONF_SOC_CAR: "sensor.car_soc",
             CONF_SOC_HOME: "sensor.home_soc",
             CONF_FV_PRODUCTION: "sensor.solar",
             CONF_HOME_CONSUMPTION: "sensor.consumption",
@@ -162,11 +161,23 @@ async def test_form(hass: HomeAssistant):
         # Step 9: External connectors → dashboard
         result8 = await hass.config_entries.flow.async_configure(
             result7["flow_id"],
-            {
-                CONF_BATTERY_CAPACITY: 13.5,
-            },
+            {},
         )
         assert result8["type"] == data_entry_flow.FlowResultType.FORM
+        # v2.32.0: car profiles at the end of the initial flow too
+        assert result8["step_id"] == "cars"
+        result8 = await hass.config_entries.flow.async_configure(
+            result8["flow_id"], {"car_action": "add"}
+        )
+        assert result8["step_id"] == "car"
+        result8 = await hass.config_entries.flow.async_configure(
+            result8["flow_id"],
+            {"name": "ABC123", CONF_SOC_CAR: "sensor.car_soc", CONF_BATTERY_CAPACITY: 13.5},
+        )
+        assert result8["step_id"] == "cars"
+        result8 = await hass.config_entries.flow.async_configure(
+            result8["flow_id"], {"car_action": "done"}
+        )
         assert result8["step_id"] == "dashboard"
 
         # Step 10: Dashboard → create entry
@@ -184,6 +195,10 @@ async def test_form(hass: HomeAssistant):
         # v2.1.0 (issue #29): hybrid step values round-trip into entry.data
         assert result9["data"][CONF_HYBRID_INVERTER_MODE] is True
         assert result9["data"][CONF_BATTERY_POWER] == "sensor.battery_power"
+        # v2.32.0: the first car created is the active one
+        assert result9["data"]["active_car"] == "ABC123"
+        assert result9["data"][CONF_SOC_CAR] == "sensor.car_soc"
+        assert result9["data"][CONF_BATTERY_CAPACITY] == 13.5
 
         await hass.async_block_till_done()
         assert len(mock_setup_entry.mock_calls) == 1
@@ -243,7 +258,6 @@ async def test_external_connectors_validates_energy_target_entity_exists(hass: H
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
-            CONF_SOC_CAR: "sensor.car_soc",
             CONF_SOC_HOME: "sensor.home_soc",
             CONF_FV_PRODUCTION: "sensor.solar",
             CONF_HOME_CONSUMPTION: "sensor.consumption",
@@ -272,7 +286,6 @@ async def test_external_connectors_validates_energy_target_entity_exists(hass: H
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
-            CONF_BATTERY_CAPACITY: DEFAULT_BATTERY_CAPACITY,
             CONF_ENERGY_FORECAST_TARGET: "number.missing_energy_target",
         },
     )
@@ -339,7 +352,6 @@ async def test_three_phase_generic_flow(hass: HomeAssistant):
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
-            CONF_SOC_CAR: "sensor.car_soc",
             CONF_SOC_HOME: "sensor.home_soc",
             CONF_FV_PRODUCTION: "sensor.pv1",
             CONF_FV_PRODUCTION_L2: "sensor.pv2",
@@ -373,7 +385,11 @@ async def test_three_phase_generic_flow(hass: HomeAssistant):
         assert result["step_id"] == "external_connectors"
 
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {CONF_BATTERY_CAPACITY: 13.5}
+            result["flow_id"], {}
+        )
+        assert result["step_id"] == "cars"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"car_action": "done"}
         )
         assert result["step_id"] == "dashboard"
 
@@ -427,7 +443,6 @@ async def test_status_optional_and_charging_power_roundtrip(hass: HomeAssistant)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
-            CONF_SOC_CAR: "sensor.car_soc",
             CONF_FV_PRODUCTION: "sensor.solar",
             CONF_HOME_CONSUMPTION: "sensor.consumption",
             CONF_GRID_IMPORT: "sensor.grid",
@@ -450,7 +465,11 @@ async def test_status_optional_and_charging_power_roundtrip(hass: HomeAssistant)
         )
         assert result["step_id"] == "external_connectors"
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {CONF_BATTERY_CAPACITY: 13.5}
+            result["flow_id"], {}
+        )
+        assert result["step_id"] == "cars"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"car_action": "done"}
         )
         assert result["step_id"] == "dashboard"
         result = await hass.config_entries.flow.async_configure(

@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.31.0"
+VERSION = "2.32.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -737,60 +737,86 @@ TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 70
 
 
 # ---------------------------------------------------------------------------
-# v2.31.0: car profiles
+# v2.31.0 / v2.32.0: car profiles
 #
 # A profile holds the car's own sensors: EV SOC, the car's charge limit and
-# the battery capacity. The legacy top-level keys (CONF_SOC_CAR,
-# CONF_EV_SOC_LIMIT, CONF_BATTERY_CAPACITY) always hold the ACTIVE car, so
-# every component keeps reading them unchanged; choosing another car copies
-# its fields there and reloads the entry. An entry without CONF_CARS has one
-# implicit car built from the legacy keys.
+# the battery capacity. CONF_CARS stores the user's own cars; the guest
+# profile (GUEST_CAR, no sensors) always exists on top of them. The legacy
+# top-level keys (CAR_FIELDS) always hold the ACTIVE car, so every component
+# keeps reading them unchanged; choosing another car copies its fields there
+# and reloads the entry. An entry from before v2.32.0 without CONF_CARS but
+# with an EV SOC sensor keeps that car as its own profile.
 # ---------------------------------------------------------------------------
 CONF_CARS = "cars"
 CONF_ACTIVE_CAR = "active_car"
 CONF_CAR_NAME = "name"
 CAR_FIELDS = (CONF_SOC_CAR, CONF_EV_SOC_LIMIT, CONF_BATTERY_CAPACITY)
 DEFAULT_CAR_NAME = "Car 1"
+GUEST_CAR = "guest"
+# Names a user car may not take (they read as the guest profile).
+RESERVED_CAR_NAMES = frozenset({"guest", "gäst", "gast", "ospite"})
 HELPER_ACTIVE_CAR_SUFFIX = "evsc_active_car"
 
 
-def _car_from_legacy(config: dict, name: str) -> dict:
-    car = {CONF_CAR_NAME: name}
-    for key in CAR_FIELDS:
-        car[key] = config.get(key)
-    if car.get(CONF_BATTERY_CAPACITY) is None:
-        car[CONF_BATTERY_CAPACITY] = DEFAULT_BATTERY_CAPACITY
-    return car
+def guest_car() -> dict:
+    """The guest profile: a car without sensors."""
+    return {
+        CONF_CAR_NAME: GUEST_CAR,
+        CONF_SOC_CAR: None,
+        CONF_EV_SOC_LIMIT: None,
+        CONF_BATTERY_CAPACITY: DEFAULT_BATTERY_CAPACITY,
+    }
+
+
+def get_own_cars(config: dict) -> list[dict]:
+    """The user's own cars (without the guest profile)."""
+    stored = config.get(CONF_CARS)
+    if stored is None:
+        # Entry from before v2.32.0: the configured EV SOC sensor is a car.
+        if not config.get(CONF_SOC_CAR):
+            return []
+        car = {CONF_CAR_NAME: config.get(CONF_ACTIVE_CAR) or DEFAULT_CAR_NAME}
+        for key in CAR_FIELDS:
+            car[key] = config.get(key)
+        if car.get(CONF_BATTERY_CAPACITY) is None:
+            car[CONF_BATTERY_CAPACITY] = DEFAULT_BATTERY_CAPACITY
+        if str(car[CONF_CAR_NAME]).casefold() in RESERVED_CAR_NAMES:
+            car[CONF_CAR_NAME] = DEFAULT_CAR_NAME
+        return [car]
+    return [
+        dict(car)
+        for car in stored
+        if isinstance(car, dict)
+        and car.get(CONF_CAR_NAME)
+        and str(car[CONF_CAR_NAME]).casefold() not in RESERVED_CAR_NAMES
+    ]
 
 
 def get_cars(config: dict) -> list[dict]:
-    """Return the car profiles (at least one: the legacy keys)."""
-    cars = [
-        dict(car)
-        for car in (config.get(CONF_CARS) or [])
-        if isinstance(car, dict) and car.get(CONF_CAR_NAME)
-    ]
-    if cars:
-        return cars
-    return [_car_from_legacy(config, config.get(CONF_ACTIVE_CAR) or DEFAULT_CAR_NAME)]
+    """All profiles: the guest first, then the user's own cars."""
+    return [guest_car(), *get_own_cars(config)]
 
 
 def get_active_car_name(config: dict) -> str:
-    """Return the active car's name (falls back to the first profile)."""
-    cars = get_cars(config)
-    names = [car[CONF_CAR_NAME] for car in cars]
+    """The active profile; an unknown name falls back to the first own car,
+    or the guest when there is none."""
+    own = [car[CONF_CAR_NAME] for car in get_own_cars(config)]
     active = config.get(CONF_ACTIVE_CAR)
-    return active if active in names else names[0]
+    if active == GUEST_CAR or active in own:
+        return active
+    return own[0] if own else GUEST_CAR
 
 
 def apply_active_car(config: dict, name: str | None = None) -> dict:
     """Return config with the chosen (or active) car copied to the legacy keys."""
     data = dict(config)
-    cars = get_cars(data)
-    wanted = name or get_active_car_name(data)
-    car = next((c for c in cars if c[CONF_CAR_NAME] == wanted), cars[0])
-    data[CONF_CARS] = cars
-    data[CONF_ACTIVE_CAR] = car[CONF_CAR_NAME]
+    own = get_own_cars(data)
+    data[CONF_CARS] = own
+    if name is not None:
+        data[CONF_ACTIVE_CAR] = name
+    data[CONF_ACTIVE_CAR] = get_active_car_name(data)
+    cars = [guest_car(), *own]
+    car = next(c for c in cars if c[CONF_CAR_NAME] == data[CONF_ACTIVE_CAR])
     for key in CAR_FIELDS:
         data[key] = car.get(key)
     return data

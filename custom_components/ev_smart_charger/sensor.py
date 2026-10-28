@@ -603,7 +603,16 @@ class EVSCCachedEVSOCSensor(EVSCBaseSensor):
             self.unique_id,
         )
         _LOGGER.info("  🔗 Source sensor: %s", self._source_entity)
-        if (last_state := await self.async_get_last_state()) is not None:
+        last_state = await self.async_get_last_state()
+        # v2.32.0: a cached value only belongs to the car it was read from;
+        # after a car switch (or for the guest profile) start empty.
+        if last_state is not None and (
+            not self._source_entity
+            or last_state.attributes.get("source_entity") != self._source_entity
+        ):
+            _LOGGER.info("  ⏭️ Cached SOC belongs to another car - not restored")
+            last_state = None
+        if last_state is not None:
             try:
                 self._attr_native_value = (
                     float(last_state.state)

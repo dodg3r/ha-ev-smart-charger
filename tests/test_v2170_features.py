@@ -74,7 +74,7 @@ async def _to_features(hass, phase=PHASE_MODE_SINGLE):
 
 
 async def _finish(hass, result):
-    """Notifications → external connectors → dashboard → entry."""
+    """Notifications → external connectors → cars → dashboard → entry."""
     hass.services.async_register("notify", "mobile_app_phone", lambda call: None)
     assert result["step_id"] == "notifications"
     with patch(
@@ -86,7 +86,11 @@ async def _finish(hass, result):
         )
         assert result["step_id"] == "external_connectors"
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {CONF_BATTERY_CAPACITY: 75}
+            result["flow_id"], {}
+        )
+        assert result["step_id"] == "cars"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"car_action": "done"}
         )
         assert result["step_id"] == "dashboard"
         result = await hass.config_entries.flow.async_configure(
@@ -139,7 +143,6 @@ async def test_no_battery_with_load_balancing_flow(hass):
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
-            CONF_SOC_CAR: "sensor.car_soc",
             CONF_FV_PRODUCTION: "sensor.pv",
             CONF_HOME_CONSUMPTION: "sensor.house",
             CONF_GRID_IMPORT: "sensor.grid",
@@ -179,7 +182,7 @@ async def test_no_solar_skips_solar_steps(hass):
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {CONF_SOC_CAR: "sensor.car_soc", CONF_GRID_IMPORT: "sensor.grid"},
+        {CONF_GRID_IMPORT: "sensor.grid"},
     )
     # charger handles load balancing → no main_fuse step; no solar → no
     # hybrid / forecast steps.

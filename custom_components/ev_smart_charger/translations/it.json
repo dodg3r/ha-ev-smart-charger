@@ -403,12 +403,34 @@
       },
       "reconfigure_cars": {
         "title": "Profili auto - Passo {step}/{total_steps}",
-        "description": "Ogni auto ha i propri sensori: SOC della batteria, limite di carica dell'auto e capacità della batteria. L'auto attiva si sceglie nella dashboard (o con il selettore Auto attiva).\n\n{cars}\n\nScegli un'azione, oppure Continua.",
+        "description": "Aggiungi qui le auto che ricarichi. Ogni auto ha i propri sensori: SOC della batteria, limite di carica dell'auto e capacità della batteria. Il profilo Ospite esiste sempre: non ha sensori e ricarica nelle ore notturne più economiche, per l'auto di un ospite. L'auto attiva si sceglie nella dashboard (o con il select Auto attiva).\n\n{cars}\n\nScegli un'azione, oppure Continua (senza auto viene creato solo il profilo Ospite).",
         "data": {
           "car_action": "Azione"
         }
       },
       "reconfigure_car": {
+        "title": "Profilo auto",
+        "description": "Dai all'auto un nome a piacere, ad es. la targa.",
+        "data": {
+          "name": "Nome",
+          "soc_car": "SOC batteria",
+          "ev_soc_limit": "Limite di carica (opzionale)",
+          "battery_capacity": "Capacità batteria (kWh)"
+        },
+        "data_description": {
+          "soc_car": "Sensore con lo stato di carica di quest'auto in percentuale.",
+          "ev_soc_limit": "Sensore con il limite di carica dell'auto in percentuale. Il suo valore conta come carica completa.",
+          "battery_capacity": "Capacità utile della batteria, usata per pianificare la ricarica notturna."
+        }
+      },
+      "cars": {
+        "title": "Profili auto - Passo {step}/{total_steps}",
+        "description": "Aggiungi qui le auto che ricarichi. Ogni auto ha i propri sensori: SOC della batteria, limite di carica dell'auto e capacità della batteria. Il profilo Ospite esiste sempre: non ha sensori e ricarica nelle ore notturne più economiche, per l'auto di un ospite. L'auto attiva si sceglie nella dashboard (o con il select Auto attiva).\n\n{cars}\n\nScegli un'azione, oppure Continua (senza auto viene creato solo il profilo Ospite).",
+        "data": {
+          "car_action": "Azione"
+        }
+      },
+      "car": {
         "title": "Profilo auto",
         "description": "Dai all'auto un nome a piacere, ad es. la targa.",
         "data": {
@@ -433,7 +455,8 @@
       "fuse_charger_current_required": "Mappa la corrente del caricatore (sensore con attributi L1/L2/L3 o sensori per fase).",
       "charger_control_required": "Mappa uno switch del charger oppure entrambi i pulsanti di avvio e arresto ricarica.",
       "car_name_required": "Inserisci un nome.",
-      "car_name_exists": "Un'altra auto ha già questo nome."
+      "car_name_exists": "Un'altra auto ha già questo nome.",
+      "car_name_reserved": "Questo nome è usato dal profilo Ospite."
     },
     "abort": {
       "already_configured": "Un'altra istanza di EV Smart Charger usa gia questo charger switch.",
@@ -639,7 +662,7 @@
       },
       "cars": {
         "title": "Profili auto - Passo {step}/{total_steps}",
-        "description": "Ogni auto ha i propri sensori: SOC della batteria, limite di carica dell'auto e capacità della batteria. L'auto attiva si sceglie nella dashboard (o con il selettore Auto attiva).\n\n{cars}\n\nScegli un'azione, oppure Continua.",
+        "description": "Aggiungi qui le auto che ricarichi. Ogni auto ha i propri sensori: SOC della batteria, limite di carica dell'auto e capacità della batteria. Il profilo Ospite esiste sempre: non ha sensori e ricarica nelle ore notturne più economiche, per l'auto di un ospite. L'auto attiva si sceglie nella dashboard (o con il select Auto attiva).\n\n{cars}\n\nScegli un'azione, oppure Continua (senza auto viene creato solo il profilo Ospite).",
         "data": {
           "car_action": "Azione"
         }
@@ -669,7 +692,8 @@
       "fuse_charger_current_required": "Mappa la corrente del caricatore (sensore con attributi L1/L2/L3 o sensori per fase).",
       "charger_control_required": "Mappa uno switch del charger oppure entrambi i pulsanti di avvio e arresto ricarica.",
       "car_name_required": "Inserisci un nome.",
-      "car_name_exists": "Un'altra auto ha già questo nome."
+      "car_name_exists": "Un'altra auto ha già questo nome.",
+      "car_name_reserved": "Questo nome è usato dal profilo Ospite."
     }
   },
   "entity": {
@@ -844,7 +868,10 @@
     },
     "select": {
       "evsc_active_car": {
-        "name": "Auto attiva"
+        "name": "Auto attiva",
+        "state": {
+          "guest": "Ospite"
+        }
       },
       "evsc_charging_profile": {
         "name": "Profilo di ricarica",
