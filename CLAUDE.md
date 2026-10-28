@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.33.0
+**Current Version:** 2.33.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,18 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.33.1 (2026-10-28) — fork dodg3r
+**FIX: power tiles showed raw sensor decimals**
+
+Reported by the maintainer: on the embedded card the grid import tile
+sometimes showed values like `87.400000001 W`. The single-sensor path printed
+the raw state. New `_formatPowerW()`: whole watts below 1 kW, kW with two
+decimals above (kW sensors converted via `_powerW`), used for solar, grid
+import (also the derived import − export) and the summed per-phase sensors.
+A sensor without a numeric state keeps the old fallback text.
+
+---
 
 ### v2.33.0 (2026-10-28) — fork dodg3r
 **Dashboard parts follow the Home Assistant theme**

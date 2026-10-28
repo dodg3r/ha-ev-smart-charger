@@ -2200,9 +2200,18 @@ class EvSmartChargerDashboard extends HTMLElement {
       if (w == null) return this._t("common.unavailable");
       net -= w;
     }
-    return Math.abs(net) >= 1000
-      ? `${(net / 1000).toFixed(2)} kW`
-      : `${Math.round(net)} W`;
+    return this._formatPowerW(net);
+  }
+
+  /**
+   * v2.33.1: one format for every power tile — whole watts below 1 kW,
+   * kW with two decimals above. Sensors (often template sums) can report
+   * values like 412.38999999 W, which the tile used to show as is.
+   */
+  _formatPowerW(watts) {
+    if (!Number.isFinite(watts)) return this._t("common.unavailable");
+    const w = Math.round(watts);
+    return Math.abs(w) >= 1000 ? `${(w / 1000).toFixed(2)} kW` : `${w} W`;
   }
 
   /**
@@ -2756,15 +2765,18 @@ class EvSmartChargerDashboard extends HTMLElement {
   _phaseAwareDisplay(entitiesKey, singleKey, fallback) {
     const ids = this._config[entitiesKey];
     if (Array.isArray(ids) && ids.length > 0) {
-      const summed = this._sumEntities(ids);
-      if (summed == null) return fallback || this._t("common.unavailable");
-      const unit =
-        ids
-          .map((id) => this._stateObj(id)?.attributes?.unit_of_measurement)
-          .find((u) => u) || "W";
-      return `${Math.round(summed * 10) / 10} ${unit}`;
+      let total = 0;
+      for (const id of ids) {
+        const w = this._powerW(id);
+        if (w == null) return fallback || this._t("common.unavailable");
+        total += w;
+      }
+      return this._formatPowerW(total);
     }
-    return this._displayValue(this._config[singleKey], fallback);
+    const single = this._config[singleKey];
+    const w = this._powerW(single);
+    if (w != null) return this._formatPowerW(w);
+    return this._displayValue(single, fallback);
   }
 
   /**
