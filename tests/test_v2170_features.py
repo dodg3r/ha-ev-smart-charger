@@ -123,7 +123,7 @@ async def test_no_battery_with_load_balancing_flow(hass):
 
     # v2.18.0: the meter step comes before the sensors step.
     assert result["step_id"] == "main_fuse"
-    assert result["description_placeholders"]["total_steps"] == "12"
+    assert result["description_placeholders"]["total_steps"] == "13"  # v2.32.0: + car profiles
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
