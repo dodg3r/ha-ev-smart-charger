@@ -206,6 +206,13 @@ def read_ev_soc_limit(hass: HomeAssistant, config) -> float | None:
     entity = (config or {}).get(CONF_EV_SOC_LIMIT)
     if not entity:
         return None
+    # v2.34.0: a limit in another unit (e.g. a charging current limit in A
+    # mapped by mistake) is not a SOC limit; only "%" or no unit counts.
+    state_obj = hass.states.get(entity)
+    if state_obj is not None:
+        unit = str(state_obj.attributes.get("unit_of_measurement") or "").strip()
+        if unit and unit != "%":
+            return None
     # Quiet read: a car integration that is offline must not log every tick.
     value = _parse_number(get_state(hass, entity))
     if value is None or value <= 0 or value > 100:

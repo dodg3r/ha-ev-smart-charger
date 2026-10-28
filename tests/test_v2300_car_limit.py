@@ -216,3 +216,12 @@ async def test_start_pressed_right_after_stop(hass, services):
     with patch("asyncio.sleep", new=AsyncMock()):
         await controller.start_charger(target_amps=10, reason="test")
     assert START not in _presses(services)
+
+
+async def test_limit_in_another_unit_is_ignored(hass):
+    """v2.34.0: a charging current limit (A) is not a SOC limit."""
+    config = {CONF_EV_SOC_LIMIT: LIMIT}
+    hass.states.async_set(LIMIT, "32", {"unit_of_measurement": "A"})
+    assert read_ev_soc_limit(hass, config) is None
+    hass.states.async_set(LIMIT, "80", {"unit_of_measurement": "%"})
+    assert read_ev_soc_limit(hass, config) == 80.0

@@ -440,3 +440,17 @@ async def test_changed_amperage_is_applied_while_charging(hass):
 
     await night._evaluate(_at(base, 3, 30))
     controller.set_amperage.assert_awaited_once()
+
+
+async def test_no_car_wins_over_target_reached(hass):
+    """v2.34.0: without a car the plan says so, not "target reached"."""
+    base = _base()
+    night, _controller = await _component(hass, base)
+    day = WEEKDAY_KEYS[base.weekday()]
+    hass.states.async_set(f"number.target_{day}", "50")  # 60 % >= 50 %
+    hass.states.async_set("sensor.status", "Available")
+    published = []
+    night._publish = lambda suffix, state, attrs=None: published.append(state)
+
+    await night._evaluate(_at(base, 1, 30))
+    assert published[-1] == "waiting_for_car"

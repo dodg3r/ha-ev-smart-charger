@@ -607,6 +607,7 @@ const STATIC_LABELS = {
   en: {
     nav_dashboard: "Dashboard", nav_settings: "Settings",
     settings_title: "Settings", settings_intro: "Automation module configuration. Click a category to expand its parameters.",
+    settings_cars_title: "Cars", settings_cars_text: "Add, change or remove a car in the integration setup. The integration reloads for a few seconds afterwards.", settings_cars_button: "Add or change car",
     weekly_title: "Weekly Planner", weekly_desc: "EV target and ready time per day · Car ready toggle",
     weekly_ev: "EV target", weekly_home: "Home target", weekly_car: "Car ready", weekly_ready_time: "Ready by",
     weekly_car_ready_label: "Ready ☀️?",
@@ -621,6 +622,7 @@ const STATIC_LABELS = {
   it: {
     nav_dashboard: "Dashboard", nav_settings: "Impostazioni",
     settings_title: "Impostazioni", settings_intro: "Configurazione dei moduli di automazione. Clicca su una categoria per espandere i parametri.",
+    settings_cars_title: "Auto", settings_cars_text: "Aggiungi, modifica o rimuovi un'auto nella configurazione dell'integrazione. Dopo l'integrazione si ricarica per qualche secondo.", settings_cars_button: "Aggiungi o modifica auto",
     weekly_title: "Pianificatore settimanale", weekly_desc: "Target EV e orario pronta per giorno · Toggle Car Ready",
     weekly_ev: "Target EV", weekly_home: "Target casa", weekly_car: "Car ready", weekly_ready_time: "Pronta alle",
     weekly_car_ready_label: "Ready ☀️?",
@@ -635,6 +637,7 @@ const STATIC_LABELS = {
   nl: {
     nav_dashboard: "Dashboard", nav_settings: "Instellingen",
     settings_title: "Instellingen", settings_intro: "Configuratie van de automatiseringsmodules. Klik op een categorie om de parameters uit te vouwen.",
+    settings_cars_title: "Auto's", settings_cars_text: "Voeg een auto toe, wijzig of verwijder hem in de instellingen van de integratie. Daarna herlaadt de integratie een paar seconden.", settings_cars_button: "Auto toevoegen of wijzigen",
     weekly_title: "Weekplanner", weekly_desc: "EV-doel en klaar-tijd per dag · Car Ready-schakelaar",
     weekly_ev: "EV-doel", weekly_home: "Thuisdoel", weekly_car: "Auto klaar", weekly_ready_time: "Klaar om",
     weekly_car_ready_label: "Ready ☀️?",
@@ -649,6 +652,7 @@ const STATIC_LABELS = {
   sv: {
     nav_dashboard: "Översikt", nav_settings: "Inställningar",
     settings_title: "Inställningar", settings_intro: "Inställningar för automatiken. Klicka på en kategori för att visa dess inställningar.",
+    settings_cars_title: "Bilar", settings_cars_text: "Lägg till, ändra eller ta bort en bil i integrationens konfiguration. Integrationen laddas sedan om under några sekunder.", settings_cars_button: "Lägg till eller ändra bil",
     weekly_title: "Veckoplanering", weekly_desc: "Mål för bilen och klartid per dag · Bil klar",
     weekly_ev: "Mål bil", weekly_home: "Mål hus", weekly_car: "Bil klar", weekly_ready_time: "Klar till",
     weekly_car_ready_label: "Klar ☀️?",
@@ -2336,6 +2340,9 @@ class EvSmartChargerDashboard extends HTMLElement {
 
   /** v2.30.0: the car's own charge limit in %, or null (= 100 %). */
   _evSocLimit() {
+    // v2.34.0: only a limit in % (or without unit) counts, not e.g. 32 A.
+    const unit = String(this._stateObj(this._config.ev_soc_limit_entity)?.attributes?.unit_of_measurement || "").trim();
+    if (unit && unit !== "%") return null;
     const limit = this._numericState(this._config.ev_soc_limit_entity);
     return limit != null && limit > 0 && limit <= 100 ? limit : null;
   }
@@ -2864,6 +2871,7 @@ class EvSmartChargerDashboard extends HTMLElement {
                     stroke-dasharray="${cOuter}" stroke-dashoffset="${cOuter * (1 - evFrac)}"
                     data-live-attr-id="ring.evOffset"/>
             ${inner}
+            ${this._renderTargetTick(rOuter)}
           </svg>
           <div class="hero-ring-center">
             <div class="ring-headline">${chargingDot}<span data-live="ring.headline">${headline}</span></div>
@@ -2876,6 +2884,29 @@ class EvSmartChargerDashboard extends HTMLElement {
         </div>
       </div>
     `;
+  }
+
+  /**
+   * v2.34.0: a short mark across the EV ring at the target SOC. The SVG is
+   * rotated -90°, so 0° is the top of the ring; the group is rotated to the
+   * target and hidden when there is no target.
+   */
+  _targetTickAttrs() {
+    const target = this._activeEvTarget();
+    const ok = target != null && Number.isFinite(Number(target)) && target > 0 && target <= 100;
+    return {
+      rotate: `rotate(${ok ? (Number(target) / 100) * 360 : 0} 110 110)`,
+      visibility: ok ? "visible" : "hidden",
+    };
+  }
+
+  _renderTargetTick(radius) {
+    const { rotate, visibility } = this._targetTickAttrs();
+    return `
+            <g class="ring-target" transform="${rotate}" data-live-attr-id="ring.targetRotate">
+              <line x1="${110 + radius - 10}" y1="110" x2="${110 + radius + 10}" y2="110"
+                    visibility="${visibility}" data-live-attr-id="ring.targetVisibility"/>
+            </g>`;
   }
 
   /**
@@ -3067,6 +3098,14 @@ class EvSmartChargerDashboard extends HTMLElement {
         this._view = next;
         this._lastRenderHash = ""; // force re-render past anti-flicker hash check
         this.render();
+      });
+    });
+
+    // v2.34.0: open the integration's page (cars are set in its setup).
+    root.querySelectorAll("[data-open-config]").forEach((node) => {
+      node.addEventListener("click", () => {
+        window.history.pushState(null, "", "/config/integrations/integration/ev_smart_charger");
+        window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
       });
     });
 
@@ -3796,6 +3835,14 @@ class EvSmartChargerDashboard extends HTMLElement {
         <h2>${this._label("settings_title")}</h2>
         <p>${this._label("settings_intro")}</p>
       </div>
+      ${this._hass?.user?.is_admin === false ? "" : `
+      <div class="evsc-settings-cars">
+        <div>
+          <h3>${this._label("settings_cars_title")}</h3>
+          <p>${this._label("settings_cars_text")}</p>
+        </div>
+        <button type="button" class="evsc-settings-cars-btn" data-open-config>${this._label("settings_cars_button")}</button>
+      </div>`}
       <div class="evsc-settings-list">
         ${SETTINGS_CATALOG.map((cat) => this._renderAccordion(cat)).join("")}
       </div>
@@ -4229,6 +4276,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     const rOuter = 96;
     const rInner = 76;
     const cOuter = 2 * Math.PI * rOuter;
+    const targetTick = this._targetTickAttrs();
     const cInner = 2 * Math.PI * rInner;
     const clamp01 = (n) => Math.max(0, Math.min(1, n));
     const evFrac = evPct != null ? clamp01(evPct / 100) : 0;
@@ -4317,6 +4365,8 @@ class EvSmartChargerDashboard extends HTMLElement {
           attr: "stroke-dashoffset",
           value: String(cInner * (1 - homeFrac)),
         },
+        "ring.targetRotate": { attr: "transform", value: targetTick.rotate },
+        "ring.targetVisibility": { attr: "visibility", value: targetTick.visibility },
       },
       toggles: toggleStates,
       numbers: numberValues,
@@ -4784,6 +4834,12 @@ class EvSmartChargerDashboard extends HTMLElement {
           isolation: isolate;
         }
         .hero-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+        .hero-ring .ring-target line {
+          stroke: var(--evsc-fg, currentColor);
+          stroke-width: 4;
+          stroke-linecap: round;
+          opacity: 0.9;
+        }
         .hero-ring circle { fill: none; stroke-linecap: round; }
         .hero-ring .ring-track { stroke: var(--evsc-stroke); }
         .hero-ring .ring-progress {
@@ -6751,6 +6807,31 @@ class EvSmartChargerDashboard extends HTMLElement {
           line-height: 1.55;
           max-width: 640px;
         }
+        .evsc-settings-cars {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+          background: var(--evsc-surface);
+          border: 1px solid var(--evsc-stroke);
+          border-radius: var(--evsc-radius-lg);
+          padding: 18px 22px;
+          margin-bottom: 14px;
+        }
+        .evsc-settings-cars h3 { margin: 0; font-size: 16px; font-weight: 700; }
+        .evsc-settings-cars p {
+          margin: 4px 0 0; color: var(--evsc-fg-mid); font-size: 13px;
+          line-height: 1.5; max-width: 560px;
+        }
+        .evsc-settings-cars-btn {
+          font: inherit; font-size: 14px; font-weight: 600;
+          padding: 10px 18px; border-radius: 999px; cursor: pointer;
+          border: 1px solid var(--evsc-stroke);
+          background: var(--evsc-sys-blue, #007aff); color: #fff;
+          touch-action: manipulation;
+        }
+        .evsc-settings-cars-btn:focus-visible { outline: 2px solid var(--evsc-sys-blue, #007aff); outline-offset: 2px; }
         .evsc-settings-list {
           display: flex;
           flex-direction: column;

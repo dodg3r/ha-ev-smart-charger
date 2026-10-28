@@ -769,10 +769,11 @@ class PlannedNightCharge:
             status = STATUS_CHARGING
         elif mode == "overview":
             status = STATUS_CAR_READY_OFF
+        elif not connected:
+            # v2.34.0: without a car "target reached" says nothing useful.
+            status = STATUS_WAITING_FOR_CAR
         elif completed:
             status = STATUS_TARGET_REACHED
-        elif not connected:
-            status = STATUS_WAITING_FOR_CAR
         elif not plan.prices:
             status = STATUS_NO_PRICES
         elif not plan_active:

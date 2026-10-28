@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.33.1
+**Current Version:** 2.34.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,27 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.34.0 (2026-10-28) — fork dodg3r
+**Target mark on the EV ring; cars link in Settings; a charge limit must be in %**
+
+Requested by the maintainer (HiBerry: a 70 % target showed as "Target 32 %"
+and "target reached" at 56 %; the charge-limit field held the car's charging
+current limit, 32 A).
+- `power_model.read_ev_soc_limit()` and the card's `_evSocLimit()` ignore a
+  limit whose `unit_of_measurement` is set and not `%`.
+- Night plan status: no car connected (`waiting_for_car`) now comes before
+  `target_reached`.
+- Dashboard: a mark across the EV ring at the active target
+  (`_renderTargetTick` / `_targetTickAttrs`, live via `ring.targetRotate` /
+  `ring.targetVisibility`).
+- Settings view: a "Cars" row with a button that opens
+  `/config/integrations/integration/ev_smart_charger` (hidden for non-admin
+  users); labels EN/IT/NL/SV.
+- Tests: unit guard in `test_v2300_car_limit.py`, status order in
+  `test_v2200_planned_night_charge.py`.
+
+---
 
 ### v2.33.1 (2026-10-28) — fork dodg3r
 **FIX: power tiles showed raw sensor decimals**
