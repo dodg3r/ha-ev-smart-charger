@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.32.1
+**Current Version:** 2.33.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,23 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.33.0 (2026-10-28) — fork dodg3r
+**Dashboard parts follow the Home Assistant theme**
+
+Requested by the maintainer: the `sections: [hero]` card looked out of place
+on a normal dashboard (lavender card background, violet ring).
+- Card option `theme`: `ha` follows the HA theme (`ha-card.theme-ha`: card
+  background / border / radius / shadow, primary and secondary text,
+  dividers, `--secondary-background-color` tiles, no blur or glow tints,
+  home battery ring in `--primary-color` via the new `--evsc-ring-home`);
+  `evsc` keeps the own design. Default: `ha` with `sections`, `evsc` for the
+  full dashboard.
+- Embedded cards no longer take `min-height: 100vh`, and their metric tiles
+  are at least 180 px wide (2 × 2 on a normal card).
+- README: `theme` documented.
+
+---
 
 ### v2.32.1 (2026-10-28) — fork dodg3r
 **FIX: switching car left the dashboard; car dropdown in the tab bar; "Guest"**

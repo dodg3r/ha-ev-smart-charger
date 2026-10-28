@@ -1333,6 +1333,7 @@ profile), `settings` (all settings).
 | `entity_prefix` | **Yes** | Prefix that matches the integration's config entry. Lowercase. Find it in your entity IDs (the part between `ev_smart_charger_` and `_evsc_*`). |
 | `title` | No | Card title shown in the header. |
 | `sections` | No | v2.28.0: list of parts to show on their own (`hero`, `controls`, `weekly`, `night`, `profile`, `settings`). Omit for the full dashboard. |
+| `theme` | No | v2.33.0: `ha` follows the Home Assistant theme, `evsc` keeps the card's own look. Default `ha` with `sections`, else `evsc`. |
 | `ev_soc_entity` | No | Sensor for current EV battery level — drives the outer SOC ring. |
 | `home_battery_soc_entity` | No | Sensor for current home battery level — drives the inner SOC ring. |
 | `solar_power_entity` | No | Sensor for solar production. |

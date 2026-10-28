@@ -1624,6 +1624,12 @@ class EvSmartChargerDashboard extends HTMLElement {
     // v2.28.0: `sections` renders only those parts of the dashboard as a
     // plain card (no tabs, no background), for use on any other view.
     this._sections = this._normalizeSections(config?.sections);
+    // v2.33.0: `theme: ha` follows the Home Assistant theme (card colours,
+    // text, dividers, primary colour); `theme: evsc` keeps the own look.
+    // Default: a single part on another view follows HA, the full
+    // dashboard keeps its own design.
+    const theme = String(config?.theme || "").toLowerCase();
+    this._haTheme = theme === "ha" || (theme !== "evsc" && !!this._sections);
 
     // v1.11.4: capture the build version injected by dashboard_manager.py.
     // Manual users who omit `_build_version` from their card YAML get "unknown".
@@ -2818,7 +2824,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       ? `
         <circle class="ring-track" cx="110" cy="110" r="${rInner}" stroke-width="13"/>
         <circle class="ring-progress" cx="110" cy="110" r="${rInner}" stroke-width="13"
-                style="color: var(--evsc-aurora-violet); stroke: var(--evsc-aurora-violet);"
+                style="color: var(--evsc-ring-home); stroke: var(--evsc-ring-home);"
                 stroke-dasharray="${cInner}" stroke-dashoffset="${cInner * (1 - homeFrac)}"
                 data-live-attr-id="ring.homeOffset"/>`
       : "";
@@ -2827,7 +2833,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       ? `${this._t("metric.home_battery")} ${Math.round(homePct)}%`
       : "";
     const legendHome = homePct != null
-      ? `<div style="color: var(--evsc-aurora-violet);"><span class="ring-dot"></span><span data-live="legend.home">${legendHomeText}</span></div>`
+      ? `<div style="color: var(--evsc-ring-home);"><span class="ring-dot"></span><span data-live="legend.home">${legendHomeText}</span></div>`
       : "";
 
     const chargingDot = isCharging
@@ -4088,7 +4094,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       : "";
 
     const html = `
-      <ha-card>
+      <ha-card class="${embedded ? "is-embedded" : ""}${this._haTheme ? " theme-ha" : ""}">
         <div class="dashboard-shell${embedded ? " is-embedded" : ""}">
           ${embedded ? "" : `<div class="aurora aurora-a"></div>
           <div class="aurora aurora-b"></div>
@@ -4489,6 +4495,7 @@ class EvSmartChargerDashboard extends HTMLElement {
           --evsc-aurora-green: #00d35a;
           --evsc-aurora-cyan: #00d4ff;
           --evsc-aurora-violet: #b794ff;
+          --evsc-ring-home: var(--evsc-aurora-violet);
           --evsc-aurora-amber: #ffb84d;
 
           --evsc-shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.04),
@@ -5482,6 +5489,43 @@ class EvSmartChargerDashboard extends HTMLElement {
           max-width: none;
         }
         .dashboard-shell.is-embedded .evsc-dash-grid { gap: 12px; }
+        ha-card.is-embedded { min-height: 0; }
+        ha-card.is-embedded .evsc-metric-row { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+
+        /* v2.33.0: follow the Home Assistant theme */
+        ha-card.theme-ha {
+          display: block;
+          --evsc-font: var(--ha-font-family-body, var(--mdc-typography-font-family, Roboto, "Noto", sans-serif));
+          --evsc-fg: var(--primary-text-color, #212121);
+          --evsc-fg-mid: var(--secondary-text-color, #727272);
+          --evsc-fg-low: var(--secondary-text-color, #727272);
+          --evsc-stroke: var(--divider-color, rgba(0, 0, 0, 0.12));
+          --evsc-stroke-strong: var(--divider-color, rgba(0, 0, 0, 0.12));
+          --evsc-surface: var(--secondary-background-color, rgba(127, 127, 127, 0.08));
+          --evsc-surface-strong: var(--secondary-background-color, rgba(127, 127, 127, 0.12));
+          --evsc-shadow-soft: none;
+          --evsc-shadow-lift: none;
+          --evsc-blur: none;
+          --evsc-blur-light: none;
+          --evsc-ring-home: var(--primary-color, #03a9f4);
+          background: var(--ha-card-background, var(--card-background-color, #fff));
+          border-radius: var(--ha-card-border-radius, 12px);
+          border: var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--divider-color, #e0e0e0)) !important;
+          box-shadow: var(--ha-card-box-shadow, none);
+          letter-spacing: normal;
+        }
+        ha-card.theme-ha .evsc-hero-v2 {
+          background: transparent;
+          border: 0;
+          box-shadow: none;
+          padding: 4px;
+        }
+        ha-card.theme-ha .metric-card {
+          background: var(--secondary-background-color, rgba(127, 127, 127, 0.08));
+          border-color: transparent;
+          box-shadow: none;
+        }
+        ha-card.theme-ha .metric-card::before { display: none; }
 
         @media (max-width: 540px) {
           .hero-card { padding: 18px 18px; }
