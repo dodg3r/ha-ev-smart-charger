@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.34.1
+**Current Version:** 2.34.2
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,24 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.34.2 (2026-10-29) — fork dodg3r
+**Three more startup messages quiet during the grace**
+
+Reported from HiBerry after a restart: "Charger status unavailable", "Source
+sensor sensor.volvo_ex90_battery not found!" and the price sensor "has no price
+list" warning, all within seconds of startup, before the charger, car and core
+Nord Pool integrations had loaded. They log directly, so the v2.34.1 grace did
+not cover them.
+- Solar Surplus: "Charger status unavailable" is DEBUG during the grace.
+- EV SOC monitor: a missing source sensor is DEBUG during the grace; the
+  error is logged once if it is still missing afterwards.
+- Night plan: an `unsupported` price sensor is DEBUG during the grace (the core
+  Nord Pool service may not be registered yet; prices are retried every
+  minute), then warned once (`_unsupported_warned`, reset when prices read).
+- Tests: NEW `tests/test_v2342_startup_grace_more.py`.
+
+---
 
 ### v2.34.1 (2026-10-29) — fork dodg3r
 **Quieter log at startup and while the charger is off**

@@ -15,6 +15,7 @@ from .const import (
     HELPER_CACHED_EV_SOC_SUFFIX,
 )
 from .runtime import EVSCRuntimeData
+from .utils import state_helper
 from .utils.logging_helper import EVSCLogger
 
 
@@ -99,7 +100,14 @@ class EVSOCMonitor:
         source_state = self.hass.states.get(self._source_entity)
 
         if not source_state:
-            # Source entity doesn't exist (should never happen after setup)
+            # Source entity doesn't exist yet. v2.34.2: during the startup
+            # grace (car integration still loading) only a debug line; the
+            # error is logged once if it is still missing afterwards.
+            if state_helper.in_startup_grace(self.hass):
+                self.logger.debug(
+                    f"Source sensor {self._source_entity} not loaded yet"
+                )
+                return
             if self._last_source_state != "missing":
                 self.logger.error(
                     f"Source sensor {self._source_entity} not found! "

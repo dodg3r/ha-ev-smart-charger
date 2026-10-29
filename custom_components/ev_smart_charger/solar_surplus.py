@@ -62,7 +62,7 @@ from .power_model import (
 from .runtime import EVSCRuntimeData
 from .utils.logging_helper import EVSCLogger
 from .utils.notification_service import NotificationService
-from .utils.state_helper import get_state, get_float, get_bool, validate_sensor
+from .utils.state_helper import get_state, get_float, get_bool, validate_sensor, in_startup_grace
 from .utils.amperage_helper import AmperageCalculator
 from .utils.astral_time_service import AstralTimeService
 
@@ -1030,7 +1030,9 @@ class SolarSurplusAutomation:
         if self._charger_status:
             charger_status = get_state(self.hass, self._charger_status)
             if not charger_status:
-                self.logger.warning("Charger status unavailable")
+                # v2.34.2: right after a restart the status sensor is not up yet.
+                log = self.logger.debug if in_startup_grace(self.hass) else self.logger.warning
+                log("Charger status unavailable")
                 return
 
             # v2.9.2: brand-vocabulary aware (companion to v2.9.1). The exact

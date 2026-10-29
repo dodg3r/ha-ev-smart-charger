@@ -134,6 +134,7 @@ class PlannedNightCharge:
         self._unsubs: list = []
         self._prices: dict[datetime, float] = {}
         self._price_source: str | None = None
+        self._unsupported_warned = False
         self._prices_fetched_at: datetime | None = None
         self._prices_dirty = True
         self._active = False
@@ -467,7 +468,16 @@ class PlannedNightCharge:
             self._prices, source = await async_read_prices(
                 self.hass, self._price_entity
             )
-            if source == PRICE_SOURCE_UNSUPPORTED and self._price_source != source:
+            if source != PRICE_SOURCE_UNSUPPORTED:
+                self._unsupported_warned = False
+            elif state_helper.in_startup_grace(self.hass):
+                # v2.34.2: the core Nord Pool service may not be registered
+                # yet right after a restart; retried every minute.
+                self.logger.debug(
+                    f"Prices from {self._price_entity} not readable yet"
+                )
+            elif not self._unsupported_warned:
+                self._unsupported_warned = True
                 state = self.hass.states.get(self._price_entity)
                 keys = sorted((state.attributes or {}).keys()) if state else []
                 self.logger.warning(
