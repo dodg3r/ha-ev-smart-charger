@@ -31,6 +31,7 @@ from homeassistant.helpers.event import (
     async_track_time_interval,
 )
 
+from .utils import state_helper
 from .const import (
     CONF_EV_CHARGER_CURRENT,
     CONF_CHARGING_POWER,
@@ -115,6 +116,7 @@ class FuseGuard:
         self._last_limit: FuseLimit | None = None
         self._last_decision: LimiterDecision | None = None
         self._last_state: str | None = None
+        self._invalid_unwarned = False
         self._last_published: tuple | None = None
         self._enforce_task: asyncio.Task | None = None
         self._unsubs: list = []
@@ -322,7 +324,7 @@ class FuseGuard:
         self._last_limit = limit
         self._last_decision = decision
 
-        self._log_transition(decision, limit)
+        self._log_transition(decision, limit, charger_on)
         self._publish(decision, limit, margin, readings)
 
         if enforce:
@@ -416,11 +418,35 @@ class FuseGuard:
         except Exception as ex:  # never let the watchdog die
             self.logger.error("Fuse enforcement failed: %s", ex)
 
-    def _log_transition(self, decision: LimiterDecision, limit: FuseLimit) -> None:
+    def _log_transition(
+        self, decision: LimiterDecision, limit: FuseLimit, charger_on: bool = True
+    ) -> None:
+        invalid = decision.state in (
+            FuseLimiter.STATE_INVALID, FuseLimiter.STATE_INVALID_STOP
+        )
         if decision.state == self._last_state:
+            # v2.34.1: missing meter data first reported while idle (debug)
+            # is warned about once the charger actually charges.
+            if invalid and charger_on and self._invalid_unwarned:
+                self._invalid_unwarned = False
+                self.logger.warning(
+                    "Fuse protection %s while charging: ceiling %sA (%s)",
+                    decision.state, decision.allowed_a, limit.reason,
+                )
             return
         previous = self._last_state
         self._last_state = decision.state
+        if not invalid:
+            self._invalid_unwarned = False
+        elif not charger_on or state_helper.in_startup_grace(self.hass):
+            # v2.34.1: no meter data while nothing charges (or while the
+            # sensors are still starting up) is not a risk.
+            self._invalid_unwarned = True
+            self.logger.debug(
+                "Fuse protection %s -> %s: ceiling %sA (%s)",
+                previous, decision.state, decision.allowed_a, limit.reason,
+            )
+            return
         if decision.state in (
             FuseLimiter.STATE_STOPPED,
             FuseLimiter.STATE_INVALID,

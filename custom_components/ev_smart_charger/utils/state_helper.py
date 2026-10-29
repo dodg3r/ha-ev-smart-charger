@@ -2,8 +2,32 @@
 from __future__ import annotations
 from homeassistant.core import HomeAssistant
 import logging
+import time
 
 _LOGGER = logging.getLogger(__name__)
+
+# v2.34.1: right after the integration starts, other integrations' sensors
+# are often not ready yet; a missing value then is expected, not a problem.
+STARTUP_GRACE_SECONDS = 120
+_GRACE_KEY = "ev_smart_charger_startup_grace_until"
+
+
+def start_startup_grace(hass: HomeAssistant, seconds: float = STARTUP_GRACE_SECONDS) -> None:
+    """Mark the start of the integration (called from async_setup_entry)."""
+    hass.data[_GRACE_KEY] = time.monotonic() + seconds
+
+
+def in_startup_grace(hass: HomeAssistant) -> bool:
+    """True while sensors may still be starting up."""
+    until = getattr(hass, "data", {}).get(_GRACE_KEY) if hasattr(hass, "data") else None
+    return isinstance(until, (int, float)) and time.monotonic() < until
+
+
+def _log_missing(hass: HomeAssistant, message: str) -> None:
+    if in_startup_grace(hass):
+        _LOGGER.debug(message)
+    else:
+        _LOGGER.warning(message)
 
 
 def get_state(hass: HomeAssistant, entity_id: str) -> str | None:
@@ -29,8 +53,8 @@ def get_float(hass: HomeAssistant, entity_id: str, default: float = 0.0) -> floa
     try:
         state = get_state(hass, entity_id)
         if state in [None, "unknown", "unavailable"]:
-            _LOGGER.warning(
-                f"Entity {entity_id} state is {state}, using default {default}"
+            _log_missing(
+                hass, f"Entity {entity_id} state is {state}, using default {default}"
             )
             return default
         return float(state)

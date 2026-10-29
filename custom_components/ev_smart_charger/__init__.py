@@ -20,6 +20,7 @@ from homeassistant.helpers.event import (
 )
 from homeassistant.util import dt as dt_util
 
+from .utils import state_helper
 from .const import (
     CONF_CREATE_DASHBOARD,
     DEFAULT_CREATE_DASHBOARD,
@@ -299,6 +300,8 @@ async def _async_wait_for_helper_registration(
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up EV Smart Charger from a config entry."""
     hass.data.setdefault(DOMAIN, {})
+    # v2.34.1: sensors of other integrations may still be starting up.
+    state_helper.start_startup_grace(hass)
     await _async_register_frontend(hass)
     # v1.7.0: PV-only mode uses a smaller entity count (no home battery helpers).
     battery_configured = has_home_battery(entry.data)

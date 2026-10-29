@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.34.0
+**Current Version:** 2.34.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,25 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.34.1 (2026-10-29) — fork dodg3r
+**Quieter log at startup and while the charger is off**
+
+Reported from HiBerry (Garo, OCPP): a reload logged three warnings and a
+"state is None" message within a second, before the sensors had values.
+- `state_helper.start_startup_grace()` (called in `async_setup_entry`,
+  `STARTUP_GRACE_SECONDS = 120`) and `in_startup_grace()`: a missing value
+  in `get_float` is DEBUG during the grace, WARNING after it.
+- Fuse guard: entering `invalid_data` / `invalid_data_stop` while the
+  charger is off or during the grace is DEBUG; if it is still invalid when
+  the charger charges, one WARNING (`_invalid_unwarned`). Behaviour
+  (6 A ceiling, stop after the timeout) unchanged.
+- Solar Surplus grid-import gate: "protection gate", "Starting delay",
+  "delay x / y s" and "already off" log at DEBUG while the charger is off
+  (house load); unchanged while charging. Values are rounded.
+- Tests: NEW `tests/test_v2341_startup_grace.py`.
+
+---
 
 ### v2.34.0 (2026-10-28) — fork dodg3r
 **Target mark on the EV ring; cars link in Settings; a charge limit must be in %**

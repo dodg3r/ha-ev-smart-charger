@@ -1432,7 +1432,10 @@ class SolarSurplusAutomation:
                 current_amps=current_amps,
                 target_amps=target_amps,
             )
-            self.logger.warning(
+            # v2.34.1: grid import while the charger is off is the house's
+            # own load; the gate only keeps the charger from starting.
+            gate_log = self.logger.warning if charger_is_on else self.logger.debug
+            gate_log(
                 "Grid import protection gate: import=%sW threshold=%sW delay=%ss "
                 "elapsed=%ss remaining=%ss current=%sA target=%sA battery_support=%s use_home_battery=%s",
                 round(debug_context["grid_import_w"], 1),
@@ -2053,8 +2056,9 @@ class SolarSurplusAutomation:
             # system jumps straight to full target amperage in one step (large
             # battery draw) instead of re-earning a fresh 60s stability window.
             self._surplus_stable_since = None
-            self.logger.warning(
-                f"Grid import ({grid_import}W) > threshold ({grid_threshold}W) - Starting {grid_import_delay}s delay"
+            start_log = self.logger.warning if current_amps > 0 else self.logger.debug
+            start_log(
+                f"Grid import ({grid_import:.0f}W) > threshold ({grid_threshold:.0f}W) - Starting {grid_import_delay:.0f}s delay"
             )
             await self._update_diagnostic_sensor(
                 "GRID_IMPORT_DELAY",
@@ -2073,7 +2077,9 @@ class SolarSurplusAutomation:
 
         elapsed = current_time - self._last_grid_import_high
         if elapsed < grid_import_delay:
-            self.logger.info(f"Grid import delay: {elapsed:.1f}s / {grid_import_delay}s")
+            (self.logger.info if current_amps > 0 else self.logger.debug)(
+                f"Grid import delay: {elapsed:.1f}s / {grid_import_delay}s"
+            )
             await self._update_diagnostic_sensor(
                 "GRID_IMPORT_DELAY",
                 {
@@ -2124,7 +2130,7 @@ class SolarSurplusAutomation:
             if await self._ensure_control("Grid import protection"):
                 await self.charger_controller.set_amperage(next_amps, "Grid import protection")
         elif current_amps == 0:
-            self.logger.info("Charger is already off (0A) - keeping charger stopped")
+            self.logger.debug("Charger is already off (0A) - keeping charger stopped")
             await self._update_diagnostic_sensor(
                 "GRID_IMPORT_NOOP",
                 {
