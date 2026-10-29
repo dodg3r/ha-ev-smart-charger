@@ -87,3 +87,28 @@ def test_effective_level_is_exposed_for_diagnostics(tmp_path):
 
     EVSCLogger.enable_global_file_logging(str(tmp_path / "a.log"))
     assert EVSCLogger.get_effective_level_name() == "INFO"
+
+
+def test_info_stays_out_of_home_assistants_log(tmp_path):
+    """v2.34.3: the INFO stream goes to the file, not to HA's own log."""
+    PACKAGE_LOGGER.setLevel(logging.WARNING)
+    seen = []
+
+    class _Collect(logging.Handler):
+        def emit(self, record):
+            seen.append(record)
+
+    root_handler = _Collect()
+    logging.getLogger().addHandler(root_handler)
+    try:
+        EVSCLogger.enable_global_file_logging(str(tmp_path / "b.log"))
+        EVSCLogger("SOLAR SURPLUS").info("only in the file")
+        EVSCLogger("SOLAR SURPLUS").warning("also in HA")
+    finally:
+        logging.getLogger().removeHandler(root_handler)
+
+    messages = [r.getMessage() for r in seen]
+    assert not any("only in the file" in m for m in messages)
+    assert any("also in HA" in m for m in messages)
+    EVSCLogger.disable_global_file_logging()
+    assert PACKAGE_LOGGER.propagate is True

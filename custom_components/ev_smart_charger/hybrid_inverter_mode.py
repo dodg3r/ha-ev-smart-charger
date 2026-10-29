@@ -776,7 +776,7 @@ class HybridInverterMode:
                 )
             violation_elapsed = (now - self._import_violation_since).total_seconds()
             if violation_elapsed >= max_import_duration:
-                self.logger.warning(
+                self.logger.info(
                     f"PROBING FAIL: grid_import sustained for {violation_elapsed:.0f}s "
                     f"(limit {max_import_duration}s) — no headroom"
                 )
@@ -800,7 +800,7 @@ class HybridInverterMode:
                 )
             batt_elapsed = (now - self._battery_violation_since).total_seconds()
             if batt_elapsed >= max_import_duration:
-                self.logger.warning(
+                self.logger.info(
                     f"PROBING FAIL: battery masking sustained for {batt_elapsed:.0f}s "
                     f"(limit {max_import_duration}s) — PV never unlocked"
                 )
@@ -821,7 +821,7 @@ class HybridInverterMode:
             # success); a slow-ramp inverter that hasn't handed off by completion
             # is handled by raising probe_duration.
             if batt_over is not None and batt_over > 0:
-                self.logger.warning(
+                self.logger.info(
                     f"PROBING FAIL: battery still masking "
                     f"({self._last_battery_discharge_w:.0f}W, over limit by "
                     f"{batt_over:.0f}W) at probe completion — PV headroom not confirmed"
@@ -871,7 +871,7 @@ class HybridInverterMode:
             self._current_target_amps = actual_amps
             current_amps = actual_amps
         elif current_amps <= 0:
-            self.logger.warning(
+            self.logger.info(
                 "RIDING_EDGE: charger reports 0A — treating as control loss"
             )
             await self._graceful_exit(now, reason="charger amperage = 0 in RIDING_EDGE")
@@ -922,7 +922,7 @@ class HybridInverterMode:
                     return
                 else:
                     # At 6A and still violating → FAIL
-                    self.logger.warning(
+                    self.logger.info(
                         f"RIDING_EDGE FAIL: at 6A but grid still {grid_import:.0f}W "
                         f"for {violation_elapsed:.0f}s — no headroom"
                     )
@@ -987,7 +987,7 @@ class HybridInverterMode:
                                 reason=f"RIDING_EDGE @ {next_down}A (reduced, battery)"
                             )
                         return
-                    self.logger.warning(
+                    self.logger.info(
                         f"RIDING_EDGE FAIL: at 6A but battery masking "
                         f"{batt_elapsed:.0f}s — no PV headroom"
                     )
@@ -1120,7 +1120,7 @@ class HybridInverterMode:
 
         if len(self._failed_probes_window) >= max_failed:
             self._long_cooldowns_today += 1
-            self.logger.warning(
+            self.logger.info(
                 f"Hybrid: {len(self._failed_probes_window)} fails in "
                 f"{HYBRID_FAILURE_WINDOW_SECONDS // 60}min — entering COOLDOWN_LONG "
                 f"({HYBRID_COOLDOWN_LONG_SECONDS // 60} min). "
@@ -1129,7 +1129,7 @@ class HybridInverterMode:
             )
 
             if self._long_cooldowns_today >= HYBRID_MAX_DAILY_LONG_COOLDOWNS:
-                self.logger.warning(
+                self.logger.info(
                     f"{self.logger.ALERT} Hybrid: daily HARD_EXIT triggered — "
                     "no further probes until sunrise"
                 )

@@ -158,7 +158,7 @@ class BoostCharge:
         )
 
         if state_helper.get_bool(self.hass, self._boost_switch_entity):
-            self.logger.warning("Boost switch restored ON after restart - resetting to OFF")
+            self.logger.info("Boost switch restored ON after restart - resetting to OFF")
             await self._set_boost_switch(False)
 
         # --- Schedule Boost Charge setup ---
@@ -321,7 +321,7 @@ class BoostCharge:
         current_soc = await self._read_ev_soc()
         self._no_soc_mode = current_soc is None
         if self._no_soc_mode:
-            self.logger.warning(
+            self.logger.info(
                 "EV SOC unavailable - Boost charges until the car is unplugged"
             )
 
@@ -447,7 +447,7 @@ class BoostCharge:
             self._soc_read_failures += 1
             if not self._no_soc_mode and self._soc_read_failures >= BOOST_MAX_SOC_READ_FAILURES:
                 self._no_soc_mode = True
-                self.logger.warning(
+                self.logger.info(
                     "EV SOC unavailable during Boost Charge - charging until unplugged"
                 )
             await self._mobile_notifier.send_ev_charging_live_activity(

@@ -183,6 +183,7 @@ class SolarSurplusAutomation:
 
         # Sensor error tracking (prevent log spam)
         self._sensor_error_state = {}  # {sensor_entity_id: error_message}
+        self._status_unavailable_warned = False
         # issue #47/#48: consecutive ticks with at least one invalid sensor.
         # Used to debounce the diagnostic ERROR label (display-only).
         self._sensor_error_consecutive = 0
@@ -401,7 +402,7 @@ class SolarSurplusAutomation:
         if not charger_is_on or offgrid_cap is None or current_amps <= offgrid_cap:
             return False
 
-        self.logger.warning(
+        self.logger.info(
             f"Off-grid overload protection: {current_amps}A > ceiling "
             f"{offgrid_cap}A - clamping immediately"
         )
@@ -621,7 +622,7 @@ class SolarSurplusAutomation:
 
         # Check if SOC dropped below minimum
         if new_soc <= min_soc and self._battery_support_active:
-            self.logger.warning(
+            self.logger.info(
                 f"{self.logger.BATTERY} Home battery SOC dropped to {new_soc:.1f}% "
                 f"(minimum: {min_soc:.0f}%) - Deactivating battery support"
             )
@@ -849,7 +850,7 @@ class SolarSurplusAutomation:
         )
 
         if target > 0:
-            self.logger.warning(
+            self.logger.info(
                 f"{self.logger.ACTION} Consumption spike fast response: "
                 f"{current_amps}A -> {target}A in one step "
                 f"(import {grid_import:.0f}W, margin {SPIKE_STEP_DOWN_MARGIN_W}W)"
@@ -859,7 +860,7 @@ class SolarSurplusAutomation:
                     target, "Consumption spike fast response"
                 )
         else:
-            self.logger.warning(
+            self.logger.info(
                 f"{self.logger.ACTION} Consumption spike fast response: import "
                 f"{grid_import:.0f}W exceeds minimum-level draw - stopping charger"
             )
@@ -1031,9 +1032,14 @@ class SolarSurplusAutomation:
             charger_status = get_state(self.hass, self._charger_status)
             if not charger_status:
                 # v2.34.2: right after a restart the status sensor is not up yet.
-                log = self.logger.debug if in_startup_grace(self.hass) else self.logger.warning
-                log("Charger status unavailable")
+                # v2.34.3: once per outage, not every tick.
+                if in_startup_grace(self.hass) or self._status_unavailable_warned:
+                    self.logger.debug("Charger status unavailable")
+                else:
+                    self._status_unavailable_warned = True
+                    self.logger.warning("Charger status unavailable")
                 return
+            self._status_unavailable_warned = False
 
             # v2.9.2: brand-vocabulary aware (companion to v2.9.1). The exact
             # CHARGER_STATUS_FREE comparison let OCPP 'available' (= no EV
@@ -1085,7 +1091,7 @@ class SolarSurplusAutomation:
                 # log, churns coordinator ownership and dispatches a no-op
                 # switch.turn_off. Guard on the real charger state.
                 if await self.charger_controller.is_charging():
-                    self.logger.warning("Priority = HOME - Stopping EV charger")
+                    self.logger.info("Priority = HOME - Stopping EV charger")
                     if await self._acquire_control(
                         "turn_off",
                         "Home battery needs charging (Priority = HOME)",
@@ -1170,9 +1176,17 @@ class SolarSurplusAutomation:
 
             # Only log full error details if there are NEW errors
             if new_errors:
-                self.logger.error("Sensor validation failed:")
-                for error in sensor_errors:
-                    self.logger.error(f"  - {error}")
+                # v2.34.3: sensors not loaded yet right after a restart are
+                # not an error; a sensor still missing afterwards is a warning
+                # (Solar Surplus skips the tick, nothing breaks).
+                if in_startup_grace(self.hass):
+                    for error in sensor_errors:
+                        self.logger.debug(f"Sensor not ready yet: {error}")
+                    self._sensor_error_state.clear()
+                else:
+                    self.logger.warning("Sensor validation failed:")
+                    for error in sensor_errors:
+                        self.logger.warning(f"  - {error}")
             else:
                 # Existing errors - just update diagnostic sensor quietly
                 self.logger.debug(f"Sensor errors still present ({len(sensor_errors)} sensors unavailable)")
@@ -1436,7 +1450,7 @@ class SolarSurplusAutomation:
             )
             # v2.34.1: grid import while the charger is off is the house's
             # own load; the gate only keeps the charger from starting.
-            gate_log = self.logger.warning if charger_is_on else self.logger.debug
+            gate_log = self.logger.info if charger_is_on else self.logger.debug
             gate_log(
                 "Grid import protection gate: import=%sW threshold=%sW delay=%ss "
                 "elapsed=%ss remaining=%ss current=%sA target=%sA battery_support=%s use_home_battery=%s",
@@ -1481,7 +1495,7 @@ class SolarSurplusAutomation:
             if not self._waiting_for_surplus_decrease:
                 self._surplus_decrease_start_time = dt_util.now()
                 self._waiting_for_surplus_decrease = True
-                self.logger.warning(
+                self.logger.info(
                     f"EV_FREE mode: Insufficient surplus ({surplus_amps:.2f}A < {self._stop_threshold()}A) - "
                     f"Starting {surplus_drop_delay}s delay before stopping"
                 )
@@ -1496,7 +1510,7 @@ class SolarSurplusAutomation:
                 return
 
             # Delay elapsed, stop charging
-            self.logger.warning(
+            self.logger.info(
                 f"EV_FREE mode: Delay elapsed - Stopping (insufficient surplus for {surplus_drop_delay}s)"
             )
             if await self._acquire_control(
@@ -1566,7 +1580,7 @@ class SolarSurplusAutomation:
 
         age_seconds = stale_info.get("age_seconds")
         age_label = f"{age_seconds:.0f}s" if age_seconds is not None else "unknown"
-        self.logger.warning(
+        self.logger.debug(
             f"SOC stale (continue) [{context}] - age={age_label}, "
             f"entity={stale_info.get('entity')} - continuing by policy"
         )
@@ -1639,7 +1653,7 @@ class SolarSurplusAutomation:
                 f"Target hard cap enforced ({context}): EV target reached "
                 f"({ev_soc}% >= {ev_target}%)"
             )
-            self.logger.warning(f"Target hard cap enforced [{context}] - stopping charger")
+            self.logger.info(f"Target hard cap enforced [{context}] - stopping charger")
             if await self._acquire_control("turn_off", reason):
                 await self.charger_controller.stop_charger(reason)
                 self._release_control("Target hard cap enforced")
@@ -1773,7 +1787,7 @@ class SolarSurplusAutomation:
             )
             return
 
-        self.logger.warning(
+        self.logger.info(
             f"Sunset transition detected at {now.strftime('%H:%M:%S')} with charger ON in Solar Surplus"
         )
 
@@ -1816,7 +1830,7 @@ class SolarSurplusAutomation:
         stop_reason = (
             "Sunset transition safe stop: Solar Surplus cannot continue at night and handover was rejected"
         )
-        self.logger.warning("Sunset transition - Handover rejected, applying safe stop")
+        self.logger.info("Sunset transition - Handover rejected, applying safe stop")
         if await self._acquire_control("turn_off", stop_reason):
             await self.charger_controller.stop_charger(stop_reason)
             self._release_control("Sunset transition safe stop")
@@ -1892,7 +1906,7 @@ class SolarSurplusAutomation:
 
         if home_battery_soc <= battery_min_soc:
             if self._battery_support_active:
-                self.logger.warning(
+                self.logger.info(
                     f"Battery support DEACTIVATING (SOC {home_battery_soc}% <= min {battery_min_soc}%)"
                 )
                 self._battery_support_active = False
@@ -2058,7 +2072,7 @@ class SolarSurplusAutomation:
             # system jumps straight to full target amperage in one step (large
             # battery draw) instead of re-earning a fresh 60s stability window.
             self._surplus_stable_since = None
-            start_log = self.logger.warning if current_amps > 0 else self.logger.debug
+            start_log = self.logger.info if current_amps > 0 else self.logger.debug
             start_log(
                 f"Grid import ({grid_import:.0f}W) > threshold ({grid_threshold:.0f}W) - Starting {grid_import_delay:.0f}s delay"
             )
@@ -2097,7 +2111,7 @@ class SolarSurplusAutomation:
             )
             return
 
-        self.logger.warning("Grid import delay ELAPSED - Reducing charging")
+        self.logger.info("Grid import delay ELAPSED - Reducing charging")
         self._last_grid_import_high = None
         # issue #46: belt-and-suspenders — require a fresh stability window
         # after each step-down too, so the ramp can't jump back up in one step.
@@ -2108,7 +2122,7 @@ class SolarSurplusAutomation:
 
         if next_amps > 0:
             self.logger.info(f"Stepping down ONE level: {current_amps}A -> {next_amps}A")
-            self.logger.warning(
+            self.logger.info(
                 "Grid import protection action: step_down current=%sA next=%sA import=%sW threshold=%sW",
                 current_amps,
                 next_amps,
@@ -2155,7 +2169,7 @@ class SolarSurplusAutomation:
                 else f"Grid import protection - non-standard level {current_amps}A"
             )
             self.logger.info(f"Stopping charger: {reason}")
-            self.logger.warning(
+            self.logger.info(
                 "Grid import protection action: stop current=%sA import=%sW threshold=%sW",
                 current_amps,
                 round(grid_import, 1),
@@ -2192,7 +2206,7 @@ class SolarSurplusAutomation:
 
         if self._last_surplus_sufficient is None:
             self._last_surplus_sufficient = current_time
-            self.logger.warning(
+            self.logger.info(
                 f"Surplus dropped ({surplus_amps:.2f}A < {current_amps}A) - Starting {surplus_drop_delay}s delay"
             )
             return
@@ -2202,7 +2216,7 @@ class SolarSurplusAutomation:
             self.logger.info(f"Surplus drop delay: {elapsed:.1f}s / {surplus_drop_delay}s")
             return
 
-        self.logger.warning("Surplus drop delay ELAPSED - Starting gradual ramp-down")
+        self.logger.info("Surplus drop delay ELAPSED - Starting gradual ramp-down")
         self._last_surplus_sufficient = None
 
         # Gradual ramp down: one level at a time via AmperageCalculator
@@ -2213,7 +2227,7 @@ class SolarSurplusAutomation:
             if await self._ensure_control("Surplus decrease"):
                 await self.charger_controller.set_amperage(next_amps, "Surplus decrease")
         elif current_amps == 0:
-            self.logger.warning("Charger is off (0A) - starting at minimum 6A")
+            self.logger.info("Charger is off (0A) - starting at minimum 6A")
             if await self._ensure_control("Surplus decrease - start at 6A"):
                 await self.charger_controller.set_amperage(
                     6,

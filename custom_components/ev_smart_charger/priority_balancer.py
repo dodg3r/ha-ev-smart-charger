@@ -321,11 +321,16 @@ class PriorityBalancer:
         # State not yet restored/available
         if state in [None, "unknown", "unavailable"]:
             default_value = default_weekend if (default_weekend and today in ["saturday", "sunday"]) else default_weekday
-            self.logger.warning(
-                f"⚠️ Entity {entity_id} state is {state}, using temporary default {default_value}%"
+            # v2.34.3: helpers are restored a moment after startup; only a
+            # value still missing after the startup grace is a warning.
+            log = (
+                self.logger.debug
+                if state_helper.in_startup_grace(self.hass)
+                else self.logger.warning
             )
-            self.logger.warning(
-                f"   If this persists, check entity state in Developer Tools → States"
+            log(
+                f"Entity {entity_id} state is {state}, using temporary "
+                f"default {default_value}% - check it in Developer Tools → States"
             )
             return default_value
 

@@ -148,7 +148,7 @@ class EVSOCMonitor:
             # Invalid state (unknown/unavailable) - keep cache, log warning
             if self._last_source_state != source_state.state:
                 # State changed to invalid - log warning
-                self.logger.warning(
+                self.logger.info(
                     f"{self.logger.ALERT} Using cached EV SOC: {self._last_valid_value}% "
                     f"(source sensor unavailable: {source_state.state})"
                 )

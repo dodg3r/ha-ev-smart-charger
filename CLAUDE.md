@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.34.2
+**Current Version:** 2.34.3
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,38 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.34.3 (2026-10-29) — fork dodg3r
+**Log levels reviewed across the integration: normal work is INFO, only problems are WARNING**
+
+Requested by the maintainer: Home Assistant's log filled with warnings such
+as "Fuse protection limited -> stopped" that describe normal behaviour.
+Rule applied everywhere: ERROR = something failed, WARNING = something the
+user must fix (misconfiguration, a sensor still missing after the startup
+grace, a real risk), INFO = normal decisions and actions, DEBUG = per-tick
+detail.
+- Fuse guard: `stopped` / `hold` are INFO while charging, DEBUG while the
+  charger is off; invalid meter data while charging and the hard trip stay
+  WARNING. Controller fuse reduce / stop, "already charging", "stop button
+  rejected, not drawing" and "did not confirm the current" are INFO.
+- Solar Surplus: grid-import protection, surplus drop, EV_FREE stop, spike
+  response, off-grid clamp, Priority HOME stop, battery support off, target
+  hard cap and sunset handover are INFO; "SOC stale (continue)" is DEBUG;
+  sensor validation failures are DEBUG during the startup grace and a
+  WARNING (not ERROR) afterwards; "Charger status unavailable" warns once
+  per outage (`_status_unavailable_warned`).
+- Smart Blocker blocking sequence, Hybrid probe/edge results, manual stop /
+  interlock / auto-disarm, Boost without SOC, night plan control loss, EV
+  SOC monitor "using cached value": INFO. Priority Balancer target helper
+  not restored yet: DEBUG during the grace.
+- File logging: lowering the package logger to INFO (v2.13.0) also sent the
+  INFO stream into HA's log. While it is lowered the package stops
+  propagating and `_UpstreamHandler` forwards only records at HA's previous
+  level; restored on disable.
+- Tests: NEW `tests/test_v2343_fuse_log_level.py`, one in
+  `test_v2130_file_logging_level.py`; stale-SOC test reads DEBUG.
+
+---
 
 ### v2.34.2 (2026-10-29) — fork dodg3r
 **Three more startup messages quiet during the grace**

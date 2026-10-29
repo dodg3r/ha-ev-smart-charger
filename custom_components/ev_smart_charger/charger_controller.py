@@ -839,7 +839,7 @@ class ChargerController:
                 )
                 return True
             if self._charger_already_running():
-                self.logger.warning(
+                self.logger.info(
                     "Charger rejected switch.turn_on (%s) but is already "
                     "charging - treating the start as successful",
                     ex,
@@ -881,7 +881,7 @@ class ChargerController:
                     self._measured_power_w is not None
                     and self._measured_power_w <= CHARGING_POWER_DRAWING_FLOOR_W
                 ):
-                    self.logger.warning(
+                    self.logger.info(
                         f"Stop button rejected ({err}) - charger is not drawing, "
                         "treating it as stopped"
                     )
@@ -990,7 +990,7 @@ class ChargerController:
         except asyncio.TimeoutError:
             # v2.26.0: cloud chargers (Growatt THOR) confirm a new current
             # slowly; the command has been sent, so carry on.
-            self.logger.warning(
+            self.logger.info(
                 "Charger did not confirm %sA within %ss - continuing",
                 amps,
                 CURRENT_SET_TIMEOUT_SECONDS,
@@ -1064,7 +1064,7 @@ class ChargerController:
             return
 
         if ceiling <= 0:
-            self.logger.warning("%s - stopping charger", reason)
+            self.logger.info("%s - stopping charger", reason)
             if self._requested_amps is None and self._current_amperage:
                 self._requested_amps = self._current_amperage
             await self._turn_off_charger_switch()
@@ -1091,7 +1091,7 @@ class ChargerController:
             await self.async_enforce_fuse_ceiling(0, reason)
             return
 
-        self.logger.warning("%s - reducing %sA -> %sA", reason, current, target)
+        self.logger.info("%s - reducing %sA -> %sA", reason, current, target)
         if self._requested_amps is None and current is not None:
             self._requested_amps = current
         self._fuse_reduced = True

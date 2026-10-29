@@ -178,7 +178,7 @@ class ManualStopControl:
         # A restart with the switch already ON must re-assert the hold: the
         # state-change listener above only fires on future transitions.
         if self.is_active():
-            self.logger.warning("Manual stop restored as ACTIVE - enforcing hold")
+            self.logger.info("Manual stop restored as ACTIVE - enforcing hold")
             # Both switches could be restored ON from before the interlock
             # existed (or from a hand-edited state). Manual stop wins, matching
             # the coordinator's precedence.
@@ -224,7 +224,7 @@ class ManualStopControl:
 
         if is_on:
             self.logger.separator()
-            self.logger.warning("Manual stop ENGAGED by user")
+            self.logger.info("Manual stop ENGAGED by user")
             # Interlock: the two overrides are opposites, never both ON.
             await self._turn_off_other(
                 self._forza_entity, "Manual stop engaged"
@@ -263,7 +263,7 @@ class ManualStopControl:
         if not self.is_active():
             return
 
-        self.logger.warning(
+        self.logger.info(
             "Force Charging engaged - releasing the manual stop (interlock)"
         )
         await self._turn_off_other(self._switch_entity, "Force Charging engaged")
@@ -307,7 +307,7 @@ class ManualStopControl:
             return
 
         self.logger.separator()
-        self.logger.warning(
+        self.logger.info(
             f"EV unplugged (status: {new_state.state}) - auto-disarming Force Charge"
         )
         await self.hass.services.async_call(
@@ -368,7 +368,7 @@ class ManualStopControl:
         if not await self.charger_controller.is_charging():
             return
 
-        self.logger.warning(
+        self.logger.info(
             "Charger started while manual stop is active - re-asserting stop"
         )
         await self._enforce_stop("Manual stop hold: charger restarted externally")

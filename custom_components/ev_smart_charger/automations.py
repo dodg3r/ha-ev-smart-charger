@@ -360,15 +360,15 @@ class SmartChargerBlocker:
 
         # Check if charger just turned ON
         if new_state.state == STATE_ON and old_state.state != STATE_ON:
-            self.logger.warning(
+            self.logger.info(
                 "External charger re-enable detected during active blocking!"
             )
-            self.logger.warning(f"Charger state: {old_state.state} → {new_state.state}")
+            self.logger.info(f"Charger state: {old_state.state} → {new_state.state}")
 
             # Re-check blocking conditions before re-blocking
             should_block, block_reason = await self._should_block_charging()
             if should_block:
-                self.logger.warning(f"Blocking still required: {block_reason}")
+                self.logger.info(f"Blocking still required: {block_reason}")
                 await self._block_charging(
                     f"Enforcement - External re-enable detected - {block_reason}"
                 )
@@ -410,7 +410,7 @@ class SmartChargerBlocker:
             and not self._currently_blocking
             and not self._blocking_sequence_in_progress
         ):
-            self.logger.warning(
+            self.logger.info(
                 "Coordinator ownership is stale while blocker is not enforcing; releasing control"
             )
             self._schedule_diagnostic(
@@ -689,8 +689,8 @@ class SmartChargerBlocker:
 
             if not allowed:
                 self._blocking_sequence_in_progress = False
-                self.logger.warning("Blocked by coordinator")
-                self.logger.warning(f"Reason: {coord_reason}")
+                self.logger.info("Blocked by coordinator")
+                self.logger.info(f"Reason: {coord_reason}")
                 await self._emit_diagnostic(
                     event="block_charging",
                     result="denied",
@@ -705,17 +705,17 @@ class SmartChargerBlocker:
         # IMPORTANT: All logging inside try-catch to prevent AttributeError from aborting blocking
         try:
             self.logger.separator()
-            self.logger.warning(f"{self.logger.BLOCKER} Starting blocking sequence")
-            self.logger.warning(f"Reason: {reason}")
-            self.logger.warning(f"Timestamp: {dt_util.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            self.logger.info(f"{self.logger.BLOCKER} Starting blocking sequence")
+            self.logger.info(f"Reason: {reason}")
+            self.logger.info(f"Timestamp: {dt_util.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
             # Check for potential conflicts
             if self.night_smart_charge and self.night_smart_charge.is_active():
                 night_mode = self.night_smart_charge.get_active_mode()
-                self.logger.warning(
+                self.logger.info(
                     f"Conflict detected: Night Smart Charge is active (mode: {night_mode})"
                 )
-                self.logger.warning("Smart Blocker will override Night Smart Charge")
+                self.logger.info("Smart Blocker will override Night Smart Charge")
 
             await self.charger_controller.stop_charger(f"Smart Blocker: {reason}")
 

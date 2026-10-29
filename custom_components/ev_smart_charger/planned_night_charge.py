@@ -671,7 +671,7 @@ class PlannedNightCharge:
                 reason = "Planned hour ended"
             await self._stop(reason)
         elif self._active and not self._has_control():
-            self.logger.warning("Night Smart Charge lost control of the charger")
+            self.logger.info("Night Smart Charge lost control of the charger")
             self._set_inactive()
         elif self._active and should_charge:
             await self._apply_amps()

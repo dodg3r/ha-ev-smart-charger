@@ -29,6 +29,26 @@ _GLOBAL_FILE_HANDLER_LOCK = threading.Lock()
 # the handler picks up whatever the logger passes.
 _SAVED_PACKAGE_LEVEL: int | None = None
 _PACKAGE_LEVEL_OVERRIDDEN = False
+_UPSTREAM_HANDLER: logging.Handler | None = None
+
+
+class _UpstreamHandler(logging.Handler):
+    """Pass records on to Home Assistant's log at its own level (v2.34.3).
+
+    While file logging lowers the package logger to INFO, the package stops
+    propagating and this handler forwards only what HA itself would have
+    let through, so the INFO stream goes to the file and not to HA's log.
+    """
+
+    def emit(self, record: logging.LogRecord) -> None:
+        parent = _PACKAGE_LOGGER.parent
+        while parent is not None:
+            for handler in parent.handlers:
+                if record.levelno >= handler.level:
+                    handler.handle(record)
+            if not parent.propagate:
+                break
+            parent = parent.parent
 _EVENT_COUNTER = count(1)
 _EVENT_COUNTER_LOCK = threading.Lock()
 
@@ -294,9 +314,13 @@ class EVSCLogger:
 
         if _PACKAGE_LOGGER.getEffectiveLevel() <= logging.INFO:
             return
+        global _UPSTREAM_HANDLER
         if not _PACKAGE_LEVEL_OVERRIDDEN:
             _SAVED_PACKAGE_LEVEL = _PACKAGE_LOGGER.level
             _PACKAGE_LEVEL_OVERRIDDEN = True
+            _UPSTREAM_HANDLER = _UpstreamHandler(_PACKAGE_LOGGER.getEffectiveLevel())
+            _PACKAGE_LOGGER.addHandler(_UPSTREAM_HANDLER)
+            _PACKAGE_LOGGER.propagate = False
         _PACKAGE_LOGGER.setLevel(logging.INFO)
 
     @classmethod
@@ -304,8 +328,13 @@ class EVSCLogger:
         """Restore the package logger level changed when file logging started."""
         global _SAVED_PACKAGE_LEVEL, _PACKAGE_LEVEL_OVERRIDDEN
 
+        global _UPSTREAM_HANDLER
         if not _PACKAGE_LEVEL_OVERRIDDEN:
             return
+        if _UPSTREAM_HANDLER is not None:
+            _PACKAGE_LOGGER.removeHandler(_UPSTREAM_HANDLER)
+            _UPSTREAM_HANDLER = None
+        _PACKAGE_LOGGER.propagate = True
         _PACKAGE_LOGGER.setLevel(_SAVED_PACKAGE_LEVEL or logging.NOTSET)
         _SAVED_PACKAGE_LEVEL = None
         _PACKAGE_LEVEL_OVERRIDDEN = False

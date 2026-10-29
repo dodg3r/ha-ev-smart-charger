@@ -448,7 +448,6 @@ class FuseGuard:
             )
             return
         if decision.state in (
-            FuseLimiter.STATE_STOPPED,
             FuseLimiter.STATE_INVALID,
             FuseLimiter.STATE_INVALID_STOP,
             FuseLimiter.STATE_HARD_TRIP,
@@ -460,8 +459,21 @@ class FuseGuard:
                 decision.allowed_a,
                 limit.reason,
             )
+        elif decision.state == FuseLimiter.STATE_STOPPED:
+            # v2.34.3: pausing the charger for the main fuse is normal load
+            # balancing, not a fault. INFO while charging, DEBUG otherwise
+            # (e.g. hold -> stopped, or the house alone leaves no room).
+            log = self.logger.info if charger_on else self.logger.debug
+            log(
+                "Fuse protection %s -> %s: ceiling %sA (%s)",
+                previous,
+                decision.state,
+                decision.allowed_a,
+                limit.reason,
+            )
         elif decision.state == FuseLimiter.STATE_HOLD:
-            self.logger.info(
+            log = self.logger.info if charger_on else self.logger.debug
+            log(
                 "Fuse protection %s -> %s: ceiling %sA (%s)",
                 previous,
                 decision.state,

@@ -462,7 +462,7 @@ async def test_sunset_transition_logs_stale_soc_but_continues_by_policy(hass, au
     automation.priority_balancer.get_ev_target_for_today = MagicMock(return_value=80)
     automation._night_smart_charge = MagicMock()
     automation._night_smart_charge.async_try_handover_from_solar_surplus = AsyncMock(return_value=True)
-    caplog.set_level("WARNING")
+    caplog.set_level("DEBUG")
 
     with patch(
         "custom_components.ev_smart_charger.solar_surplus.dt_util.now",
