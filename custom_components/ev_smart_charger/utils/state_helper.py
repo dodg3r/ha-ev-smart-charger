@@ -50,6 +50,10 @@ def get_float(hass: HomeAssistant, entity_id: str, default: float = 0.0) -> floa
     Returns:
         Float value or default
     """
+    if not entity_id:
+        # v2.34.4: an optional sensor that is not mapped is not a problem;
+        # reading it used to log "Entity None state is None" every tick.
+        return default
     try:
         state = get_state(hass, entity_id)
         if state in [None, "unknown", "unavailable"]:

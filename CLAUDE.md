@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.34.3
+**Current Version:** 2.35.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,29 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.35.0 (2026-11-01) — fork dodg3r
+**Status line counts down what Solar Surplus is about to do; no "Entity None" warning**
+
+Requested by the maintainer (Dahlbergs log 2026-10-30: start/stop loop
+because the mapped home consumption sensor included the charger).
+- Solar Surplus diagnostic attributes `pending_action` (`spike`,
+  `grid_import`, `surplus_drop`, `increase`, `start`, `deadband_start`),
+  `pending_until` (ISO time) and `pending_stop` (step down would stop at the
+  lowest level), computed by `_pending_action()` from the existing timers.
+  `_async_periodic_check` now wraps `_async_periodic_check_body` and calls
+  `_republish_pending()`, which republishes the last diagnostic when the
+  pending timer changed; an armed consumption spike republishes at once.
+- Dashboard: `_solarPending()` / `_pendingText()`; the hero status shows
+  e.g. "Laddar · solöverskott · molnpaus, stoppar om 45 s" or
+  "Solöverskott · startar om 40 s", ticking every second
+  (`_schedulePendingTick`, cleared in `disconnectedCallback`). Texts
+  `pending.*` EN/SV/IT/NL.
+- `state_helper.get_float` returns the default silently for an unmapped
+  (None) entity (was "Entity None state is None" every tick while charging).
+- Tests: NEW `tests/test_v2344_pending_action.py`.
+
+---
 
 ### v2.34.3 (2026-10-29) — fork dodg3r
 **Log levels reviewed across the integration: normal work is INFO, only problems are WARNING**

@@ -184,6 +184,12 @@ class SolarSurplusAutomation:
         # Sensor error tracking (prevent log spam)
         self._sensor_error_state = {}  # {sensor_entity_id: error_message}
         self._status_unavailable_warned = False
+        # v2.34.4: last published diagnostic, so a pending countdown can be
+        # republished between ticks (e.g. when a consumption spike arms).
+        self._last_diag_state = None
+        self._last_diag_attrs: dict = {}
+        self._published_pending = None
+        self._tick_current_amps = 0
         # issue #47/#48: consecutive ticks with at least one invalid sensor.
         # Used to debounce the diagnostic ERROR label (display-only).
         self._sensor_error_consecutive = 0
@@ -789,6 +795,7 @@ class SolarSurplusAutomation:
         self._spike_check_unsub = async_call_later(
             self.hass, delay, self._async_spike_delayed_check
         )
+        self.hass.async_create_task(self._republish_pending())
 
     async def _async_spike_delayed_check(self, _now=None) -> None:
         """Fire `spike_response_delay` seconds after the first spike event."""
@@ -872,6 +879,13 @@ class SolarSurplusAutomation:
     @callback
     async def _async_periodic_check(self, now=None, ignore_rate_limit: bool = False) -> None:
         """Periodic check for solar surplus charging."""
+        await self._async_periodic_check_body(now, ignore_rate_limit)
+        # v2.34.4: a timer started or cleared during the tick shows up on
+        # the dashboard right away.
+        await self._republish_pending()
+
+    async def _async_periodic_check_body(self, now=None, ignore_rate_limit: bool = False) -> None:
+        """One Solar Surplus tick."""
         # === Rate Limiting ===
         current_time = time.monotonic()
         if (
@@ -1273,6 +1287,7 @@ class SolarSurplusAutomation:
             current_amps = await self.charger_controller.get_current_amperage() or 6
         else:
             current_amps = 0
+        self._tick_current_amps = current_amps
 
         # === 12. Calculate Target Amperage (with hysteresis) ===
         target_amps = self._calculate_target_amperage(surplus_watts, current_amps)
@@ -2359,7 +2374,59 @@ class SolarSurplusAutomation:
         normalized.setdefault("last_external_cause", normalized.get("external_cause"))
         if self._coordinator is not None:
             normalized.setdefault("active_owner", self._coordinator.get_active_automation_name())
+        normalized.update(self._pending_action())
         return normalized
+
+    def _pending_action(self) -> dict:
+        """What Solar Surplus is waiting to do, and when (v2.34.4).
+
+        The dashboard counts down to ``pending_until``. ``pending_stop`` is
+        True when the step down would stop the charger (already at the
+        lowest level).
+        """
+        now_m = time.monotonic()
+        now_dt = dt_util.now()
+        candidates: list[tuple[str, float]] = []
+        if self._spike_high_since is not None:
+            delay = self._get_spike_response_delay()
+            candidates.append(("spike", self._spike_high_since + delay - now_m))
+        if self._last_grid_import_high is not None:
+            delay = get_float(self.hass, self._grid_import_delay_entity, 30.0)
+            candidates.append(("grid_import", self._last_grid_import_high + delay - now_m))
+        if self._last_surplus_sufficient is not None:
+            delay = get_float(self.hass, self._surplus_drop_delay_entity, 30.0)
+            candidates.append(("surplus_drop", self._last_surplus_sufficient + delay - now_m))
+        if self._surplus_stable_since is not None:
+            elapsed = (now_dt - self._surplus_stable_since).total_seconds()
+            kind = "increase" if self._tick_current_amps else "start"
+            candidates.append((kind, SURPLUS_INCREASE_DELAY - elapsed))
+        if self._deadband_start_time is not None:
+            elapsed = (now_dt - self._deadband_start_time).total_seconds()
+            candidates.append(("deadband_start", SURPLUS_DEADBAND_START_DELAY - elapsed))
+
+        candidates = [(k, r) for k, r in candidates if r > 0]
+        if not candidates:
+            return {"pending_action": None, "pending_until": None, "pending_stop": None}
+        kind, remaining = candidates[0]
+        levels = getattr(self, "_amp_levels", None) or [6]
+        floor = levels[0]
+        stop = kind in ("grid_import", "surplus_drop") and 0 < self._tick_current_amps <= floor
+        until = (now_dt + timedelta(seconds=remaining)).replace(microsecond=0)
+        return {
+            "pending_action": kind,
+            "pending_until": until.isoformat(),
+            "pending_stop": stop,
+        }
+
+    async def _republish_pending(self) -> None:
+        """Republish the last diagnostic when the pending timer changed."""
+        if self._last_diag_state is None:
+            return
+        pending = self._pending_action()
+        key = (pending["pending_action"], pending["pending_stop"])
+        if key == self._published_pending:
+            return
+        await self._update_diagnostic_sensor(self._last_diag_state, self._last_diag_attrs)
 
     async def _update_diagnostic_sensor(self, state: str, attributes: dict) -> None:
         """Update the solar surplus diagnostic sensor.
@@ -2372,6 +2439,9 @@ class SolarSurplusAutomation:
             return
 
         payload = self._build_standard_diagnostic_attributes(state, attributes)
+        self._last_diag_state = state
+        self._last_diag_attrs = dict(attributes)
+        self._published_pending = (payload.get("pending_action"), payload.get("pending_stop"))
 
         if self._solar_surplus_diagnostic_sensor_obj and hasattr(
             self._solar_surplus_diagnostic_sensor_obj, "async_publish"

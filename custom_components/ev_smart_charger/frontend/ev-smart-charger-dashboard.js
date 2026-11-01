@@ -697,6 +697,14 @@ const FRONTEND_LOCALES = {
     "charger.idle": "Not charging",
     "reason.grid_import_reducing": "Reducing charging · drawing from the grid",
     "reason.waiting_surplus": "Car connected · waiting for solar surplus",
+    "pending.surplus_drop": "Cloud pause · reducing in {s}",
+    "pending.surplus_drop_stop": "Cloud pause · stopping in {s}",
+    "pending.grid_import": "Drawing from the grid · reducing in {s}",
+    "pending.grid_import_stop": "Drawing from the grid · stopping in {s}",
+    "pending.spike": "Consumption spike · reducing in {s}",
+    "pending.increase": "More sun · raising in {s}",
+    "pending.start": "Solar surplus · starting in {s}",
+    "pending.deadband_start": "Small solar surplus · starting at minimum in {s}",
     "reason.surplus_low": "Car connected · solar surplus {kw} kW, too little to start",
     "reason.offgrid": "Grid lost · charging limited",
     "reason.night": "Car connected · waiting for the sun",
@@ -918,6 +926,14 @@ const FRONTEND_LOCALES = {
     "charger.idle": "Laddar inte",
     "reason.grid_import_reducing": "Minskar laddningen · tar ström från nätet",
     "reason.waiting_surplus": "Bil ansluten · väntar på solöverskott",
+    "pending.surplus_drop": "Molnpaus · sänker om {s}",
+    "pending.surplus_drop_stop": "Molnpaus · stoppar om {s}",
+    "pending.grid_import": "Drar från nätet · sänker om {s}",
+    "pending.grid_import_stop": "Drar från nätet · stoppar om {s}",
+    "pending.spike": "Förbrukningstopp · sänker om {s}",
+    "pending.increase": "Mer sol · höjer om {s}",
+    "pending.start": "Solöverskott · startar om {s}",
+    "pending.deadband_start": "Litet solöverskott · startar på lägsta strömmen om {s}",
     "reason.surplus_low": "Bil ansluten · solöverskott {kw} kW, för lite för att starta",
     "reason.offgrid": "Nätet borta · laddningen begränsad",
     "reason.night": "Bil ansluten · väntar på solen",
@@ -1139,6 +1155,14 @@ const FRONTEND_LOCALES = {
     "charger.idle": "Non in carica",
     "reason.grid_import_reducing": "Riduco la ricarica · prelievo dalla rete",
     "reason.waiting_surplus": "Auto collegata · in attesa di surplus solare",
+    "pending.surplus_drop": "Pausa nuvole · riduzione tra {s}",
+    "pending.surplus_drop_stop": "Pausa nuvole · arresto tra {s}",
+    "pending.grid_import": "Prelievo dalla rete · riduzione tra {s}",
+    "pending.grid_import_stop": "Prelievo dalla rete · arresto tra {s}",
+    "pending.spike": "Picco di consumo · riduzione tra {s}",
+    "pending.increase": "Più sole · aumento tra {s}",
+    "pending.start": "Surplus solare · avvio tra {s}",
+    "pending.deadband_start": "Surplus solare ridotto · avvio al minimo tra {s}",
     "reason.surplus_low": "Auto collegata · surplus {kw} kW, troppo poco per iniziare",
     "reason.offgrid": "Rete assente · ricarica limitata",
     "reason.night": "Auto collegata · in attesa del sole",
@@ -1360,6 +1384,14 @@ const FRONTEND_LOCALES = {
     "charger.idle": "Laadt niet",
     "reason.grid_import_reducing": "Laden verlaagd · stroom van het net",
     "reason.waiting_surplus": "Auto aangesloten · wacht op zonne-overschot",
+    "pending.surplus_drop": "Wolkenpauze · verlagen over {s}",
+    "pending.surplus_drop_stop": "Wolkenpauze · stoppen over {s}",
+    "pending.grid_import": "Stroom van het net · verlagen over {s}",
+    "pending.grid_import_stop": "Stroom van het net · stoppen over {s}",
+    "pending.spike": "Verbruikspiek · verlagen over {s}",
+    "pending.increase": "Meer zon · verhogen over {s}",
+    "pending.start": "Zonne-overschot · starten over {s}",
+    "pending.deadband_start": "Klein zonne-overschot · starten op minimum over {s}",
     "reason.surplus_low": "Auto aangesloten · overschot {kw} kW, te weinig om te starten",
     "reason.offgrid": "Net weg · laden beperkt",
     "reason.night": "Auto aangesloten · wacht op de zon",
@@ -2500,6 +2532,60 @@ class EvSmartChargerDashboard extends HTMLElement {
   }
 
   /**
+   * v2.34.4: what Solar Surplus is waiting to do (cloud pause, grid import,
+   * start, …) and the seconds left, from the diagnostic sensor's
+   * pending_action / pending_until. null when nothing is pending.
+   */
+  _solarPending() {
+    const attrs = this._stateObj(this._entityId("solarDiagnostic"))?.attributes || {};
+    const kind = attrs.pending_action;
+    const until = attrs.pending_until ? new Date(attrs.pending_until).getTime() : NaN;
+    if (!kind || !Number.isFinite(until)) return null;
+    const secs = Math.ceil((until - Date.now()) / 1000);
+    if (secs <= 0) return null;
+    return { kind: String(kind), secs, stop: attrs.pending_stop === true };
+  }
+
+  _pendingText(p) {
+    if (!p) return null;
+    const left = p.secs >= 60
+      ? `${Math.floor(p.secs / 60)}:${String(p.secs % 60).padStart(2, "0")}`
+      : `${p.secs} s`;
+    const key = p.stop ? `pending.${p.kind}_stop` : `pending.${p.kind}`;
+    const text = this._tf(key, { s: left });
+    return text && text !== key ? text : null;
+  }
+
+  /** Keep the countdown in the status line ticking once a second. */
+  _schedulePendingTick() {
+    const pending = this._solarPending();
+    if (pending && !this._pendingTimer) {
+      this._pendingTimer = setInterval(() => {
+        const el = this.shadowRoot?.querySelector('[data-live="hero.status"]');
+        if (el && this._hass) {
+          const st = this._heroStatus();
+          if (el.textContent !== st.text) el.textContent = st.text;
+          el.setAttribute("data-tone", st.tone);
+        }
+        if (!this._solarPending()) {
+          clearInterval(this._pendingTimer);
+          this._pendingTimer = null;
+        }
+      }, 1000);
+    } else if (!pending && this._pendingTimer) {
+      clearInterval(this._pendingTimer);
+      this._pendingTimer = null;
+    }
+  }
+
+  disconnectedCallback() {
+    if (this._pendingTimer) {
+      clearInterval(this._pendingTimer);
+      this._pendingTimer = null;
+    }
+  }
+
+  /**
    * v2.23.0: one plain-language status line under the title. While
    * charging it says what drives the session and the target (current and
    * power live in the tiles); otherwise the most specific reason.
@@ -2524,6 +2610,14 @@ class EvSmartChargerDashboard extends HTMLElement {
         parts.push(this._t("status.by_night"));
       } else {
         parts.push(this._t("status.by_solar"));
+        // v2.34.4: a running countdown (cloud pause, grid import, …)
+        // replaces the target while it lasts.
+        const pending = this._pendingText(this._solarPending());
+        if (pending) {
+          parts.push(pending.charAt(0).toLocaleLowerCase() + pending.slice(1));
+          if (fuse?.kind === "capped") parts.push(fuse.text);
+          return { text: parts.join(" · "), tone: "charging" };
+        }
       }
       if (targetText) parts.push(targetText);
       if (fuse?.kind === "capped") parts.push(fuse.text);
@@ -2550,6 +2644,13 @@ class EvSmartChargerDashboard extends HTMLElement {
     }
     if (isOn("forceCharge")) {
       return { text: this._t("status.force_waiting"), tone: "alert" };
+    }
+    {
+      const p = this._solarPending();
+      if (p && (p.kind === "start" || p.kind === "deadband_start")) {
+        const text = this._pendingText(p);
+        if (text) return { text, tone: "idle" };
+      }
     }
     if (isOn("nightEnabled")) {
       const next = this._nightPlanData()?.next;
@@ -4021,6 +4122,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       `;
       return;
     }
+    this._schedulePendingTick();
 
     this._applyCarProfile();
 
