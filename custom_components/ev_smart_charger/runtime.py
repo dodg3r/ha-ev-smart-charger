@@ -47,7 +47,6 @@ class EVSCRuntimeData:
     smart_blocker: Any | None = None
     manual_stop: Any | None = None  # Manual Stop Charging control (v2.10.0 — issue #55)
     solar_surplus: Any | None = None
-    hybrid_mode: Any | None = None  # Hybrid Inverter Mode (v1.8.0 — issue #20)
     log_manager: Any | None = None
     diagnostic_manager: Any | None = None
     power_model: Any | None = None  # ChargingModel (phase mode + charger model, v2.0.0)

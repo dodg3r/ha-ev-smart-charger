@@ -137,14 +137,7 @@ const DOMAIN_SUFFIXES = {
   batterySupportAmperage: ["number", "evsc_battery_support_amperage"],
   batterySupportSunsetBuffer: ["number", "evsc_battery_support_sunset_buffer"],
 
-  // ── Hybrid Inverter Mode (v1.8.0 — issue #20)
-  hybridMode: ["switch", "evsc_hybrid_inverter_mode"],
-  hybridBatteryFullThreshold: ["number", "evsc_hybrid_battery_full_threshold"],
-  hybridProbeDuration: ["number", "evsc_hybrid_probe_duration"],
-  hybridMaxImportDuration: ["number", "evsc_hybrid_max_import_duration"],
-  hybridMaxFailedProbes: ["number", "evsc_hybrid_max_failed_probes"],
   maxBatteryDischargeForEv: ["number", "evsc_max_battery_discharge_for_ev"],
-  hybridDiagnostic: ["sensor", "evsc_hybrid_inverter_diagnostic"],
 
   // ── Safety / Protection
   priorityBalancer: ["switch", "evsc_priority_balancer_enabled"],
@@ -271,7 +264,7 @@ const SETTINGS_CATALOG = [
           nl: "Maximale stroom die Solar Surplus mag opvragen. Beperkt wallboxgebruik onder de fysieke limiet.",
           sv: "Högsta ström solöverskottet får begära. Begränsar laddaren under dess fysiska max.",
         },
-        hint: { en: "Default 32 A · Tuya: 6/8/10/13/16/20/24/32 · Generic: 6–32 A (1 A)", it: "Default 32 A · Tuya: 6/8/10/13/16/20/24/32 · Generica: 6–32 A (1 A)", nl: "Standaard 32 A · Tuya: 6/8/10/13/16/20/24/32 · Generiek: 6–32 A (1 A)", sv: "Standard 32 A · Tuya: 6/8/10/13/16/20/24/32 · Generisk: 6–32 A (1 A)" } },
+        hint: { en: "Default 16 A · Tuya: 6/8/10/13/16/20/24/32 · Generic: 6–32 A (1 A)", it: "Default 16 A · Tuya: 6/8/10/13/16/20/24/32 · Generica: 6–32 A (1 A)", nl: "Standaard 16 A · Tuya: 6/8/10/13/16/20/24/32 · Generiek: 6–32 A (1 A)", sv: "Standard 16 A · Tuya: 6/8/10/13/16/20/24/32 · Generisk: 6–32 A (1 A)" } },
       { entityKey: "offgridMaxAmperage", kind: "stepper",
         name: { en: "Off-Grid Max Amperage", it: "Amperaggio max off-grid", nl: "Maximale stroomsterkte off-grid", sv: "Högsta ström utan nät" },
         desc: {
@@ -280,7 +273,7 @@ const SETTINGS_CATALOG = [
           nl: "Strengere stroomlimiet die Solar Surplus ALLEEN toepast wanneer de optionele net-beschikbaar sensor uit staat (omvormer in eilandbedrijf). Beschermt een eilandbedrijf-omvormer tegen een AC-overstroomfout. Vereist een gekoppelde net-beschikbaar sensor.",
           sv: "Lägre strömtak som solöverskottet använder BARA när den valfria nätsensorn visar av (växelriktaren i ödrift). Skyddar växelriktaren mot överström. Kräver att nätsensorn är mappad.",
         },
-        hint: { en: "Default 32 A = off", it: "Default 32 A = disattivato", nl: "Standaard 32 A = uit", sv: "Standard 32 A = av" } },
+        hint: { en: "Default 16 A · 32 A = off", it: "Default 16 A · 32 A = disattivato", nl: "Standaard 16 A · 32 A = uit", sv: "Standard 16 A · 32 A = av" } },
     ],
   },
   {
@@ -377,70 +370,13 @@ const SETTINGS_CATALOG = [
           sv: "Minuter före solnedgången då batteristödet spärras, så att husbatteriet inte töms på kvällen.",
         },
         hint: { en: "Default 60 min · 0 = disable", it: "Default 60 min · 0 = disabilita", nl: "Standaard 60 min · 0 = uitschakelen", sv: "Standard 60 min · 0 = av" } },
-    ],
-  },
-  {
-    id: "hybrid", iconClass: "hyb", icon: "⚡", requires: "solar",
-    name: { en: "Hybrid Inverter Mode", it: "Hybrid Inverter Mode", nl: "Hybride-omvormermodus", sv: "Hybridväxelriktarläge" },
-    desc: {
-      en: "Curtailment discovery for zero-export hybrid inverters (Deye, Sunsynk, Solis…)",
-      it: "Curtailment discovery per inverter ibridi zero-export (Deye, Sunsynk, Solis…)",
-      nl: "Curtailment-detectie voor hybride zero-export-omvormers (Deye, Sunsynk, Solis…)",
-      sv: "Hittar strypt solel på hybridväxelriktare med nollexport (Deye, Sunsynk, Solis…)",
-    },
-    items: [
-      { entityKey: "hybridMode", kind: "toggle",
-        name: { en: "Enable Hybrid Mode", it: "Abilita Hybrid Mode", nl: "Hybride-modus inschakelen", sv: "Aktivera hybridläge" },
-        desc: {
-          en: "Empirical 6 A probing to discover hidden PV capacity in zero-export hybrid systems. Opt-in.",
-          it: "Probing empirico a 6 A per scoprire capacita PV nascosta in sistemi hybrid zero-export. Opt-in.",
-          nl: "Empirisch probing op 6 A om verborgen PV-capaciteit te ontdekken in zero-export hybride systemen. Opt-in.",
-          sv: "Testar med 6 A för att hitta dold solkapacitet i system med nollexport. Frivilligt.",
-        },
-        hint: { en: "Default off", it: "Default off", nl: "Standaard uit", sv: "Standard av" } },
-      { entityKey: "hybridBatteryFullThreshold", kind: "stepper", requires: "hybridOn",
-        name: { en: "Battery Full Threshold", it: "Soglia batteria piena", nl: "Drempel batterij vol", sv: "Gräns för fullt batteri" },
-        desc: {
-          en: "Home battery SOC above which the system considers the inverter in curtailment and attempts probing.",
-          it: "SOC batteria di casa sopra il quale il sistema considera l'inverter in curtailment e tenta il probing.",
-          nl: "SOC van de thuisbatterij waarboven het systeem aanneemt dat de omvormer terugregelt en probing start.",
-          sv: "SOC i husbatteriet över vilken växelriktaren antas strypa solelen och ett test görs.",
-        },
-        hint: { en: "Default 95 % · Range 80–100", it: "Default 95 % · Range 80–100", nl: "Standaard 95 % · Bereik 80–100", sv: "Standard 95 % · Intervall 80–100" } },
-      { entityKey: "hybridProbeDuration", kind: "stepper", requires: "hybridOn",
-        name: { en: "Probe Duration", it: "Durata probing", nl: "Probing-duur", sv: "Testtid" },
-        desc: {
-          en: "Total probing window length at 6 A. Below this threshold the probe is too short to be significant.",
-          it: "Durata totale della finestra di test a 6 A. Sotto questa soglia il probing e troppo breve per essere significativo.",
-          nl: "Totale duur van het probing-venster op 6 A. Korter dan dit is het probing-resultaat niet betekenisvol.",
-          sv: "Hur länge testet med 6 A pågår. Kortare än så ger inget pålitligt svar.",
-        },
-        hint: { en: "Default 60 s · Range 30–180", it: "Default 60 s · Range 30–180", nl: "Standaard 60 s · Bereik 30–180", sv: "Standard 60 s · Intervall 30–180" } },
-      { entityKey: "hybridMaxImportDuration", kind: "stepper", requires: "hybridOn",
-        name: { en: "Max Import Duration", it: "Durata max import", nl: "Max. importduur", sv: "Längsta import" },
-        desc: {
-          en: "Maximum grid-import time tolerated during probing before aborting and entering cooldown.",
-          it: "Tempo massimo di import dalla rete tollerato durante probing prima di abortire e tornare in cooldown.",
-          nl: "Maximale netinvoertijd tijdens probing voordat wordt afgebroken en in cooldown wordt gegaan.",
-          sv: "Längsta nätimport som tolereras under testet innan det avbryts och pausas.",
-        },
-        hint: { en: "Default 60 s · Range 30–120", it: "Default 60 s · Range 30–120", nl: "Standaard 60 s · Bereik 30–120", sv: "Standard 60 s · Intervall 30–120" } },
-      { entityKey: "hybridMaxFailedProbes", kind: "stepper", requires: "hybridOn",
-        name: { en: "Max Failed Probes", it: "Probing falliti max", nl: "Max. mislukte probings", sv: "Max misslyckade tester" },
-        desc: {
-          en: "Maximum failed probes in a 30-minute window before entering long cooldown (15 min).",
-          it: "Numero massimo di probe falliti in una finestra di 30 minuti prima di entrare in cooldown lungo (15 min).",
-          nl: "Maximaal aantal mislukte probings binnen 30 minuten voordat een lange cooldown (15 min) ingaat.",
-          sv: "Antal misslyckade tester på 30 minuter innan en lång paus (15 min).",
-        },
-        hint: { en: "Default 5 · Range 1–10", it: "Default 5 · Range 1–10", nl: "Standaard 5 · Bereik 1–10", sv: "Standard 5 · Intervall 1–10" } },
-      { entityKey: "maxBatteryDischargeForEv", kind: "stepper", requires: ["hybridOn", "battery"],
+      { entityKey: "maxBatteryDischargeForEv", kind: "stepper", requires: "solar",
         name: { en: "Max Battery Discharge for EV", it: "Scarica max batteria per EV", nl: "Max. batterijontlading voor EV", sv: "Högsta batteriurladdning till bilen" },
         desc: {
-          en: "Watts of home-battery discharge allowed to cover the EV charging floor. Detects battery-discharge masking during probing and lets Solar Surplus ride out brief PV dips without stop-start cycling. Requires the signed battery-power sensor (Configure → Hybrid Inverter Mode). 0 = off.",
-          it: "Watt di scarica della batteria di casa consentiti per coprire la soglia minima di ricarica EV. Rileva il mascheramento da scarica batteria durante il probing e permette al Surplus Solare di superare brevi cali di PV senza cicli stop-start. Richiede il sensore di potenza batteria con segno (Configura → Modalita Inverter Ibrido). 0 = off.",
-          nl: "Watt thuisbatterijontlading toegestaan om de EV-laaddrempel te dekken. Detecteert batterijontlading-maskering tijdens probing en laat zonne-overschot korte PV-dips overbruggen zonder stop-startcycli. Vereist de batterijvermogenssensor met teken (Configureren → Hybride-omvormermodus). 0 = uit.",
-          sv: "Watt som husbatteriet får ge för att hålla bilens lägsta laddström. Upptäcker när batteriet döljer importen under testet och låter solöverskottet klara korta dippar utan att stoppa och starta. Kräver batterieffektsensorn (Konfigurera → Hybridväxelriktarläge). 0 = av.",
+          en: "Watts of home-battery discharge allowed to keep an ongoing solar charge at the lowest current during brief PV dips, instead of stopping and restarting. Requires the signed battery-power sensor (Configure → Sensors). 0 = off.",
+          it: "Watt di scarica della batteria di casa consentiti per mantenere una ricarica solare in corso alla corrente minima durante brevi cali di PV, invece di fermarla e riavviarla. Richiede il sensore di potenza batteria con segno (Configura → Sensori). 0 = off.",
+          nl: "Watt thuisbatterijontlading toegestaan om een lopende zonnelading tijdens korte PV-dips op de laagste stroom te houden, in plaats van te stoppen en opnieuw te starten. Vereist de batterijvermogenssensor met teken (Configureren → Sensoren). 0 = uit.",
+          sv: "Watt som husbatteriet får ge för att hålla en pågående solladdning på lägsta ström under korta dippar, i stället för att stoppa och starta om. Kräver batterieffektsensorn (Konfigurera → Sensorer). 0 = av.",
         },
         hint: { en: "Default 0 W · Range 0–5000", it: "Default 0 W · Range 0–5000", nl: "Standaard 0 W · Bereik 0–5000", sv: "Standard 0 W · Intervall 0–5000" } },
     ],
@@ -857,17 +793,11 @@ const FRONTEND_LOCALES = {
     "module.target_planner": "Target Planner",
     "control.ev_targets_label": "EV daily target",
     "control.home_targets_label": "Home battery daily target",
-    "module.hybrid_inverter": "Hybrid Inverter Mode",
     "module.curtailment_discovery": "Curtailment Discovery (issue #20)",
-    "control.hybrid_enabled": "Enable Hybrid Mode",
     "control.opt_in_probing": "Opt-in PV probing",
-    "control.hybrid_battery_full_threshold": "Battery Full Threshold",
     "control.curtailment_trigger": "Curtailment trigger",
-    "control.hybrid_probe_duration": "Probe Duration",
     "control.test_window": "Test window",
-    "control.hybrid_max_import_duration": "Max Import Duration",
     "control.backoff_window": "Backoff window",
-    "control.hybrid_max_failed_probes": "Max Failed Probes",
     "control.sliding_window": "Sliding window (30 min)",
     "module.notifications": "Notifications",
     "module.mobile_alerts": "Mobile Alerts",
@@ -882,7 +812,6 @@ const FRONTEND_LOCALES = {
     "log.file_path_label": "Today's log file",
     "diagnostic.automation": "Automation Diagnostic",
     "diagnostic.solar_surplus": "Solar Surplus Diagnostic",
-    "diagnostic.hybrid_inverter": "Hybrid Inverter Diagnostic",
     "diagnostic.cached_ev_soc": "Cached EV SOC",
     "diagnostic.cached_ev_soc_hint": "Last valid value preserved when source becomes unavailable",
     "diagnostic.active_owner": "Active Owner",
@@ -890,10 +819,6 @@ const FRONTEND_LOCALES = {
     "diagnostic.external_cause": "External Cause",
     "diagnostic.last_denial": "Last Denial",
     "diagnostic.trace_mode": "Trace Mode",
-    "diagnostic.hybrid_state": "State",
-    "diagnostic.hybrid_failed_probes": "Failed Probes (30 min)",
-    "diagnostic.hybrid_long_cooldowns": "Long Cooldowns Today",
-    "diagnostic.hybrid_battery_discharge": "Battery Discharge",
     "profile.manual": "Manual",
     "profile.solar_surplus": "Solar Surplus"
   },
@@ -1086,17 +1011,11 @@ const FRONTEND_LOCALES = {
     "module.target_planner": "Målplanering",
     "control.ev_targets_label": "Dagligt mål bil",
     "control.home_targets_label": "Dagligt mål husbatteri",
-    "module.hybrid_inverter": "Hybridväxelriktarläge",
     "module.curtailment_discovery": "Hitta strypt solel (issue #20)",
-    "control.hybrid_enabled": "Aktivera hybridläge",
     "control.opt_in_probing": "Testa efter solel (frivilligt)",
-    "control.hybrid_battery_full_threshold": "Gräns för fullt batteri",
     "control.curtailment_trigger": "Utlösare för strypning",
-    "control.hybrid_probe_duration": "Testtid",
     "control.test_window": "Testfönster",
-    "control.hybrid_max_import_duration": "Längsta import",
     "control.backoff_window": "Paus efter misslyckat test",
-    "control.hybrid_max_failed_probes": "Max misslyckade tester",
     "control.sliding_window": "Rullande fönster (30 min)",
     "module.notifications": "Notiser",
     "module.mobile_alerts": "Mobilnotiser",
@@ -1111,7 +1030,6 @@ const FRONTEND_LOCALES = {
     "log.file_path_label": "Dagens loggfil",
     "diagnostic.automation": "Diagnostik automatik",
     "diagnostic.solar_surplus": "Diagnostik solöverskott",
-    "diagnostic.hybrid_inverter": "Diagnostik hybridväxelriktare",
     "diagnostic.cached_ev_soc": "Sparad SOC för bilen",
     "diagnostic.cached_ev_soc_hint": "Senaste giltiga värde behålls när källan försvinner",
     "diagnostic.active_owner": "Styrs av",
@@ -1119,10 +1037,6 @@ const FRONTEND_LOCALES = {
     "diagnostic.external_cause": "Extern orsak",
     "diagnostic.last_denial": "Senast nekad",
     "diagnostic.trace_mode": "Detaljerat läge",
-    "diagnostic.hybrid_state": "Läge",
-    "diagnostic.hybrid_failed_probes": "Misslyckade tester (30 min)",
-    "diagnostic.hybrid_long_cooldowns": "Långa pauser i dag",
-    "diagnostic.hybrid_battery_discharge": "Batteriurladdning",
     "profile.manual": "Manuell",
     "profile.solar_surplus": "Solöverskott"
   },
@@ -1315,17 +1229,11 @@ const FRONTEND_LOCALES = {
     "module.target_planner": "Pianificatore target",
     "control.ev_targets_label": "Target EV giornaliero",
     "control.home_targets_label": "Target batteria di casa giornaliero",
-    "module.hybrid_inverter": "Hybrid Inverter Mode",
     "module.curtailment_discovery": "Scoperta curtailment (issue #20)",
-    "control.hybrid_enabled": "Abilita Hybrid Mode",
     "control.opt_in_probing": "Probing PV opt-in",
-    "control.hybrid_battery_full_threshold": "Soglia batteria piena",
     "control.curtailment_trigger": "Trigger curtailment",
-    "control.hybrid_probe_duration": "Durata probe",
     "control.test_window": "Finestra di test",
-    "control.hybrid_max_import_duration": "Durata max import",
     "control.backoff_window": "Finestra di backoff",
-    "control.hybrid_max_failed_probes": "Probe falliti max",
     "control.sliding_window": "Finestra mobile (30 min)",
     "module.notifications": "Notifiche",
     "module.mobile_alerts": "Avvisi mobile",
@@ -1340,7 +1248,6 @@ const FRONTEND_LOCALES = {
     "log.file_path_label": "File di log di oggi",
     "diagnostic.automation": "Diagnostica automazione",
     "diagnostic.solar_surplus": "Diagnostica surplus solare",
-    "diagnostic.hybrid_inverter": "Diagnostica Hybrid Inverter",
     "diagnostic.cached_ev_soc": "SOC EV cached",
     "diagnostic.cached_ev_soc_hint": "Ultimo valore valido mantenuto quando la sorgente non e' disponibile",
     "diagnostic.active_owner": "Owner attivo",
@@ -1348,10 +1255,6 @@ const FRONTEND_LOCALES = {
     "diagnostic.external_cause": "Causa esterna",
     "diagnostic.last_denial": "Ultimo denial",
     "diagnostic.trace_mode": "Modalita trace",
-    "diagnostic.hybrid_state": "Stato",
-    "diagnostic.hybrid_failed_probes": "Probe falliti (30 min)",
-    "diagnostic.hybrid_long_cooldowns": "Cooldown lunghi oggi",
-    "diagnostic.hybrid_battery_discharge": "Scarica batteria",
     "profile.manual": "Manuale",
     "profile.solar_surplus": "Surplus solare"
   },
@@ -1544,17 +1447,11 @@ const FRONTEND_LOCALES = {
     "module.target_planner": "Doelplanner",
     "control.ev_targets_label": "EV-doel per dag",
     "control.home_targets_label": "Thuisbatterijdoel per dag",
-    "module.hybrid_inverter": "Hybride omvormermodus",
     "module.curtailment_discovery": "Curtailment-detectie (issue #20)",
-    "control.hybrid_enabled": "Hybride modus inschakelen",
     "control.opt_in_probing": "Opt-in PV-probing",
-    "control.hybrid_battery_full_threshold": "Drempel volle batterij",
     "control.curtailment_trigger": "Curtailment-trigger",
-    "control.hybrid_probe_duration": "Probeduur",
     "control.test_window": "Testvenster",
-    "control.hybrid_max_import_duration": "Max importduur",
     "control.backoff_window": "Backoff-venster",
-    "control.hybrid_max_failed_probes": "Max mislukte probes",
     "control.sliding_window": "Schuifvenster (30 min)",
     "module.notifications": "Meldingen",
     "module.mobile_alerts": "Mobiele meldingen",
@@ -1569,7 +1466,6 @@ const FRONTEND_LOCALES = {
     "log.file_path_label": "Logbestand van vandaag",
     "diagnostic.automation": "Automatiseringsdiagnose",
     "diagnostic.solar_surplus": "Diagnose zonne-overschot",
-    "diagnostic.hybrid_inverter": "Diagnose hybride omvormer",
     "diagnostic.cached_ev_soc": "Cached EV SOC",
     "diagnostic.cached_ev_soc_hint": "Laatste geldige waarde bewaard wanneer de bron onbeschikbaar is",
     "diagnostic.active_owner": "Actieve eigenaar",
@@ -1577,10 +1473,6 @@ const FRONTEND_LOCALES = {
     "diagnostic.external_cause": "Externe oorzaak",
     "diagnostic.last_denial": "Laatste weigering",
     "diagnostic.trace_mode": "Trace-modus",
-    "diagnostic.hybrid_state": "Status",
-    "diagnostic.hybrid_failed_probes": "Mislukte probes (30 min)",
-    "diagnostic.hybrid_long_cooldowns": "Lange cooldowns vandaag",
-    "diagnostic.hybrid_battery_discharge": "Batterijontlading",
     "profile.manual": "Handmatig",
     "profile.solar_surplus": "Zonne-overschot"
   }
@@ -1639,7 +1531,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       // v2.24.0: false = home battery shown only (own control) or absent;
       // the priority pill is hidden. MUST be whitelisted.
       home_battery_controlled: config?.home_battery_controlled,
-      // v2.28.0: false = no solar panels; Solar Surplus / Hybrid settings hidden.
+      // v2.28.0: false = no solar panels; Solar Surplus settings hidden.
       has_solar: config?.has_solar,
       solar_power_entities: config?.solar_power_entities,
       home_consumption_entities: config?.home_consumption_entities,
@@ -3398,10 +3290,9 @@ class EvSmartChargerDashboard extends HTMLElement {
     `;
   }
 
-  _renderDiagnostics(primary, secondary, hybrid, cachedEvSoc) {
+  _renderDiagnostics(primary, secondary, cachedEvSoc) {
     const primaryAttrs = primary?.attributes || {};
     const secondaryAttrs = secondary?.attributes || {};
-    const hybridAttrs = hybrid?.attributes || {};
     const cachedAttrs = cachedEvSoc?.attributes || {};
     const lastDenial = primaryAttrs.last_denial?.denial_reason || primaryAttrs.last_denial?.reason;
     const activeOwner = primaryAttrs.active_owner;
@@ -3413,15 +3304,6 @@ class EvSmartChargerDashboard extends HTMLElement {
       secondaryAttrs.reason ||
       secondaryAttrs.night_mode ||
       secondaryAttrs.profile;
-    const hybridState = hybrid?.state || this._t("common.unavailable");
-    const hybridFailed = hybridAttrs.failed_probes_in_window;
-    const hybridLongCooldowns = hybridAttrs.long_cooldowns_today;
-    // v2.1.0 (issue #29): battery discharge (W) the probe sees. A flat 0 while
-    // the battery is discharging means the sensor sign is reversed.
-    const hybridBatteryDischarge =
-      hybridAttrs.battery_discharge_w != null
-        ? `${hybridAttrs.battery_discharge_w} W`
-        : null;
     const cachedSocLabel =
       cachedEvSoc && cachedEvSoc.state && cachedEvSoc.state !== "unknown" && cachedEvSoc.state !== "unavailable"
         ? `${cachedEvSoc.state}%`
@@ -3446,15 +3328,6 @@ class EvSmartChargerDashboard extends HTMLElement {
           <p>${secondary?.state || this._t("common.unavailable")}</p>
           <div class="diag-grid">
             ${this._renderDiagnosticDetail(this._t("diagnostic.last_reason"), solarReason)}
-          </div>
-        </div>
-        <div class="diag-card">
-          <span class="eyebrow">${this._t("diagnostic.hybrid_inverter")}</span>
-          <p>${hybridState}</p>
-          <div class="diag-grid">
-            ${this._renderDiagnosticDetail(this._t("diagnostic.hybrid_failed_probes"), hybridFailed)}
-            ${this._renderDiagnosticDetail(this._t("diagnostic.hybrid_long_cooldowns"), hybridLongCooldowns)}
-            ${hybridBatteryDischarge != null ? this._renderDiagnosticDetail(this._t("diagnostic.hybrid_battery_discharge"), hybridBatteryDischarge) : ""}
           </div>
         </div>
         <div class="diag-card">
@@ -3843,15 +3716,13 @@ class EvSmartChargerDashboard extends HTMLElement {
    */
   /**
    * v2.28.0: settings that only make sense for some installs. "solar" and
-   * "battery" come from the setup answers (card config), "hybridOn" from the
-   * Hybrid Inverter Mode switch: its parameters show only while it is on.
+   * "battery" come from the setup answers (card config).
    */
   _meetsRequirement(req) {
     if (!req) return true;
     if (Array.isArray(req)) return req.every((r) => this._meetsRequirement(r));
     if (req === "solar") return this._config.has_solar !== false;
     if (req === "battery") return this._config.home_battery_controlled !== false;
-    if (req === "hybridOn") return this._isOn(this._entityId("hybridMode"));
     return true;
   }
 
@@ -4150,11 +4021,6 @@ class EvSmartChargerDashboard extends HTMLElement {
     const homeBatteryMinSocId = this._entityId("homeBatteryMinSoc");
     const batterySupportAmperageId = this._entityId("batterySupportAmperage");
     const batterySupportSunsetBufferId = this._entityId("batterySupportSunsetBuffer");
-    const hybridModeId = this._entityId("hybridMode");
-    const hybridBatteryFullThresholdId = this._entityId("hybridBatteryFullThreshold");
-    const hybridProbeDurationId = this._entityId("hybridProbeDuration");
-    const hybridMaxImportDurationId = this._entityId("hybridMaxImportDuration");
-    const hybridMaxFailedProbesId = this._entityId("hybridMaxFailedProbes");
     // v2.5.0 (issue #35): priorityBalancer + smartBlocker are now rendered via the
     // SETTINGS_CATALOG "safety" accordion (data-toggle), so the old unused
     // `priorityBalancerId` / `smartBlockerId` locals here were removed (dead code).
@@ -4169,7 +4035,6 @@ class EvSmartChargerDashboard extends HTMLElement {
     const todayHomeTarget = this._integrationState("todayHomeTarget");
     const diagnostic = this._integrationState("diagnostic");
     const solarDiagnostic = this._integrationState("solarDiagnostic");
-    const hybridDiagnostic = this._integrationState("hybridDiagnostic");
     const cachedEvSoc = this._integrationState("cachedEvSoc");
     const logFilePath = this._integrationState("logFilePath");
 
@@ -4251,7 +4116,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       : this._renderDashboardView(ids, displayValues, priorityState);
 
     const diagnosticsHtml = (this._view === "settings" && !embedded)
-      ? this._renderDiagnostics(diagnostic, solarDiagnostic, hybridDiagnostic, cachedEvSoc)
+      ? this._renderDiagnostics(diagnostic, solarDiagnostic, cachedEvSoc)
       : "";
 
     const html = `
@@ -4357,8 +4222,6 @@ class EvSmartChargerDashboard extends HTMLElement {
       ch: chargingOnForKey,
       gl: gridLost,
       np: nightPlanKey,
-      // v2.28.0: the hybrid parameters appear / disappear with the switch.
-      hy: states[this._entityId("hybridMode")]?.state === "on",
     });
   }
 
@@ -6984,7 +6847,6 @@ class EvSmartChargerDashboard extends HTMLElement {
         .evsc-acc-ico.sun   { background: linear-gradient(135deg, var(--evsc-sys-orange), var(--evsc-sys-yellow)); }
         .evsc-acc-ico.moon  { background: linear-gradient(135deg, var(--evsc-sys-indigo), var(--evsc-sys-purple)); }
         .evsc-acc-ico.bat   { background: linear-gradient(135deg, var(--evsc-sys-green), var(--evsc-sys-teal)); }
-        .evsc-acc-ico.hyb   { background: linear-gradient(135deg, var(--evsc-sys-teal), var(--evsc-sys-blue)); }
         .evsc-acc-ico.boost { background: linear-gradient(135deg, var(--evsc-sys-orange), var(--evsc-sys-pink)); }
         .evsc-acc-ico.shield { background: linear-gradient(135deg, var(--evsc-sys-blue), var(--evsc-sys-green)); }
         .evsc-acc-ico.bell  { background: linear-gradient(135deg, var(--evsc-sys-pink), var(--evsc-sys-orange)); }

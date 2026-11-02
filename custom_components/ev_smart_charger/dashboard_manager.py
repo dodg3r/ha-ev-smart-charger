@@ -282,7 +282,7 @@ def _build_card_config(entry: ConfigEntry) -> dict[str, Any]:
     # v2.24.0: False when the home battery is display-only (its own control)
     # or absent — the card then hides the priority pill.
     config["home_battery_controlled"] = has_home_battery(data)
-    # v2.28.0: without solar panels the Solar Surplus and Hybrid settings
+    # v2.28.0: without solar panels the Solar Surplus settings
     # are hidden.
     config["has_solar"] = has_solar(data)
     if is_three_phase(data):

@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.35.0"
+VERSION = "2.36.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -244,13 +244,12 @@ DEFAULT_MAIN_FUSE_SIZE = 0
 # to CONF_PV_FORECAST so existing installs keep their current behaviour.
 CONF_PV_FORECAST_TOMORROW = "pv_forecast_tomorrow"
 
-# Hybrid Inverter Mode (v2.1.0 — issue #29). Optional signed battery-power (W)
-# sensor used to detect battery-discharge masking. Convention: negative =
-# discharging, positive = charging (normalised in ChargingModel.read_battery_discharge).
-# Single sensor (never per-phase, like SOC). CONF_HYBRID_INVERTER_MODE is a config
-# key that seeds the evsc_hybrid_inverter_mode switch's first-run state (NOT a new entity).
+# v2.1.0 (issue #29): optional signed battery-power (W) sensor. Convention:
+# negative = discharging, positive = charging (normalised in
+# ChargingModel.read_battery_discharge). Single sensor (never per-phase, like
+# SOC). v2.36.0: mapped in the sensors step (the Hybrid Inverter Mode step and
+# its CONF_HYBRID_INVERTER_MODE seed were removed).
 CONF_BATTERY_POWER = "battery_power"
-CONF_HYBRID_INVERTER_MODE = "hybrid_inverter_mode"
 
 # v2.17.0: "What do you have?" setup answers. They decide which config steps
 # and fields are shown. Existing entries without the keys derive the answers
@@ -272,7 +271,6 @@ LOAD_BALANCING_OPTIONS = [
 ]
 # Fuse size preselected when load balancing is first switched on.
 DEFAULT_LOAD_BALANCING_FUSE_SIZE = 20
-DEFAULT_HYBRID_INVERTER_MODE = False
 
 # Mobile Notifications
 CONF_NOTIFY_SERVICES = "notify_services"
@@ -405,7 +403,7 @@ HELPER_FUSE_HARD_TRIP_SUFFIX = "evsc_fuse_hard_trip"  # v2.19.0
 HELPER_MAIN_FUSE_SENSOR_SUFFIX = "evsc_main_fuse"
 HELPER_FUSE_HEADROOM_SENSOR_SUFFIX = "evsc_fuse_headroom"
 # v2.1.0 (issue #29) — max home-battery discharge (W) allowed to cover the EV
-# charging floor (deadband buffer + Hybrid Mode masking checks). 0 = feature off.
+# charging floor (Solar Surplus deadband buffer). 0 = feature off.
 # Battery-only helper (meaningless without a home battery).
 HELPER_MAX_BATTERY_DISCHARGE_FOR_EV_SUFFIX = "evsc_max_battery_discharge_for_ev"
 
@@ -512,14 +510,6 @@ NIGHT_PLAN_CHARGE_EFFICIENCY = 0.9
 NIGHT_PLAN_PRICE_REFRESH_SECONDS = 600
 NIGHT_PLAN_STARTUP_GRACE_SECONDS = 600  # v2.25.1: no price-less plan for 10 min after setup
 
-# Hybrid Inverter Mode (v1.8.0 — issue #20)
-HELPER_HYBRID_INVERTER_MODE_SUFFIX = "evsc_hybrid_inverter_mode"
-HELPER_HYBRID_BATTERY_FULL_THRESHOLD_SUFFIX = "evsc_hybrid_battery_full_threshold"
-HELPER_HYBRID_PROBE_DURATION_SUFFIX = "evsc_hybrid_probe_duration"
-HELPER_HYBRID_MAX_IMPORT_DURATION_SUFFIX = "evsc_hybrid_max_import_duration"
-HELPER_HYBRID_MAX_FAILED_PROBES_SUFFIX = "evsc_hybrid_max_failed_probes"
-HELPER_HYBRID_DIAGNOSTIC_SUFFIX = "evsc_hybrid_inverter_diagnostic"
-
 # ========== DEFAULT VALUES - SOLAR SURPLUS ==========
 DEFAULT_CHECK_INTERVAL = 1  # minutes
 DEFAULT_GRID_IMPORT_THRESHOLD = 50  # watts
@@ -554,8 +544,8 @@ SURPLUS_DEADBAND_START_DELAY = 120  # seconds - persistent dead band surplus bef
 DEFAULT_HOME_BATTERY_MIN_SOC = 20  # percent
 DEFAULT_BATTERY_SUPPORT_AMPERAGE = 16  # amps (user configurable)
 DEFAULT_BATTERY_SUPPORT_SUNSET_BUFFER_MIN = 60  # minutes before sunset (block battery support when close to sunset)
-DEFAULT_SOLAR_MAX_AMPERAGE = 32  # amps (user configurable, default = no cap)
-DEFAULT_OFFGRID_MAX_AMPERAGE = 32  # amps (32 = off, top of CHARGER_AMP_LEVELS)
+DEFAULT_SOLAR_MAX_AMPERAGE = 16  # amps (user configurable; v2.36.0: 16 A, a typical home wallbox)
+DEFAULT_OFFGRID_MAX_AMPERAGE = 16  # amps (32 = off; v2.36.0 default 16 A, applies only when the grid is lost)
 DEFAULT_MAX_BATTERY_DISCHARGE_FOR_EV = 0  # watts (0 = feature off, current behaviour)
 
 # ========== DEFAULT VALUES - PRIORITY BALANCER ==========
@@ -667,35 +657,6 @@ CHARGER_CURRENT_ENTITY_WAIT_SECONDS = 20
 # ========== EV SOC MONITOR SETTINGS (v1.4.0) ==========
 EV_SOC_MONITOR_INTERVAL = 5  # seconds - polling frequency for cloud sensor reliability
 
-# ========== HYBRID INVERTER MODE (v1.8.0 — issue #20) ==========
-# User-configurable defaults
-DEFAULT_HYBRID_BATTERY_FULL_THRESHOLD = 95  # percent — minimum home SOC to consider "battery full"
-DEFAULT_HYBRID_PROBE_DURATION = 60  # seconds — total probing window length
-DEFAULT_HYBRID_MAX_IMPORT_DURATION = 60  # seconds — max sustained grid import before backoff
-DEFAULT_HYBRID_MAX_FAILED_PROBES = 5  # sliding window count before COOLDOWN_LONG
-
-# Internal constants (not user-configurable)
-HYBRID_COOLDOWN_SHORT_SECONDS = 120  # 2 min after a failed probe
-HYBRID_COOLDOWN_LONG_SECONDS = 900   # 15 min after N consecutive fails (sliding window)
-HYBRID_FAILURE_WINDOW_SECONDS = 1800  # 30 min sliding window for failure counting
-HYBRID_HEADROOM_STABLE_SECONDS = 60  # how long grid_import must stay low before stepping up
-HYBRID_EDGE_CEILING_SECONDS = 600  # v2.13.2: block re-climbing a level that forced a step-down for 10 min
-HYBRID_SUNSET_BUFFER_MIN = 90  # minutes before sunset — do not probe when sun is too low
-HYBRID_TRANSIENT_GRACE_SECONDS = 20  # first N seconds of PROBING: ignore grid_import (inverter ramp)
-HYBRID_GRID_ENTRY_SMOOTH_SECONDS = 60  # how long grid_import must stay low BEFORE entering PROBING
-HYBRID_RIDING_EDGE_SUCCESS_DURATION = 300  # 5 min sustained RIDING_EDGE → reset failure window
-HYBRID_MAX_DAILY_LONG_COOLDOWNS = 3  # after 3 long cooldowns, HARD_EXIT until next sunrise
-HYBRID_MAX_NEGATIVE_SURPLUS_W = -500  # entry blocked if surplus is below this (house >> PV ceiling)
-HYBRID_PROBE_AMPERAGE = 6  # initial probing amperage (always the minimum charger level)
-
-# State string constants
-HYBRID_STATE_IDLE = "IDLE"
-HYBRID_STATE_PROBING = "PROBING"
-HYBRID_STATE_RIDING_EDGE = "RIDING_EDGE"
-HYBRID_STATE_COOLDOWN_SHORT = "COOLDOWN_SHORT"
-HYBRID_STATE_COOLDOWN_LONG = "COOLDOWN_LONG"
-HYBRID_STATE_HARD_EXIT = "HARD_EXIT"
-
 # ========== ENTITY REGISTRATION ==========
 # Verified count (v2.3.0): 67 entities when home battery is configured.
 # v1.8.0 set the baseline to 64 (added 6 Hybrid Mode entities). v1.11.9 added
@@ -716,7 +677,9 @@ HYBRID_STATE_HARD_EXIT = "HARD_EXIT"
 # v2.20.0 adds 7 per-day car-ready times + 1 night charge plan sensor → 82.
 # v2.29.0 adds 1 always-created number (evsc_solar_start_offset) → 83.
 # v2.31.0 adds 1 always-created select (evsc_active_car) → 84.
-TOTAL_INTEGRATION_ENTITIES = 84
+# v2.36.0 removes the 6 Hybrid Inverter Mode entities (1 switch, 4 numbers,
+# 1 diagnostic sensor) → 78.
+TOTAL_INTEGRATION_ENTITIES = 78
 # Verified count (v2.3.0): 53 entities when running in PV-only mode.
 # Unchanged in v2.1.0: the discharge number is battery-only (skipped in PV-only mode).
 # v2.3.0 (issue #32): evsc_night_pv_handoff_threshold is NOT battery-only → +1 → 53.
@@ -728,12 +691,13 @@ TOTAL_INTEGRATION_ENTITIES = 84
 # Skipped helpers (13): 2 switches (use_home_battery, preserve_home_battery),
 # 3 numbers (home_battery_min_soc, battery_support_amperage, battery_support_sunset_buffer),
 # 7 daily home min SOC numbers (Monday–Sunday), 1 sensor (today_home_target).
-# Hybrid Mode entities are still created in PV-only mode but stay IDLE (requires soc_home).
 # v2.13.0 (issue #57): the off-grid amperage cap is NOT battery-only → +1 → 60.
 # v2.20.0: 7 per-day car-ready times + plan sensor are NOT battery-only → 68.
 # v2.29.0: the solar start offset is NOT battery-only → 69.
 # v2.31.0: the active-car select is NOT battery-only → 70.
-TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 70
+# v2.36.0: the 6 Hybrid Inverter Mode entities were created in PV-only mode
+# too → 64.
+TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 64
 
 
 # ---------------------------------------------------------------------------

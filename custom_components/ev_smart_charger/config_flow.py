@@ -37,7 +37,6 @@ from .const import (
     CONF_HOME_CONSUMPTION,
     CONF_HOME_CONSUMPTION_L2,
     CONF_HOME_CONSUMPTION_L3,
-    CONF_HYBRID_INVERTER_MODE,
     CONF_NOTIFY_SERVICES,
     CONF_PHASE_MODE,
     CONF_PV_FORECAST,
@@ -51,7 +50,6 @@ from .const import (
     DEFAULT_BATTERY_CAPACITY,
     DEFAULT_CHARGER_MODEL,
     DEFAULT_CREATE_DASHBOARD,
-    DEFAULT_HYBRID_INVERTER_MODE,
     DEFAULT_NAME,
     DEFAULT_PHASE_MODE,
     DOMAIN,
@@ -182,6 +180,8 @@ _OPTIONAL_PHASE_POWER_KEYS = (
     CONF_HOME_CONSUMPTION,
     # v2.30.0: optional car charge limit.
     CONF_EV_SOC_LIMIT,
+    # v2.36.0: optional battery-power sensor (now in the sensors step).
+    CONF_BATTERY_POWER,
 )
 
 
@@ -349,6 +349,11 @@ def _sensor_schema(
         fields[
             vol.Required(CONF_SOC_HOME, **_field_config(current_data.get(CONF_SOC_HOME)))
         ] = _entity_selector(SOC_INPUT_DOMAINS)
+        # v2.36.0: the signed battery-power sensor moved here from the removed
+        # Hybrid Inverter Mode step.
+        fields[
+            vol.Optional(CONF_BATTERY_POWER, **_field_config(current_data.get(CONF_BATTERY_POWER)))
+        ] = _entity_selector("sensor")
 
     # Per-quantity power sensors, grouped L1[/L2/L3]. Single-phase = L1 only.
     power_groups = [(CONF_GRID_IMPORT, CONF_GRID_IMPORT_L2, CONF_GRID_IMPORT_L3)]
@@ -526,41 +531,6 @@ def _pv_forecast_schema(current_data: dict[str, Any] | None = None) -> vol.Schem
     )
 
 
-def _hybrid_inverter_schema(
-    current_data: dict[str, Any] | None = None,
-    *,
-    include_toggle: bool = False,
-    home_battery: bool = True,
-) -> vol.Schema:
-    """Build the Hybrid Inverter Mode step schema (v2.1.0 — issue #29).
-
-    Always offers the optional signed battery-power sensor (CONF_BATTERY_POWER,
-    single — never per-phase, like SOC). The enable toggle is shown only in the
-    initial flow (``include_toggle=True``): it seeds the first-run state of the
-    ``evsc_hybrid_inverter_mode`` switch. In reconfigure/options the switch is
-    the live source of truth, so only the sensor is editable there (omitting the
-    toggle key preserves the existing entry.data value via ``_merge_entry_data``).
-    """
-    current_data = current_data or {}
-    fields: dict[Any, Any] = {}
-    if include_toggle:
-        fields[
-            vol.Optional(
-                CONF_HYBRID_INVERTER_MODE,
-                default=current_data.get(
-                    CONF_HYBRID_INVERTER_MODE, DEFAULT_HYBRID_INVERTER_MODE
-                ),
-            )
-        ] = selector.BooleanSelector()
-    if home_battery:
-        fields[
-            vol.Optional(
-                CONF_BATTERY_POWER,
-                **_field_config(current_data.get(CONF_BATTERY_POWER)),
-            )
-        ] = _entity_selector("sensor")
-    return vol.Schema(fields)
-
 
 def _notifications_schema(hass, current_data: dict[str, Any] | None = None) -> vol.Schema:
     """Build the notifications schema."""
@@ -726,7 +696,6 @@ def _apply_features(data: dict[str, Any]) -> dict[str, Any]:
     if not has_solar(data):
         for key in _SOLAR_KEYS:
             data[key] = None
-        data[CONF_HYBRID_INVERTER_MODE] = False
     if get_load_balancing(data) != LOAD_BALANCING_INTEGRATION:
         data[CONF_MAIN_FUSE_SIZE] = 0
         for key in FUSE_ENTITY_KEYS:
@@ -745,7 +714,6 @@ _STEP_ORDER = (
     # step knows whether grid import / home consumption can be derived.
     "fuse",
     "sensors",
-    "hybrid",
     "forecast",
     "notifications",
     "external",
@@ -763,7 +731,6 @@ _STEP_IDS: dict[str, dict[str, str]] = {
         "features": "features",
         "entities": "entities",
         "sensors": "sensors",
-        "hybrid": "hybrid_inverter",
         "fuse": "main_fuse",
         "forecast": "pv_forecast",
         "notifications": "notifications",
@@ -777,7 +744,6 @@ _STEP_IDS: dict[str, dict[str, str]] = {
         "features": "reconfigure_features",
         "entities": "reconfigure_entities",
         "sensors": "reconfigure_sensors",
-        "hybrid": "reconfigure_hybrid_inverter",
         "fuse": "reconfigure_main_fuse",
         "forecast": "reconfigure_pv_forecast",
         "notifications": "reconfigure_notifications",
@@ -791,7 +757,6 @@ _STEP_IDS: dict[str, dict[str, str]] = {
         "features": "features",
         "entities": "entities",
         "sensors": "sensors",
-        "hybrid": "hybrid_inverter",
         "fuse": "main_fuse",
         "forecast": "pv_forecast",
         "notifications": "notifications",
@@ -808,7 +773,7 @@ def _active_steps(kind: str, features: dict[str, Any]) -> list[str]:
     for step in _STEP_ORDER:
         if step not in _STEP_IDS[kind]:
             continue
-        if step in ("hybrid", "forecast") and not has_solar(features):
+        if step == "forecast" and not has_solar(features):
             continue
         if step == "fuse" and get_load_balancing(features) != LOAD_BALANCING_INTEGRATION:
             continue
@@ -1032,7 +997,6 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
         self.features_info: dict[str, Any] = {}  # v2.17.0: setup answers
         self.charger_info: dict[str, Any] = {}
         self.sensor_info: dict[str, Any] = {}
-        self.hybrid_info: dict[str, Any] = {}  # v2.1.0 (issue #29)
         self.fuse_info: dict[str, Any] = {}  # v2.14.0 main fuse protection
         self.pv_forecast_info: dict[str, Any] = {}
         self.notifications_info: dict[str, Any] = {}
@@ -1139,21 +1103,6 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders=self._placeholders("sensors"),
         )
 
-    async def async_step_hybrid_inverter(self, user_input: dict[str, Any] | None = None):
-        """Hybrid Inverter Mode: enable toggle + battery-power sensor (v2.1.0)."""
-        if user_input is not None:
-            self.hybrid_info = user_input
-            return await self._go_next("hybrid")
-
-        return self.async_show_form(
-            step_id="hybrid_inverter",
-            data_schema=_hybrid_inverter_schema(
-                include_toggle=True,
-                home_battery=wants_home_battery(self._features()),
-            ),
-            errors={},
-            description_placeholders=self._placeholders("hybrid"),
-        )
 
     async def async_step_main_fuse(self, user_input: dict[str, Any] | None = None):
         """Main fuse protection: fuse size + meter/charger current sensors (v2.14.0)."""
@@ -1222,7 +1171,6 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
                     self.features_info,
                     self.charger_info,
                     self.sensor_info,
-                    self.hybrid_info,
                     self.fuse_info,
                     self.pv_forecast_info,
                     self.notifications_info,
@@ -1352,27 +1300,6 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders=self._placeholders("sensors"),
         )
 
-    async def async_step_reconfigure_hybrid_inverter(
-        self, user_input: dict[str, Any] | None = None
-    ):
-        """Hybrid Inverter Mode battery-power sensor remap (v2.1.0).
-
-        Sensor only — the enable toggle lives on the live switch, not entry.data,
-        so it is omitted here (omission preserves the existing value via merge).
-        """
-        if user_input is not None:
-            self.hybrid_info = user_input
-            return await self._go_next("hybrid")
-
-        return self.async_show_form(
-            step_id="reconfigure_hybrid_inverter",
-            data_schema=_hybrid_inverter_schema(
-                self._reconfigure_entry.data,
-                home_battery=wants_home_battery(self._features()),
-            ),
-            errors={},
-            description_placeholders=self._placeholders("hybrid"),
-        )
 
     async def async_step_reconfigure_main_fuse(self, user_input: dict[str, Any] | None = None):
         """Main fuse protection: fuse size + meter/charger current sensors (v2.14.0)."""
@@ -1448,7 +1375,6 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
                     self.features_info,
                     self.charger_info,
                     self.sensor_info,
-                    self.hybrid_info,
                     self.fuse_info,
                     self.pv_forecast_info,
                     self.notifications_info,
@@ -1493,7 +1419,6 @@ class EVSCOptionsFlow(_StepNavigator, config_entries.OptionsFlowWithConfigEntry)
         self.features_info: dict[str, Any] = {}  # v2.17.0: setup answers
         self.charger_info: dict[str, Any] = {}
         self.sensor_info: dict[str, Any] = {}
-        self.hybrid_info: dict[str, Any] = {}  # v2.1.0 (issue #29)
         self.fuse_info: dict[str, Any] = {}  # v2.14.0 main fuse protection
         self.pv_forecast_info: dict[str, Any] = {}
         self.notifications_info: dict[str, Any] = {}
@@ -1579,23 +1504,6 @@ class EVSCOptionsFlow(_StepNavigator, config_entries.OptionsFlowWithConfigEntry)
             description_placeholders=self._placeholders("sensors"),
         )
 
-    async def async_step_hybrid_inverter(self, user_input: dict[str, Any] | None = None):
-        """Manage the Hybrid Inverter Mode battery-power sensor (v2.1.0).
-
-        Sensor only (the enable toggle lives on the live switch).
-        """
-        if user_input is not None:
-            self.hybrid_info = user_input
-            return await self._go_next("hybrid")
-
-        return self.async_show_form(
-            step_id="hybrid_inverter",
-            data_schema=_hybrid_inverter_schema(
-                self.config_entry.data,
-                home_battery=wants_home_battery(self._features()),
-            ),
-            description_placeholders=self._placeholders("hybrid"),
-        )
 
     async def async_step_main_fuse(self, user_input: dict[str, Any] | None = None):
         """Main fuse protection: fuse size + meter/charger current sensors (v2.14.0)."""
@@ -1678,7 +1586,6 @@ class EVSCOptionsFlow(_StepNavigator, config_entries.OptionsFlowWithConfigEntry)
                     self.features_info,
                     self.charger_info,
                     self.sensor_info,
-                    self.hybrid_info,
                     self.fuse_info,
                     self.pv_forecast_info,
                     self.notifications_info,

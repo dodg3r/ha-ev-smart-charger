@@ -33,7 +33,6 @@ from custom_components.ev_smart_charger.const import (
     CONF_HAS_HOME_BATTERY,
     CONF_HAS_SOLAR,
     CONF_HOME_CONSUMPTION,
-    CONF_HYBRID_INVERTER_MODE,
     CONF_LOAD_BALANCING,
     CONF_MAIN_FUSE_SIZE,
     CONF_NOTIFY_SERVICES,
@@ -138,6 +137,7 @@ async def test_no_battery_with_load_balancing_flow(hass):
 
     keys = _schema_keys(result)
     assert CONF_SOC_HOME not in keys
+    assert CONF_BATTERY_POWER not in keys
     assert CONF_FV_PRODUCTION in keys
 
     result = await hass.config_entries.flow.async_configure(
@@ -148,10 +148,6 @@ async def test_no_battery_with_load_balancing_flow(hass):
             CONF_GRID_IMPORT: "sensor.grid",
         },
     )
-    assert result["step_id"] == "hybrid_inverter"
-    assert CONF_BATTERY_POWER not in _schema_keys(result)
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
-
     assert result["step_id"] == "pv_forecast"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
 
@@ -185,11 +181,10 @@ async def test_no_solar_skips_solar_steps(hass):
         {CONF_GRID_IMPORT: "sensor.grid"},
     )
     # charger handles load balancing → no main_fuse step; no solar → no
-    # hybrid / forecast steps.
+    # forecast step.
     data = await _finish(hass, result)
     assert data[CONF_FV_PRODUCTION] is None
     assert data[CONF_MAIN_FUSE_SIZE] == 0
-    assert data[CONF_HYBRID_INVERTER_MODE] is False
     assert data[CONF_LOAD_BALANCING] == LOAD_BALANCING_CHARGER
 
 
@@ -221,7 +216,6 @@ def test_apply_features_clears_ruled_out_fields():
         CONF_BATTERY_POWER: "sensor.batt",
         CONF_FV_PRODUCTION: "sensor.pv",
         CONF_PV_FORECAST: "sensor.forecast",
-        CONF_HYBRID_INVERTER_MODE: True,
         CONF_MAIN_FUSE_SIZE: 20,
         CONF_FUSE_GRID_CURRENT_L1: "sensor.i1",
     }
@@ -230,7 +224,6 @@ def test_apply_features_clears_ruled_out_fields():
     assert out[CONF_BATTERY_POWER] is None
     assert out[CONF_FV_PRODUCTION] is None
     assert out[CONF_PV_FORECAST] is None
-    assert out[CONF_HYBRID_INVERTER_MODE] is False
     assert out[CONF_MAIN_FUSE_SIZE] == 0
     assert out[CONF_FUSE_GRID_CURRENT_L1] is None
 
@@ -251,7 +244,6 @@ def test_active_steps_follow_answers():
     }
     steps = _active_steps("initial", minimal)
     assert "fuse" not in steps
-    assert "hybrid" not in steps
     assert "forecast" not in steps
 
 
@@ -303,8 +295,6 @@ async def test_reconfigure_battery_off_clears_battery_sensor(hass):
             CONF_GRID_IMPORT: "sensor.grid",
         }
     )
-    assert result["step_id"] == "reconfigure_hybrid_inverter"
-    result = await flow.async_step_reconfigure_hybrid_inverter({})
     assert result["step_id"] == "reconfigure_pv_forecast"
     await flow.async_step_reconfigure_pv_forecast({})
     hass.services.async_register("notify", "mobile_app_phone", lambda call: None)

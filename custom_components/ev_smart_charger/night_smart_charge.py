@@ -1852,8 +1852,7 @@ class NightSmartCharge:
         # its own internal min SOC, bypassing evsc_home_battery_min_soc. Make
         # that floor effective in grid mode too — but ONLY when a battery-power
         # sensor is mapped (read_battery_discharge != None). No sensor → no-op,
-        # byte-for-byte v2.3.x. Orthogonal to Hybrid Inverter Mode's masking
-        # check (daytime, lower priority); they never run concurrently here.
+        # byte-for-byte v2.3.x.
         if self._has_home_battery:
             discharge = self._power_model.read_battery_discharge(self.hass)
             if discharge is None:

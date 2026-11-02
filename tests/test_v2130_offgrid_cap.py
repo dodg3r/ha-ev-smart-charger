@@ -83,7 +83,7 @@ async def test_no_cap_when_grid_present(hass, automation):
     assert automation._get_offgrid_cap_amps() is None
 
 
-async def test_no_cap_at_default_32a(hass, automation):
+async def test_no_cap_at_32a(hass, automation):
     """Default 32 A = off, even while off-grid → byte-for-byte legacy."""
     hass.states.async_set(GRID_AVAILABLE_ENTITY, "off")
     hass.states.async_set(OFFGRID_ENTITY, "32")

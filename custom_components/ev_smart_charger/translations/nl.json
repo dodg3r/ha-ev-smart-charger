@@ -48,7 +48,8 @@
           "charging_power": "EV-laadvermogen",
           "charging_power_l2": "EV-laadvermogen (L2)",
           "charging_power_l3": "EV-laadvermogen (L3)",
-          "grid_available": "Net beschikbaar (binaire sensor)"
+          "grid_available": "Net beschikbaar (binaire sensor)",
+          "battery_power": "Batterijvermogenssensor (W, met teken)"
         },
         "data_description": {
           "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
@@ -66,19 +67,8 @@
           "charging_power": "Optioneel maar aanbevolen. Gemeten EV-laadvermogen in watt — het betrouwbaarste signaal of de auto daadwerkelijk stroom verbruikt. Indien toegewezen heeft het voorrang op de statussensor voor laaddetectie. In driefasemodus wijs je alle drie de fasesensoren toe of laat je ze alle drie leeg (ze worden opgeteld).",
           "charging_power_l2": "EV-laadvermogen op fase L2, in watt. Wijs alle drie de fasen toe of geen.",
           "charging_power_l3": "EV-laadvermogen op fase L3, in watt. Wijs alle drie de fasen toe of geen.",
-          "grid_available": "Optioneel. Binaire sensor die de netbeschikbaarheid aangeeft (on = net aanwezig, off = net weg). Indien toegewezen en off stopt de grid-modus van Night Smart Charge, zodat de thuisbatterij tijdens een stroomstoring niet wordt leeggetrokken (handig bij hybride Battery First / UPS-omvormers). Laat leeg om het vorige gedrag te behouden."
-        }
-      },
-      "hybrid_inverter": {
-        "title": "Hybride-omvormermodus - Stap {step}/{total_steps}",
-        "description": "Hybride-omvormermodus — voor zonder-teruglevering-systemen met een thuisbatterij (Deye, Sunsynk, Solis, Goodwe, Growatt…).\n\nAls de batterij vol is, knijpt een hybride omvormer de zonneproductie af om teruglevering aan het net te voorkomen, dus de productie is bijna gelijk aan het verbruik en het overschot lijkt nul — ook al zijn er kilowatts aan PV beschikbaar. De hybride modus ontdekt deze verborgen ruimte door de EV-lader kort als testbelasting te starten en het net te observeren: als de omvormer de PV laat oplopen 'rijdt hij op de rand', anders trekt hij terug. De netkost in het slechtste geval is begrensd (~350 Wh/dag).\n\nBij batterijsystemen kan de batterij de testbelasting stil opvangen (het net blijft ≈ 0) en verbergen of PV echt is vrijgemaakt. Koppel hieronder de optionele batterijvermogenssensor zodat de sonde batterijontlading van echte zonneruimte kan onderscheiden.\n\nStem de numerieke parameters (max. batterijontlading, sonde-/importduur, batterij-vol-drempel) later af in het instellingenpaneel van het dashboard.",
-        "data": {
-          "hybrid_inverter_mode": "Hybride-omvormermodus inschakelen",
-          "battery_power": "Batterijvermogenssensor (W, met teken)"
-        },
-        "data_description": {
-          "hybrid_inverter_mode": "Schakelt de empirische curtailment-sonde in voor hybride omvormers zonder teruglevering. Je kunt het later altijd via het dashboard omschakelen — dit stelt alleen de begintoestand in.",
-          "battery_power": "Optioneel. Batterijvermogen met teken in watt — NEGATIEF = ontladen, POSITIEF = laden. Laat de sonde detecteren wanneer de thuisbatterij (niet de zon) de EV dekt, om valse 'ruimte gevonden'-resultaten te voorkomen. Gebruikt je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld."
+          "grid_available": "Optioneel. Binaire sensor die de netbeschikbaarheid aangeeft (on = net aanwezig, off = net weg). Indien toegewezen en off stopt de grid-modus van Night Smart Charge, zodat de thuisbatterij tijdens een stroomstoring niet wordt leeggetrokken (handig bij hybride Battery First / UPS-omvormers). Laat leeg om het vorige gedrag te behouden.",
+          "battery_power": "Optioneel. Accuvermogen in watt met teken — NEGATIEF = ontladen, POSITIEF = laden. Gebruikt wanneer het huisverbruik door de integratie wordt berekend, door de dead-band-buffer van Solar Surplus en door de accubescherming van Night Smart Charge. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld."
         }
       },
       "main_fuse": {
@@ -200,7 +190,8 @@
           "charging_power": "EV-laadvermogen",
           "charging_power_l2": "EV-laadvermogen (L2)",
           "charging_power_l3": "EV-laadvermogen (L3)",
-          "grid_available": "Net beschikbaar (binaire sensor)"
+          "grid_available": "Net beschikbaar (binaire sensor)",
+          "battery_power": "Batterijvermogenssensor (W, met teken)"
         },
         "data_description": {
           "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
@@ -218,17 +209,8 @@
           "charging_power": "Optioneel maar aanbevolen. Gemeten EV-laadvermogen in watt — het betrouwbaarste signaal of de auto daadwerkelijk stroom verbruikt. Indien toegewezen heeft het voorrang op de statussensor voor laaddetectie. In driefasemodus wijs je alle drie de fasesensoren toe of laat je ze alle drie leeg (ze worden opgeteld).",
           "charging_power_l2": "EV-laadvermogen op fase L2, in watt. Wijs alle drie de fasen toe of geen.",
           "charging_power_l3": "EV-laadvermogen op fase L3, in watt. Wijs alle drie de fasen toe of geen.",
-          "grid_available": "Optioneel. Binaire sensor die de netbeschikbaarheid aangeeft (on = net aanwezig, off = net weg). Indien toegewezen en off stopt de grid-modus van Night Smart Charge, zodat de thuisbatterij tijdens een stroomstoring niet wordt leeggetrokken (handig bij hybride Battery First / UPS-omvormers). Laat leeg om het vorige gedrag te behouden."
-        }
-      },
-      "reconfigure_hybrid_inverter": {
-        "title": "Hybride-omvormermodus opnieuw instellen - Stap {step}/{total_steps}",
-        "description": "Het in- of uitschakelen van de hybride-omvormermodus gebeurt via het dashboard; hier koppel of wis je alleen de optionele batterijvermogenssensor (met teken) die gebruikt wordt om batterijontlading-maskering tijdens de sonde te detecteren.",
-        "data": {
-          "battery_power": "Batterijvermogenssensor (W, met teken)"
-        },
-        "data_description": {
-          "battery_power": "Optioneel. Batterijvermogen met teken in watt — NEGATIEF = ontladen, POSITIEF = laden. Laat de sonde detecteren wanneer de thuisbatterij (niet de zon) de EV dekt, om valse 'ruimte gevonden'-resultaten te voorkomen. Gebruikt je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld."
+          "grid_available": "Optioneel. Binaire sensor die de netbeschikbaarheid aangeeft (on = net aanwezig, off = net weg). Indien toegewezen en off stopt de grid-modus van Night Smart Charge, zodat de thuisbatterij tijdens een stroomstoring niet wordt leeggetrokken (handig bij hybride Battery First / UPS-omvormers). Laat leeg om het vorige gedrag te behouden.",
+          "battery_power": "Optioneel. Accuvermogen in watt met teken — NEGATIEF = ontladen, POSITIEF = laden. Gebruikt wanneer het huisverbruik door de integratie wordt berekend, door de dead-band-buffer van Solar Surplus en door de accubescherming van Night Smart Charge. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld."
         }
       },
       "reconfigure_main_fuse": {
@@ -371,7 +353,7 @@
       },
       "features": {
         "title": "Wat heb je? - Stap {step}/{total_steps}",
-        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot, de zonneprognose en de hybride-omvormerstap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Load balancing** — kies *deze integratie* om de hoofdzekering vanaf hier te bewaken (vereist de sensoren per fase van je meter). Kies *de lader regelt het zelf* als je laadpaal al met een eigen meter balanceert, zodat ze elkaar niet tegenwerken.",
+        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot en de zonneprognosestap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Load balancing** — kies *deze integratie* om de hoofdzekering vanaf hier te bewaken (vereist de sensoren per fase van je meter). Kies *de lader regelt het zelf* als je laadpaal al met een eigen meter balanceert, zodat ze elkaar niet tegenwerken.",
         "data": {
           "has_solar": "Zonnepanelen",
           "has_home_battery": "Thuisbatterij",
@@ -387,7 +369,7 @@
       },
       "reconfigure_features": {
         "title": "Wat heb je? - Stap {step}/{total_steps}",
-        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot, de zonneprognose en de hybride-omvormerstap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Load balancing** — kies *deze integratie* om de hoofdzekering vanaf hier te bewaken (vereist de sensoren per fase van je meter). Kies *de lader regelt het zelf* als je laadpaal al met een eigen meter balanceert, zodat ze elkaar niet tegenwerken.",
+        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot en de zonneprognosestap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Load balancing** — kies *deze integratie* om de hoofdzekering vanaf hier te bewaken (vereist de sensoren per fase van je meter). Kies *de lader regelt het zelf* als je laadpaal al met een eigen meter balanceert, zodat ze elkaar niet tegenwerken.",
         "data": {
           "has_solar": "Zonnepanelen",
           "has_home_battery": "Thuisbatterij",
@@ -495,7 +477,8 @@
           "charging_power": "EV-laadvermogen",
           "charging_power_l2": "EV-laadvermogen (L2)",
           "charging_power_l3": "EV-laadvermogen (L3)",
-          "grid_available": "Net beschikbaar (binaire sensor)"
+          "grid_available": "Net beschikbaar (binaire sensor)",
+          "battery_power": "Batterijvermogenssensor (W, met teken)"
         },
         "data_description": {
           "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
@@ -513,17 +496,8 @@
           "charging_power": "Optioneel maar aanbevolen. Gemeten EV-laadvermogen in watt — het betrouwbaarste signaal of de auto daadwerkelijk stroom verbruikt. Indien toegewezen heeft het voorrang op de statussensor voor laaddetectie. In driefasemodus wijs je alle drie de fasesensoren toe of laat je ze alle drie leeg (ze worden opgeteld).",
           "charging_power_l2": "EV-laadvermogen op fase L2, in watt. Wijs alle drie de fasen toe of geen.",
           "charging_power_l3": "EV-laadvermogen op fase L3, in watt. Wijs alle drie de fasen toe of geen.",
-          "grid_available": "Optioneel. Binaire sensor die de netbeschikbaarheid aangeeft (on = net aanwezig, off = net weg). Indien toegewezen en off stopt de grid-modus van Night Smart Charge, zodat de thuisbatterij tijdens een stroomstoring niet wordt leeggetrokken (handig bij hybride Battery First / UPS-omvormers). Laat leeg om het vorige gedrag te behouden."
-        }
-      },
-      "hybrid_inverter": {
-        "title": "Hybride-omvormermodus bijwerken - Stap {step}/{total_steps}",
-        "description": "Het in- of uitschakelen van de hybride-omvormermodus gebeurt via het dashboard; hier koppel of wis je alleen de optionele batterijvermogenssensor (met teken) die gebruikt wordt om batterijontlading-maskering tijdens de sonde te detecteren.",
-        "data": {
-          "battery_power": "Batterijvermogenssensor (W, met teken)"
-        },
-        "data_description": {
-          "battery_power": "Optioneel. Batterijvermogen met teken in watt — NEGATIEF = ontladen, POSITIEF = laden. Laat de sonde detecteren wanneer de thuisbatterij (niet de zon) de EV dekt, om valse 'ruimte gevonden'-resultaten te voorkomen. Gebruikt je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld."
+          "grid_available": "Optioneel. Binaire sensor die de netbeschikbaarheid aangeeft (on = net aanwezig, off = net weg). Indien toegewezen en off stopt de grid-modus van Night Smart Charge, zodat de thuisbatterij tijdens een stroomstoring niet wordt leeggetrokken (handig bij hybride Battery First / UPS-omvormers). Laat leeg om het vorige gedrag te behouden.",
+          "battery_power": "Optioneel. Accuvermogen in watt met teken — NEGATIEF = ontladen, POSITIEF = laden. Gebruikt wanneer het huisverbruik door de integratie wordt berekend, door de dead-band-buffer van Solar Surplus en door de accubescherming van Night Smart Charge. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld."
         }
       },
       "main_fuse": {
@@ -646,7 +620,7 @@
       },
       "features": {
         "title": "Wat heb je? - Stap {step}/{total_steps}",
-        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot, de zonneprognose en de hybride-omvormerstap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Load balancing** — kies *deze integratie* om de hoofdzekering vanaf hier te bewaken (vereist de sensoren per fase van je meter). Kies *de lader regelt het zelf* als je laadpaal al met een eigen meter balanceert, zodat ze elkaar niet tegenwerken.",
+        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot en de zonneprognosestap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Load balancing** — kies *deze integratie* om de hoofdzekering vanaf hier te bewaken (vereist de sensoren per fase van je meter). Kies *de lader regelt het zelf* als je laadpaal al met een eigen meter balanceert, zodat ze elkaar niet tegenwerken.",
         "data": {
           "has_solar": "Zonnepanelen",
           "has_home_battery": "Thuisbatterij",

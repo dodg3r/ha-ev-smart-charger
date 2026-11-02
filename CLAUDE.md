@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.35.0
+**Current Version:** 2.36.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,35 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.36.0 (2026-11-02) — fork dodg3r
+**Hybrid Inverter Mode removed; Solar / Off-Grid Max Amperage default 16 A**
+
+Requested by the maintainer (none of the three houses has a zero-export
+inverter that curtails PV).
+- Removed `hybrid_inverter_mode.py` (Phase 6.5), its hooks in Solar Surplus
+  (step 10b, the force-exit calls, the spike-response stand-down,
+  `hybrid_mode` constructor argument), `runtime_data.hybrid_mode`, the
+  probing notification and its EN/IT/NL text.
+- Entities removed: switch `evsc_hybrid_inverter_mode`, numbers
+  `evsc_hybrid_battery_full_threshold` / `_probe_duration` /
+  `_max_import_duration` / `_max_failed_probes`, sensor
+  `evsc_hybrid_inverter_diagnostic`. `TOTAL_INTEGRATION_ENTITIES` 84 → 78,
+  `_NO_BATTERY` 70 → 64. The v2.17.0 orphan cleanup removes the old
+  registry entries at startup.
+- Config flow: the hybrid step is gone in all three flows. The optional
+  signed battery-power sensor (`CONF_BATTERY_POWER`, still used by the
+  derived home consumption, the Solar Surplus dead-band buffer and the Night
+  Smart Charge battery protection) moved to the sensors step (home battery
+  only, cleared → None). `CONF_HYBRID_INVERTER_MODE` and the hybrid
+  constants are removed.
+- Dashboard: Hybrid settings accordion and diagnostic card removed; "Max
+  Battery Discharge for EV" moved to Home Battery Support (needs solar).
+- `DEFAULT_SOLAR_MAX_AMPERAGE` and `DEFAULT_OFFGRID_MAX_AMPERAGE` 32 → 16 A
+  (new installs; restored values are kept). Off-grid 32 A still means off.
+- Tests: hybrid tests removed, flow walkthroughs and entity counts updated.
+
+---
 
 ### v2.35.0 (2026-11-01) — fork dodg3r
 **Status line counts down what Solar Surplus is about to do; no "Entity None" warning**

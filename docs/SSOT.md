@@ -344,7 +344,7 @@ grid-import protection:
 - **One-shot step-down** to the highest amp level ≤
   `current − (import + 100 W)/effective_voltage`; floor still importing →
   stop. Every action re-verifies live state: Solar Surplus ownership
-  (`_has_control()`), Hybrid Mode IDLE, charger charging, import still above
+  (`_has_control()`), charger charging, import still above
   `evsc_grid_import_threshold`, production still stable.
 - **Ramp-up unchanged** (60 s stability, one level per tick); after a fast
   action `_surplus_stable_since` and `_last_grid_import_high` are cleared.
@@ -400,11 +400,13 @@ The enforced model is:
 
 ## 6. Config and reconfiguration
 
-`custom_components/ev_smart_charger/config_flow.py` exposes (v2.0.0 +
-v2.1.0 hybrid step):
+`custom_components/ev_smart_charger/config_flow.py` exposes (v2.0.0;
+the v2.1.0 hybrid step was removed in v2.36.0 — the battery-power sensor is
+now in the sensors step; later versions added features, main fuse and car
+profile steps, shown according to the setup answers):
 
 - a **10-step** initial setup flow: name → **phase_mode** → **charger_model** →
-  entities → sensors (phase-aware) → **hybrid_inverter** → pv_forecast →
+  entities → sensors (phase-aware) → pv_forecast →
   notifications → external_connectors → dashboard
 - a **9-step** native `async_step_reconfigure` path (entry point is phase_mode;
   charger entities moved to `async_step_reconfigure_entities`) so existing entries

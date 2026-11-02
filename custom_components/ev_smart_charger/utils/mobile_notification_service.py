@@ -297,35 +297,6 @@ class MobileNotificationService:
         # safety net (no-op when nothing is open).
         await self.clear_ev_charging_live_activity()
 
-    async def send_hybrid_mode_started_notification(self) -> None:
-        """
-        Send Hybrid Inverter Mode notification when probing starts (v1.8.0 — issue #20).
-
-        Single-shot per day, no enable toggle (low spam risk by design). Caller is
-        responsible for ensuring this is sent at most once per "session" (defined as
-        the interval between sunrise and sunset). Filtered by car owner presence to
-        avoid notifying users who are away from home.
-        """
-        if not self._is_car_owner_home():
-            _LOGGER.debug("Car owner not home, skipping Hybrid Mode notification")
-            return
-
-        message = translate_runtime(
-            self.hass,
-            "mobile.hybrid_mode_started.message",
-            time=dt_util.now().strftime("%H:%M"),
-        )
-
-        _LOGGER.info(
-            "Sending Hybrid Mode probing notification at %s",
-            dt_util.now().strftime("%H:%M:%S"),
-        )
-        await self._send_notification(
-            message=message,
-            tag="evsc_hybrid_mode",
-            priority="normal",
-        )
-
     @property
     def _live_activity_state(self) -> LiveActivityState:
         """Return the shared Live Activity state for this config entry."""

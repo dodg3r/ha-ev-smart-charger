@@ -94,16 +94,6 @@ async def test_conditions_require_charging_session(hass, automation):
     assert ok is False
 
 
-async def test_conditions_stand_down_during_hybrid_probe(hass, automation):
-    """Hybrid Mode PROBING/RIDING_EDGE must never be undercut."""
-    _arm_charging_spike(hass, automation)
-    hybrid = MagicMock()
-    hybrid.is_active = MagicMock(return_value=True)
-    automation._hybrid_mode = hybrid
-    ok, _, _ = await automation._spike_conditions_met()
-    assert ok is False
-
-
 async def test_conditions_met_on_real_spike(hass, automation):
     """All gates open: charging, owned, import high, PV stable."""
     _arm_charging_spike(hass, automation)

@@ -48,7 +48,8 @@
           "charging_power": "Potenza di ricarica EV",
           "charging_power_l2": "Potenza di ricarica EV (L2)",
           "charging_power_l3": "Potenza di ricarica EV (L3)",
-          "grid_available": "Rete disponibile (binary sensor)"
+          "grid_available": "Rete disponibile (binary sensor)",
+          "battery_power": "Sensore potenza batteria (W, con segno)"
         },
         "data_description": {
           "soc_car": "Sensore con lo stato di carica EV in percentuale.",
@@ -66,19 +67,8 @@
           "charging_power": "Opzionale ma consigliato. Potenza di ricarica EV misurata in watt — il segnale più affidabile per sapere se la macchina sta davvero assorbendo corrente. Se mappato, ha la precedenza sul sensore di stato per il rilevamento della ricarica. In trifase mappa tutti e tre i sensori di fase oppure lasciali tutti vuoti (vengono sommati).",
           "charging_power_l2": "Potenza di ricarica EV sulla fase L2, in watt. Mappa tutte e tre le fasi o nessuna.",
           "charging_power_l3": "Potenza di ricarica EV sulla fase L3, in watt. Mappa tutte e tre le fasi o nessuna.",
-          "grid_available": "Opzionale. Binary sensor che indica la disponibilità della rete (on = rete presente, off = rete assente). Se mappato e off, la modalità grid di Night Smart Charge si ferma per non scaricare la batteria di casa durante un blackout (utile su inverter ibridi Battery First / UPS). Lascia vuoto per mantenere il comportamento precedente."
-        }
-      },
-      "hybrid_inverter": {
-        "title": "Modalità Inverter Ibrido - Passo {step}/{total_steps}",
-        "description": "Modalità Inverter Ibrido — per sistemi a zero immissione con batteria di casa (Deye, Sunsynk, Solis, Goodwe, Growatt…).\n\nQuando la batteria è piena, l'inverter ibrido limita (riduce) la produzione solare per evitare di immettere in rete, quindi la produzione risulta quasi uguale al consumo e il surplus sembra zero — anche se ci sono chilowatt di fotovoltaico disponibili. La Modalità Ibrida scopre questo margine nascosto avviando brevemente il caricatore EV come carico di prova e osservando la rete: se l'inverter aumenta il fotovoltaico in risposta 'cavalca il limite', altrimenti si ferma. Il costo di rete nel caso peggiore è limitato (~350 Wh/giorno).\n\nNei sistemi con batteria, la batteria può coprire silenziosamente il carico di prova (la rete resta ≈ 0) e nascondere se il fotovoltaico è stato davvero sbloccato. Mappa qui sotto il sensore opzionale di potenza batteria così la sonda può distinguere lo scaricamento della batteria dal vero margine solare.\n\nRegola i parametri numerici (scarica massima batteria, durate sonda / importazione, soglia batteria piena) in seguito dal pannello impostazioni della dashboard.",
-        "data": {
-          "hybrid_inverter_mode": "Attiva Modalità Inverter Ibrido",
-          "battery_power": "Sensore potenza batteria (W, con segno)"
-        },
-        "data_description": {
-          "hybrid_inverter_mode": "Attiva la sonda empirica di curtailment per inverter ibridi a zero immissione. Puoi attivarla/disattivarla in qualsiasi momento dalla dashboard — qui imposti solo lo stato iniziale.",
-          "battery_power": "Opzionale. Potenza batteria con segno in watt — NEGATIVO = in scarica, POSITIVO = in carica. Permette alla sonda di rilevare quando è la batteria di casa (non il sole) a coprire l'EV, evitando falsi risultati 'margine trovato'. Se il tuo sensore usa il segno opposto, invertilo con un sensore template che ne nega il valore — vedi il README per un esempio."
+          "grid_available": "Opzionale. Binary sensor che indica la disponibilità della rete (on = rete presente, off = rete assente). Se mappato e off, la modalità grid di Night Smart Charge si ferma per non scaricare la batteria di casa durante un blackout (utile su inverter ibridi Battery First / UPS). Lascia vuoto per mantenere il comportamento precedente.",
+          "battery_power": "Opzionale. Potenza della batteria in watt con segno — NEGATIVO = in scarica, POSITIVO = in carica. Usata quando il consumo di casa è calcolato dall'integrazione, dal buffer della dead band di Solar Surplus e dalla protezione batteria di Night Smart Charge. Se il sensore usa il segno opposto, invertilo con un template sensor che nega il valore — vedi il README per un esempio."
         }
       },
       "main_fuse": {
@@ -200,7 +190,8 @@
           "charging_power": "Potenza di ricarica EV",
           "charging_power_l2": "Potenza di ricarica EV (L2)",
           "charging_power_l3": "Potenza di ricarica EV (L3)",
-          "grid_available": "Rete disponibile (binary sensor)"
+          "grid_available": "Rete disponibile (binary sensor)",
+          "battery_power": "Sensore potenza batteria (W, con segno)"
         },
         "data_description": {
           "soc_car": "Sensore con lo stato di carica EV in percentuale.",
@@ -218,17 +209,8 @@
           "charging_power": "Opzionale ma consigliato. Potenza di ricarica EV misurata in watt — il segnale più affidabile per sapere se la macchina sta davvero assorbendo corrente. Se mappato, ha la precedenza sul sensore di stato per il rilevamento della ricarica. In trifase mappa tutti e tre i sensori di fase oppure lasciali tutti vuoti (vengono sommati).",
           "charging_power_l2": "Potenza di ricarica EV sulla fase L2, in watt. Mappa tutte e tre le fasi o nessuna.",
           "charging_power_l3": "Potenza di ricarica EV sulla fase L3, in watt. Mappa tutte e tre le fasi o nessuna.",
-          "grid_available": "Opzionale. Binary sensor che indica la disponibilità della rete (on = rete presente, off = rete assente). Se mappato e off, la modalità grid di Night Smart Charge si ferma per non scaricare la batteria di casa durante un blackout (utile su inverter ibridi Battery First / UPS). Lascia vuoto per mantenere il comportamento precedente."
-        }
-      },
-      "reconfigure_hybrid_inverter": {
-        "title": "Riconfigura Modalità Inverter Ibrido - Passo {step}/{total_steps}",
-        "description": "L'attivazione della Modalità Inverter Ibrido si fa dalla dashboard; qui mappi o cancelli solo il sensore opzionale (con segno) di potenza batteria usato per rilevare il mascheramento da scarica batteria durante la sonda.",
-        "data": {
-          "battery_power": "Sensore potenza batteria (W, con segno)"
-        },
-        "data_description": {
-          "battery_power": "Opzionale. Potenza batteria con segno in watt — NEGATIVO = in scarica, POSITIVO = in carica. Permette alla sonda di rilevare quando è la batteria di casa (non il sole) a coprire l'EV, evitando falsi risultati 'margine trovato'. Se il tuo sensore usa il segno opposto, invertilo con un sensore template che ne nega il valore — vedi il README per un esempio."
+          "grid_available": "Opzionale. Binary sensor che indica la disponibilità della rete (on = rete presente, off = rete assente). Se mappato e off, la modalità grid di Night Smart Charge si ferma per non scaricare la batteria di casa durante un blackout (utile su inverter ibridi Battery First / UPS). Lascia vuoto per mantenere il comportamento precedente.",
+          "battery_power": "Opzionale. Potenza della batteria in watt con segno — NEGATIVO = in scarica, POSITIVO = in carica. Usata quando il consumo di casa è calcolato dall'integrazione, dal buffer della dead band di Solar Surplus e dalla protezione batteria di Night Smart Charge. Se il sensore usa il segno opposto, invertilo con un template sensor che nega il valore — vedi il README per un esempio."
         }
       },
       "reconfigure_main_fuse": {
@@ -371,7 +353,7 @@
       },
       "features": {
         "title": "Cosa hai? - Passo {step}/{total_steps}",
-        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare, la previsione FV e il passo dell'inverter ibrido.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — scegli *questa integrazione* per proteggere il contatore da qui (servono i sensori per fase del contatore). Scegli *lo gestisce il caricatore* se la wallbox bilancia già con un proprio misuratore, così i due non si ostacolano.",
+        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare e il passo della previsione FV.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — scegli *questa integrazione* per proteggere il contatore da qui (servono i sensori per fase del contatore). Scegli *lo gestisce il caricatore* se la wallbox bilancia già con un proprio misuratore, così i due non si ostacolano.",
         "data": {
           "has_solar": "Pannelli solari",
           "has_home_battery": "Batteria domestica",
@@ -387,7 +369,7 @@
       },
       "reconfigure_features": {
         "title": "Cosa hai? - Passo {step}/{total_steps}",
-        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare, la previsione FV e il passo dell'inverter ibrido.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — scegli *questa integrazione* per proteggere il contatore da qui (servono i sensori per fase del contatore). Scegli *lo gestisce il caricatore* se la wallbox bilancia già con un proprio misuratore, così i due non si ostacolano.",
+        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare e il passo della previsione FV.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — scegli *questa integrazione* per proteggere il contatore da qui (servono i sensori per fase del contatore). Scegli *lo gestisce il caricatore* se la wallbox bilancia già con un proprio misuratore, così i due non si ostacolano.",
         "data": {
           "has_solar": "Pannelli solari",
           "has_home_battery": "Batteria domestica",
@@ -495,7 +477,8 @@
           "charging_power": "Potenza di ricarica EV",
           "charging_power_l2": "Potenza di ricarica EV (L2)",
           "charging_power_l3": "Potenza di ricarica EV (L3)",
-          "grid_available": "Rete disponibile (binary sensor)"
+          "grid_available": "Rete disponibile (binary sensor)",
+          "battery_power": "Sensore potenza batteria (W, con segno)"
         },
         "data_description": {
           "soc_car": "Sensore con lo stato di carica EV in percentuale.",
@@ -513,17 +496,8 @@
           "charging_power": "Opzionale ma consigliato. Potenza di ricarica EV misurata in watt — il segnale più affidabile per sapere se la macchina sta davvero assorbendo corrente. Se mappato, ha la precedenza sul sensore di stato per il rilevamento della ricarica. In trifase mappa tutti e tre i sensori di fase oppure lasciali tutti vuoti (vengono sommati).",
           "charging_power_l2": "Potenza di ricarica EV sulla fase L2, in watt. Mappa tutte e tre le fasi o nessuna.",
           "charging_power_l3": "Potenza di ricarica EV sulla fase L3, in watt. Mappa tutte e tre le fasi o nessuna.",
-          "grid_available": "Opzionale. Binary sensor che indica la disponibilità della rete (on = rete presente, off = rete assente). Se mappato e off, la modalità grid di Night Smart Charge si ferma per non scaricare la batteria di casa durante un blackout (utile su inverter ibridi Battery First / UPS). Lascia vuoto per mantenere il comportamento precedente."
-        }
-      },
-      "hybrid_inverter": {
-        "title": "Aggiorna Modalità Inverter Ibrido - Passo {step}/{total_steps}",
-        "description": "L'attivazione della Modalità Inverter Ibrido si fa dalla dashboard; qui mappi o cancelli solo il sensore opzionale (con segno) di potenza batteria usato per rilevare il mascheramento da scarica batteria durante la sonda.",
-        "data": {
-          "battery_power": "Sensore potenza batteria (W, con segno)"
-        },
-        "data_description": {
-          "battery_power": "Opzionale. Potenza batteria con segno in watt — NEGATIVO = in scarica, POSITIVO = in carica. Permette alla sonda di rilevare quando è la batteria di casa (non il sole) a coprire l'EV, evitando falsi risultati 'margine trovato'. Se il tuo sensore usa il segno opposto, invertilo con un sensore template che ne nega il valore — vedi il README per un esempio."
+          "grid_available": "Opzionale. Binary sensor che indica la disponibilità della rete (on = rete presente, off = rete assente). Se mappato e off, la modalità grid di Night Smart Charge si ferma per non scaricare la batteria di casa durante un blackout (utile su inverter ibridi Battery First / UPS). Lascia vuoto per mantenere il comportamento precedente.",
+          "battery_power": "Opzionale. Potenza della batteria in watt con segno — NEGATIVO = in scarica, POSITIVO = in carica. Usata quando il consumo di casa è calcolato dall'integrazione, dal buffer della dead band di Solar Surplus e dalla protezione batteria di Night Smart Charge. Se il sensore usa il segno opposto, invertilo con un template sensor che nega il valore — vedi il README per un esempio."
         }
       },
       "main_fuse": {
@@ -646,7 +620,7 @@
       },
       "features": {
         "title": "Cosa hai? - Passo {step}/{total_steps}",
-        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare, la previsione FV e il passo dell'inverter ibrido.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — scegli *questa integrazione* per proteggere il contatore da qui (servono i sensori per fase del contatore). Scegli *lo gestisce il caricatore* se la wallbox bilancia già con un proprio misuratore, così i due non si ostacolano.",
+        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare e il passo della previsione FV.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — scegli *questa integrazione* per proteggere il contatore da qui (servono i sensori per fase del contatore). Scegli *lo gestisce il caricatore* se la wallbox bilancia già con un proprio misuratore, così i due non si ostacolano.",
         "data": {
           "has_solar": "Pannelli solari",
           "has_home_battery": "Batteria domestica",

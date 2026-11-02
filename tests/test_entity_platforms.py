@@ -80,7 +80,8 @@ async def test_number_platform_setup_and_restore(hass, runtime_data):
     await number_platform.async_setup_entry(hass, entry, async_add_entities)
 
     # 23 always-created + 11 home-battery-only numbers (see _mock_entry).
-    assert len(entities) == 37  # v2.13.0: +1 off-grid max amperage (issue #57); v2.29.0: +1 solar start offset
+    # v2.36.0: −4 Hybrid Inverter Mode numbers.
+    assert len(entities) == 33  # v2.13.0: +1 off-grid max amperage (issue #57); v2.29.0: +1 solar start offset
 
     entity = entities[0]
     assert entity.entity_id == "number.ev_smart_charger_entry_123_evsc_check_interval"
@@ -117,7 +118,8 @@ async def test_switch_platform_setup_restore_and_toggle(hass, runtime_data):
     # 21 always-created + 2 home-battery-only switches (use/preserve home battery).
     # v2.10.0 (issue #55): +1 always-created switch (evsc_stop_charging).
     # v2.11.0: +1 always-created switch (evsc_force_charge_auto_disarm).
-    assert len(entities) == 24
+    # v2.36.0: −1 Hybrid Inverter Mode switch.
+    assert len(entities) == 23
 
     restored_switch = next(
         entity for entity in entities if entity.entity_id.endswith("evsc_forza_ricarica")
@@ -245,8 +247,8 @@ async def test_sensor_platform_setup_publish_restore_and_log_manager(hass, runti
     await sensor_platform.async_setup_entry(hass, entry, async_add_entities)
 
     # 9 always-created (v2.20.0: + night charge plan) + 1 home-battery-only
-    # sensor (today_home_target).
-    assert len(entities) == 10
+    # sensor (today_home_target). v2.36.0: −1 Hybrid Inverter diagnostic.
+    assert len(entities) == 9
 
     diagnostic = next(entity for entity in entities if entity.entity_id.endswith("evsc_diagnostic"))
     priority = next(

@@ -83,7 +83,6 @@ class SolarSurplusAutomation:
         night_smart_charge=None,
         coordinator=None,
         boost_charge=None,
-        hybrid_mode=None,
     ) -> None:
         """Initialize the Solar Surplus automation.
 
@@ -94,7 +93,6 @@ class SolarSurplusAutomation:
             priority_balancer: PriorityBalancer instance for priority decisions
             charger_controller: ChargerController instance for charger operations
             night_smart_charge: Night Smart Charge instance (optional)
-            hybrid_mode: HybridInverterMode instance (optional, v1.8.0 — issue #20)
         """
         self.hass = hass
         self.entry_id = entry_id
@@ -105,7 +103,6 @@ class SolarSurplusAutomation:
         self._night_smart_charge = night_smart_charge
         self._coordinator = coordinator
         self._boost_charge = boost_charge
-        self._hybrid_mode = hybrid_mode
 
         # Initialize logger and astral time service
         self.logger = EVSCLogger("SOLAR SURPLUS")
@@ -440,11 +437,6 @@ class SolarSurplusAutomation:
         """Reset transient session state after Solar Surplus loses ownership."""
         self._battery_support_active = False
         self._reset_state_tracking()
-        # v1.7.0 — force Hybrid Inverter Mode out of any active state
-        if self._hybrid_mode is not None:
-            self.hass.async_create_task(
-                self._hybrid_mode.async_force_exit(f"Control lost: {reason}")
-            )
         self.logger.info(f"Solar Surplus standing down: {reason}")
         if self._runtime_data is not None and self._runtime_data.diagnostic_manager is not None:
             self.hass.async_create_task(
@@ -752,10 +744,6 @@ class SolarSurplusAutomation:
         # owner (Night Charge, Boost, Forza Ricarica, manual) is out of scope.
         if not self._has_control():
             return False, grid_import, grid_threshold
-        # Hybrid Mode PROBING/RIDING_EDGE deliberately rides the import edge —
-        # never undercut its probe with a fast step-down.
-        if self._hybrid_mode is not None and self._hybrid_mode.is_active():
-            return False, grid_import, grid_threshold
         if not await self.charger_controller.is_charging():
             return False, grid_import, grid_threshold
         if grid_import <= grid_threshold:
@@ -925,8 +913,6 @@ class SolarSurplusAutomation:
 
         # === 1. Check Forza Ricarica (Kill Switch) ===
         if get_bool(self.hass, self._forza_ricarica_entity):
-            if self._hybrid_mode is not None:
-                await self._hybrid_mode.async_force_exit("Forza Ricarica ON")
             self.logger.skip("Forza Ricarica is ON")
             await self._emit_diagnostic(
                 event="periodic_check",
@@ -943,8 +929,6 @@ class SolarSurplusAutomation:
 
         # === 2. Check Boost Charge (manual override) ===
         if self._boost_charge and self._boost_charge.is_active():
-            if self._hybrid_mode is not None:
-                await self._hybrid_mode.async_force_exit("Boost Charge active")
             if self._has_control():
                 self._release_control("Boost Charge active")
                 self._handle_control_loss("Boost Charge active")
@@ -977,8 +961,6 @@ class SolarSurplusAutomation:
 
         # === 4. Check Night Smart Charge ===
         if self._night_smart_charge and self._night_smart_charge.is_active():
-            if self._hybrid_mode is not None:
-                await self._hybrid_mode.async_force_exit("Night Smart Charge active")
             if self._has_control():
                 self._release_control("Night Smart Charge active")
                 self._handle_control_loss("Night Smart Charge active")
@@ -1017,8 +999,6 @@ class SolarSurplusAutomation:
 
         # === 6. Check Charging Profile ===
         if current_profile != "solar_surplus":
-            if self._hybrid_mode is not None:
-                await self._hybrid_mode.async_force_exit("Charging profile changed")
             if self._has_control():
                 self._release_control("Charging profile changed away from solar_surplus")
                 self._handle_control_loss("Charging profile changed")
@@ -1063,8 +1043,6 @@ class SolarSurplusAutomation:
             # the unambiguous disconnected synonyms; unknown strings still
             # default to "connected" (safe failure mode, unchanged).
             if is_disconnected_status(charger_status):
-                if self._hybrid_mode is not None:
-                    await self._hybrid_mode.async_force_exit("Charger disconnected")
                 if self._has_control():
                     self._release_control("Charger disconnected")
                     self._handle_control_loss("Charger disconnected")
@@ -1245,39 +1223,6 @@ class SolarSurplusAutomation:
         self._spike_baseline_production = fv_production
         # issue #40: the full sensor readout is logged once, conditionally, after
         # target_amps is finalized (see "issue #40 readout" block below).
-
-        # === 10b. Hybrid Inverter Mode (v1.8.0 — issue #20) ===
-        # In hybrid zero-export systems, when the home battery is full the
-        # inverter curtails PV to match home_consumption → surplus reads ≈ 0
-        # even when kilowatts of PV capacity are available. Hybrid Mode probes
-        # for this hidden headroom by starting the charger at 6A and observing
-        # grid_import. If the inverter ramps PV in response, we ride the edge
-        # of the import limit; otherwise we back off.
-        if self._hybrid_mode is not None:
-            current_amps_for_hybrid = (
-                await self.charger_controller.get_current_amperage() or 0
-            ) if charger_is_on else 0
-            if await self._hybrid_mode.is_relevant(
-                surplus_amps=surplus_amps,
-                surplus_watts=surplus_watts,
-                grid_import=grid_import,
-                charger_is_on=charger_is_on,
-                priority=priority,
-                now=now,
-                current_amps=current_amps_for_hybrid,
-            ):
-                handled = await self._hybrid_mode.tick(
-                    surplus_amps=surplus_amps,
-                    surplus_watts=surplus_watts,
-                    grid_import=grid_import,
-                    charger_is_on=charger_is_on,
-                    current_amps=current_amps_for_hybrid,
-                    priority=priority,
-                    now=now,
-                )
-                if handled:
-                    self.logger.info("Hybrid Inverter Mode handled this tick")
-                    return
 
         # === 11. Handle Home Battery Usage ===
         await self._handle_home_battery_usage(surplus_watts, priority)

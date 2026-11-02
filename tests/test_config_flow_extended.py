@@ -85,8 +85,6 @@ async def _init_flow_to_external_connectors(hass) -> str:
     )
     result = await hass.config_entries.flow.async_configure(result["flow_id"], entities_payload)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], sensors_payload)
-    # v2.1.0 (issue #29): hybrid_inverter step between sensors and pv_forecast
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     result = await hass.config_entries.flow.async_configure(result["flow_id"], pv_payload)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], notifications_payload)
 
@@ -197,13 +195,8 @@ async def test_options_flow_updates_entry_data(hass) -> None:
             CONF_FV_PRODUCTION: "sensor.new_solar",
             CONF_HOME_CONSUMPTION: "sensor.new_home_use",
             CONF_GRID_IMPORT: "sensor.new_grid",
+            CONF_BATTERY_POWER: "sensor.new_battery_power",
         }
-    )
-    # v2.1.0 (issue #29): hybrid_inverter step (sensor only in options flow)
-    assert result["step_id"] == "hybrid_inverter"
-
-    result = await flow.async_step_hybrid_inverter(
-        {CONF_BATTERY_POWER: "sensor.new_battery_power"}
     )
     assert result["step_id"] == "pv_forecast"
 
@@ -365,13 +358,8 @@ async def test_reconfigure_flow_updates_entry_data(hass) -> None:
             CONF_FV_PRODUCTION: "sensor.new_solar",
             CONF_HOME_CONSUMPTION: "sensor.new_home_use",
             CONF_GRID_IMPORT: "sensor.new_grid",
+            CONF_BATTERY_POWER: "sensor.new_battery_power",
         }
-    )
-    # v2.1.0 (issue #29): reconfigure_hybrid_inverter step (sensor only)
-    assert result["step_id"] == "reconfigure_hybrid_inverter"
-
-    result = await flow.async_step_reconfigure_hybrid_inverter(
-        {CONF_BATTERY_POWER: "sensor.new_battery_power"}
     )
     assert result["step_id"] == "reconfigure_pv_forecast"
 

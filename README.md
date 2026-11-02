@@ -31,7 +31,6 @@ Most "smart charging" integrations stop at "use solar surplus". This one orchest
 - 🌙 **Night Smart Charge** — overnight session driven by *tomorrow's* PV forecast. Battery mode if forecast is good, grid fallback otherwise, skipped entirely on days you don't need the car. *(v2.4.0+)* on hybrid inverters with a mapped **battery-power sensor**, grid mode honours `home_battery_min_soc` as an effective floor — it won't let the inverter silently drain the home battery to power the EV. Solves [issue #33](https://github.com/antbald/ha-ev-smart-charger/issues/33).
 - ⚡ **Boost Charge** — manual or scheduled high-priority session with automatic SOC stop.
 - 🛡️ **Smart Charger Blocker** — prevents charging outside your allowed window (sunset → night-charge time, or sunset → sunrise).
-- ⚡ **Hybrid Inverter Mode** *(v1.8.0+)* — empirically probes for hidden PV capacity in zero-export hybrid systems (Deye, Sunsynk, Solis, Growatt, Goodwe…). Solves [issue #20](https://github.com/antbald/ha-ev-smart-charger/issues/20). *(v2.1.0+)* optional **battery-power sensor** lets the probe tell real solar headroom apart from the home battery silently covering the load, and a configurable **max battery discharge for EV** smooths Solar-Surplus stop-start cycling. Solves [issue #29](https://github.com/antbald/ha-ev-smart-charger/issues/29).
 - 🔌 **Three-phase + charger model** *(v2.0.0+)* — opt-in three-phase support (three production/consumption/grid sensors, speed balanced across phases) and a Tuya / generic wallbox selector (generic = 1 A steps + live current decrease). Defaults keep single-phase + Tuya unchanged. Solves [discussion #18](https://github.com/antbald/ha-ev-smart-charger/discussions/18).
 - 💾 **Cached EV SOC** — reliable fallback for flaky cloud-based car integrations.
 
@@ -49,6 +48,8 @@ Most projects target one charger brand or assume a single-phase home. EV Smart C
 | **Inverter** | ✅ Standard **and** hybrid zero-export (Deye, Sunsynk, Solis, Growatt, Goodwe…) |
 
 > **🎉 New in v2.0.0** — Universal compatibility lands: opt-in **three-phase** support and a **Tuya / generic wallbox** selector mean EV Smart Charger now adapts to *any* solar + EV setup on the market. **Upgrading changes nothing for existing users** — defaults stay single-phase + Tuya, with no migration. [Jump to the setup ↓](#three-phase-support--charger-model--v200)
+
+> **🧹 v2.36.0 (fork)** — **Hybrid Inverter Mode removed.** Its switch, four settings and diagnostic sensor are gone (old registry entries are cleaned up at startup). The optional battery-power sensor moved to the sensors step. Solar Max and Off-Grid Max Amperage now default to 16 A on new installs.
 
 > **🔋 New in v2.1.0** — Hybrid Inverter Mode now detects **battery-discharge masking**: map an optional **signed battery-power sensor** (negative = discharging) in the new "Hybrid Inverter Mode" setup step, and the probe will no longer mistake the home battery covering the EV for real solar headroom. Set **Max Battery Discharge for EV** (0 = off) to also let Solar Surplus ride out brief PV dips without stop-start cycling. **No-op for everyone who leaves it at 0 / unmapped.** Solves [issue #29](https://github.com/antbald/ha-ev-smart-charger/issues/29).
 
@@ -107,7 +108,7 @@ Hero ring with dual concentric arcs (EV outer, home battery inner). Live chargin
 </td>
 <td valign="top">
 
-Seven expandable categories with gradient icons: ☀ Solar Surplus, 🌙 Night Smart Charge, 🔋 Home Battery Support, ⚡ Hybrid Inverter, ⏱ Boost Schedule, 🔔 Notifications, 📊 Logging. Click a category to expand inline; each parameter shows title, entity key, description, and default/range — all in the language detected from your Home Assistant profile.
+Six expandable categories with gradient icons: ☀ Solar Surplus, 🌙 Night Smart Charge, 🔋 Home Battery Support ⏱ Boost Schedule, 🔔 Notifications, 📊 Logging. Click a category to expand inline; each parameter shows title, entity key, description, and default/range — all in the language detected from your Home Assistant profile.
 
 </td>
 </tr>
@@ -198,7 +199,6 @@ The wizard asks for your wallbox switch, current entity, status entity, SOC sens
   - [Numbers — Solar Surplus](#numbers--solar-surplus)
   - [Numbers — Night Smart Charge](#numbers--night-smart-charge)
   - [Numbers — Boost Charge](#numbers--boost-charge)
-  - [Numbers — Hybrid Inverter Mode](#numbers--hybrid-inverter-mode)
   - [Numbers — Daily EV SOC Targets](#numbers--daily-ev-soc-targets)
   - [Numbers — Daily Home Battery SOC Targets](#numbers--daily-home-battery-soc-targets)
   - [Time Controls](#time-controls)
@@ -210,7 +210,6 @@ The wizard asks for your wallbox switch, current entity, status entity, SOC sens
   - [Boost Charge](#boost-charge)
   - [Smart Charger Blocker](#smart-charger-blocker)
   - [Manual overrides — Force Charge & Stop Charging](#manual-overrides--force-charge--stop-charging)
-  - [Hybrid Inverter Mode](#hybrid-inverter-mode-zero-export-systems)
   - [Cached EV SOC](#cached-ev-soc)
 - [Auto-generated Dashboard](#auto-generated-dashboard)
   - [Look — Liquid Glass iOS 18](#look--liquid-glass-ios-18)
@@ -355,7 +354,6 @@ If you do not have a home battery installed, leave the **Home battery SOC** fiel
 - Priority Balancer only returns `EV` or `EV_Free` — never `Home`.
 - Solar Surplus charges the EV directly from solar surplus, without any home-battery support fallback.
 - Night Smart Charge always uses **GRID MODE** (BATTERY MODE is disabled).
-- Hybrid Inverter Mode (v1.8.0+) is technically available but stays IDLE in PV-only mode — its entry conditions require a home battery SOC sensor.
 
 ### Display-only home battery — v2.24.0+
 
@@ -463,7 +461,7 @@ Most inverter integrations expose a "load" / "house consumption" sensor that alr
 
 **EV charging power (v2.2.0):** the most reliable signal for whether the car is actually drawing current — when mapped it becomes the single source of truth for charging detection (and the dashboard's green "EV charging" banner), overriding the status string. In three-phase mode map all three per-phase sensors (they are summed) or leave all blank. The sensor must report positive watts while charging; if yours reports negative, wrap it in a template sensor (`{{ states('sensor.your_power') | float(0) | abs }}`) — the diagnostic sensor's `charging_power_w` will read a flat 0 W if the sign is reversed.
 
-**Battery power (v2.1.0):** optional signed power sensor for the home battery, used by Hybrid Inverter Mode and Night Smart Charge grid mode to tell real solar headroom apart from the home battery silently covering the EV. **Sign convention: NEGATIVE = discharging, POSITIVE = charging.** If your sensor reports the opposite sign, invert it with a template sensor that negates the value, e.g. `{{ states('sensor.your_battery_power') | float(0) * -1 }}` — the diagnostic sensor's `battery_discharge_w` will read a flat 0 W if the sign is reversed.
+**Battery power (v2.1.0):** optional signed power sensor for the home battery, mapped in the sensors step (v2.36.0) and used by the derived home consumption, the Solar Surplus dead-band buffer and Night Smart Charge grid mode to tell when the home battery silently covers the EV. **Sign convention: NEGATIVE = discharging, POSITIVE = charging.** If your sensor reports the opposite sign, invert it with a template sensor that negates the value, e.g. `{{ states('sensor.your_battery_power') | float(0) * -1 }}`.
 
 **Grid available (v2.6.0 — [issue #36](https://github.com/antbald/ha-ev-smart-charger/issues/36)):** optional `binary_sensor` (on = grid present, off = grid lost), typically exposed by hybrid inverter integrations (e.g. `binary_sensor.inverter_grid`). On hybrid "Battery First"/UPS inverters a grid outage is invisible to the integration (every power sensor keeps reporting), so Night Smart Charge **grid mode** would keep drawing — now from the home battery — during the outage. When mapped and OFF (sustained for the grid-import delay, default 30 s), the grid-mode session stops. **Fail-safe:** an `unavailable`/`unknown` state (e.g. at HA boot or an inverter-integration restart) is treated as "unknown" and never triggers a stop. Leave empty to keep the previous behaviour.
 
@@ -550,7 +548,6 @@ All helper entities persist their state across Home Assistant restarts via `Rest
 | `evsc_preserve_home_battery` | OFF | Prevents Night Smart Charge from discharging the home battery regardless of forecast. |
 | `evsc_priority_balancer_enabled` | OFF | Enables the Priority Balancer to evaluate daily SOC targets. While OFF with home SOC targets configured, the integration warns that home-battery protection is inactive (v2.5.0). |
 | `evsc_night_smart_charge_enabled` | OFF | Enables overnight automatic charging at the configured time. |
-| `evsc_hybrid_inverter_mode` | OFF | **Hybrid Inverter Mode** — opt-in curtailment-discovery probing for zero-export hybrid inverter systems. See the [dedicated section](#hybrid-inverter-mode-zero-export-systems). |
 | `evsc_enable_file_logging` | OFF | Enables daily file logging to `logs/<year>/<month>/<day>.log`. Toggle on to capture a session, off when done. |
 | `evsc_trace_logging_enabled` | OFF | Enables verbose trace-level logging for deep debugging. |
 
@@ -593,8 +590,8 @@ When a day's flag is **ON** and the EV target is not yet reached at sunrise, Nig
 | `evsc_grid_import_delay` | `30` | `0–120` | s | How long grid import must persist before acting. |
 | `evsc_surplus_drop_delay` | `30` | `0–120` | s | How long surplus must be insufficient before stopping the charger. |
 | `evsc_spike_response_delay` | `10` | `0–60` | s | Consumption-spike fast response (v2.8.0): with stable PV, after this many seconds of grid import the charger steps down in one operation to the level that zeroes the import. `0` disables (legacy slow ramp). |
-| `evsc_solar_max_amperage` | `32` | `6–32` | A | Hard ceiling on Solar Surplus amperage. Lower this if your wallbox rejects currents above a certain value (e.g. set to `16` for wallboxes limited to 16 A). |
-| `evsc_offgrid_max_amperage` | `32` | `6–32` | A | Stricter ceiling applied **only while the optional `grid_available` sensor reads off** (hybrid inverter islanded). `32` = disabled. Requires `grid_available` to be mapped; see [Off-grid amperage ceiling](#off-grid-amperage-ceiling). |
+| `evsc_solar_max_amperage` | `16` | `6–32` | A | Hard ceiling on Solar Surplus amperage. Lower this if your wallbox rejects currents above a certain value (e.g. set to `16` for wallboxes limited to 16 A). |
+| `evsc_offgrid_max_amperage` | `16` | `6–32` | A | Stricter ceiling applied **only while the optional `grid_available` sensor reads off** (hybrid inverter islanded). `32` = disabled. Requires `grid_available` to be mapped; see [Off-grid amperage ceiling](#off-grid-amperage-ceiling). |
 | `evsc_home_battery_min_soc` | `20` | `0–100` | % | Home battery must be above this SOC before battery support activates. |
 | `evsc_battery_support_amperage` | `16` | `6–32` | A | Amperage used when the home battery supplements solar charging. |
 | `evsc_battery_support_sunset_buffer` | `60` | `0–240` | min | Block home battery support when sunset is closer than this. Prevents draining the home battery in the last minutes of fading solar (e.g. plug-in at 18:00 with sunset at 19:15). Set to `0` to disable the guard. |
@@ -619,19 +616,6 @@ When a day's flag is **ON** and the EV target is not yet reached at sunrise, Nig
 |---|:---:|---|:---:|---|
 | `evsc_boost_charge_amperage` | `16` | `6–32` | A | Amperage used during a Boost Charge session. |
 | `evsc_boost_target_soc` | `80` | `0–100` | % | Boost Charge stops automatically when EV SOC reaches this value. |
-
----
-
-### Numbers — Hybrid Inverter Mode
-
-Only relevant when `evsc_hybrid_inverter_mode` is **ON**. See the [Hybrid Inverter Mode](#hybrid-inverter-mode-zero-export-systems) section for full context.
-
-| Suffix | Default | Range | Unit | Description |
-|---|:---:|---|:---:|---|
-| `evsc_hybrid_battery_full_threshold` | `95` | `80–100` | % | Home battery SOC required to consider the battery "full" and probe for curtailment. Raise this if your inverter only curtails at 100 %; lower it if curtailment kicks in earlier. |
-| `evsc_hybrid_probe_duration` | `60` | `30–180` | s | Length of a single probe at 6 A. The first 20 s are a "transient grace" where grid_import is ignored (slow-ramp inverters need time to react). |
-| `evsc_hybrid_max_import_duration` | `60` | `30–120` | s | Maximum sustained grid import (above `evsc_grid_import_threshold`) before backing off. Raise if your inverter has a slow ramp (Solis/Growatt may need 90–120 s). |
-| `evsc_hybrid_max_failed_probes` | `5` | `1–10` | count | Number of failed probes within a 30-minute sliding window before entering a 15-minute long cooldown. After 3 long cooldowns in one day, the module disables itself until sunrise. |
 
 ---
 
@@ -691,7 +675,6 @@ All diagnostic sensors are **read-only**. They are updated continuously by the i
 | `evsc_today_home_target` | Today's home battery SOC target (derived from the current weekday). |
 | `evsc_cached_ev_soc` | Last valid EV SOC value. Preserved when the source sensor becomes `unknown` or `unavailable`. |
 | `evsc_log_file_path` | Full path to the active daily log file. Useful for SSH/Samba access. |
-| `evsc_hybrid_inverter_diagnostic` | Hybrid Inverter Mode state machine: `IDLE`, `PROBING (45/60s)`, `RIDING_EDGE @ 10A`, `COOLDOWN_LONG (8m left)`, `HARD_EXIT (until sunrise)`. Attributes carry failure counts, cooldown timers, and full snapshot. |
 
 ---
 
@@ -761,7 +744,7 @@ The periodic grid-import protection is tuned for clouds (one level down per ~2-m
 - The spike is classified as **consumption-caused** only when PV production is stable vs the last per-tick baseline (within `max(300 W, 15%)`); a production drop (cloud) always keeps the legacy conservative path
 - After `evsc_spike_response_delay` seconds of sustained import (default **10 s**, range 0–60, **0 = disabled/legacy**), the charger steps down in **one operation** to the amp level that zeroes the measured import (plus a 100 W safety margin). If even the 6 A floor would still import, the charger stops.
 - Ramp-**up** stays on the legacy slow path (60 s stability window, one level per tick) — asymmetric fast-down / slow-up prevents oscillation
-- The fast path only acts on a Solar-Surplus-owned charging session: Night Charge, Boost, Forza Ricarica, manual charging and Hybrid Mode probing are never touched
+- The fast path only acts on a Solar-Surplus-owned charging session: Night Charge, Boost, Forza Ricarica, and manual charging are never touched
 - At most one fast action every 30 s (aligned with the charger-controller rate limit)
 
 Result: a 2 kW hob spike at 16 A goes from ~8 minutes of grid import to ~15–20 s.
@@ -1101,138 +1084,6 @@ Turn **`evsc_force_charge_auto_disarm`** ON (Dashboard → **Settings → 🛡 S
 
 ---
 
-### Hybrid Inverter Mode (zero-export systems)
-
-**Opt-in feature (default OFF).** Added in v1.8.0 to solve [issue #20](https://github.com/antbald/ha-ev-smart-charger/issues/20).
-
-#### What problem this solves
-
-In **hybrid zero-export inverter systems** (Deye, Sunsynk, Solis, Growatt, Goodwe, EG4 and similar), the inverter actively **curtails** PV production to avoid feeding energy back into the grid when there is nowhere to put it. Typically this happens whenever the home battery is full and grid export is disabled.
-
-When this happens the sensor `fv_production` (which reports *measured* PV power, not *available* PV power) drops to roughly match `home_consumption`. Solar Surplus then computes:
-
-```
-surplus = fv_production − home_consumption ≈ 0
-```
-
-and decides there is no headroom for EV charging — **even though several kilowatts of PV capacity are sitting idle**, ready to ramp up the moment any load is applied. The EV charger never starts on a perfectly sunny day. This is a paradox: the very condition that means PV is being wasted (battery full + zero export) also masks the available surplus.
-
-#### Who needs this
-
-Enable Hybrid Inverter Mode if **all** of these apply to you:
-
-- ✅ Your inverter is a hybrid model with battery + zero-export configured
-- ✅ Your home battery is frequently full during sunny midday hours
-- ✅ Solar Surplus often shows `~0 W surplus` even on clear days
-- ✅ The EV charger does not start automatically when you expect it to
-- ✅ You can verify (in the inverter's own UI) that PV production is being capped
-
-If you have a **traditional** PV-only system, a **grid-tied non-hybrid** inverter, or you never see your home battery reach 100 %, **leave this feature OFF** — it will not improve anything and may briefly draw small amounts of power from the grid.
-
-#### How it works — probing strategy
-
-Since the inverter only ramps up PV in response to a load, the only way to discover hidden headroom is **empirical**: start the EV charger at the minimum 6 A and observe what `grid_import` does. This is exactly what Hybrid Inverter Mode does.
-
-```mermaid
-stateDiagram-v2
-    direction LR
-    [*] --> IDLE
-
-    IDLE --> PROBING: Entry conditions met\n(battery full, grid≈0, daytime, etc.)
-    IDLE --> RIDING_EDGE: charger already ON,\nsurplus pinned to EV draw\n→ session adopted
-    PROBING --> RIDING_EDGE: probe completed\nwithout grid violation
-    PROBING --> COOLDOWN_SHORT: import sustained\n→ probe FAILED
-
-    RIDING_EDGE --> RIDING_EDGE: grid stable → step up\ngrid high → step down
-    RIDING_EDGE --> COOLDOWN_SHORT: at 6A and grid still high
-    RIDING_EDGE --> IDLE: exit condition\n(toggle off, sunset, EV plugged out, ...)
-
-    COOLDOWN_SHORT --> IDLE: 2 min elapsed
-    COOLDOWN_SHORT --> COOLDOWN_LONG: ≥5 failures in 30 min
-    COOLDOWN_LONG --> IDLE: 15 min elapsed
-    COOLDOWN_LONG --> HARD_EXIT: 3rd long cooldown today
-
-    HARD_EXIT --> IDLE: next sunrise
-```
-
-If the charger is **already charging** when those conditions hold (a session started by Solar Surplus or battery support, or still running after a restart) and Solar Surplus cannot justify the next amperage level — under curtailment the surplus equals the EV's own draw — Hybrid Mode **adopts the session** and goes straight to RIDING_EDGE from the current amperage (v2.13.3). No probe is needed: the running charger already proves the load is served with grid import near zero.
-
-Two-phase probing protects against inverter slow-ramp:
-
-1. **Phase A (0–20 s, "transient grace"):** charger at 6 A, `grid_import` is **ignored**. This is the window where the inverter detects the new load and starts ramping PV up.
-2. **Phase B (20–60 s, "steady state"):** if `grid_import > evsc_grid_import_threshold` for more than `evsc_hybrid_max_import_duration` consecutive seconds → probe **FAILED** (no headroom). Otherwise → probe **SUCCEEDED**.
-
-After a successful probe, Hybrid Mode transitions to **RIDING_EDGE** where it "rides the edge" of `grid_import`:
-
-- Grid stays at or below the threshold for 60 s → step amperage **up** one level (6 → 8 → 10 → 13 → 16 → 20 → 24 → 32 A)
-- Grid exceeds threshold for `evsc_hybrid_max_import_duration` → step amperage **down** one level; the level that tripped the step-down is not re-tried for 10 minutes (anti-oscillation), then the edge is probed again
-- At 6 A and grid still high → stop and treat as a failed probe
-
-#### Cost transparency
-
-Every failed probe consumes **~23 Wh from the grid** (6 A × 230 V × 60 s). The module is designed so the **daily worst case is bounded at ≤ 350 Wh** — a fraction of one cent of electricity:
-
-- A sliding window prevents more than 5 failed probes per 30 minutes
-- The 6th failure triggers a 15-minute long cooldown
-- After 3 long cooldowns in the same day, the module disables itself until sunrise (`HARD_EXIT`)
-
-These limits are tuned so that even in the worst case (e.g. inverter that really has no headroom but conditions briefly look right), Hybrid Mode never costs more than a tenth of a kWh per day. In normal use it costs nothing — once `RIDING_EDGE` is sustained for 5 minutes, the failure counter is reset.
-
-#### How to enable
-
-1. Verify you are a candidate (see "Who needs this" above).
-2. Toggle **`switch.evsc_hybrid_inverter_mode` ON**.
-3. *(Recommended)* lower `number.evsc_check_interval` to **15–30 s** for more responsive amperage adjustments while in RIDING_EDGE. The default of 1 minute works but feels sluggish.
-4. Leave the other Hybrid parameters at their defaults initially. They can be tuned later based on observed behaviour (see "Tuning" below).
-5. Wait for a sunny day with the home battery full. Hybrid Mode will activate by itself when conditions are right.
-6. Watch `sensor.evsc_hybrid_inverter_diagnostic` and the integration logs to see what is happening.
-
-You will receive **one push notification per day** (filtered by car-owner presence) the first time probing starts. After that, no further notifications — the module operates silently.
-
-#### Tuning
-
-| Symptom | Try |
-|---|---|
-| Hybrid Mode never enters `PROBING` | Lower `evsc_hybrid_battery_full_threshold` (e.g. from 95 % to 90 %). Some inverters curtail before reaching 100 %. |
-| Every probe fails (`COOLDOWN_SHORT` then `COOLDOWN_LONG`) | Raise `evsc_hybrid_max_import_duration` to 90–120 s. Slow-ramp inverters (Solis, Growatt) need more time to react. |
-| Module enters `HARD_EXIT` too often | Your inverter probably has genuine PV constraints (small system, partial shading). Raise `evsc_hybrid_battery_full_threshold` to 100 % so probing only happens when truly full. |
-| RIDING_EDGE oscillates a lot | Raise `evsc_grid_import_threshold` slightly (from 50 W default to 100 W) for more headroom. |
-| Charging stops climbing at a low amperage (e.g. 10 A) with the battery full | Fixed in v2.13.3 (running sessions are now adopted by Hybrid Mode). Make sure the Hybrid Mode toggle is ON and the charging profile is `solar_surplus`. If it still holds, check the diagnostic: `holding below …A import ceiling` means that level really imported from the grid within the last 10 minutes. |
-
-#### Interaction with other automations
-
-Hybrid Mode is fully integrated with the existing priority hierarchy:
-
-- **Force Charge / Boost Charge / Night Smart Charge / Charger Free / Profile change** → Hybrid is **forced to exit** gracefully. The EV charger is stopped, state returns to IDLE, the other automation takes over.
-- **Priority Balancer = HOME** → Hybrid cannot start (the home battery's needs come first).
-- **Priority Balancer = EV_FREE** → Hybrid is allowed to continue **only if the home battery is at 100 %** (strict). The moment it drops to 99 %, Hybrid exits gracefully to preserve the battery for the evening.
-- **Sunset buffer (90 min)** → Hybrid never starts a probe in the last 90 minutes before sunset, to avoid draining the home battery during fading solar.
-
-#### Diagnostic sensor
-
-`sensor.evsc_hybrid_inverter_diagnostic` exposes the full state machine in real time:
-
-| State string | Meaning |
-|---|---|
-| `IDLE` | Waiting for entry conditions |
-| `PROBING (XX/60s)` | Currently probing at 6 A, XX seconds elapsed of the probe_duration window |
-| `RIDING_EDGE @ 10A` | Actively riding the import edge at 10 A |
-| `COOLDOWN_SHORT (110s left)` | Recovering from a single failed probe |
-| `COOLDOWN_LONG (8m 30s left)` | Recovering from N failures in 30 minutes |
-| `HARD_EXIT (until sunrise)` | Disabled for the day after 3 long cooldowns |
-
-The sensor's **attributes** carry the full diagnostic snapshot: failed probes in window, long cooldowns today, last probe time, current target amps, cooldown timers, and reason for the last state transition.
-
-#### Compatibility
-
-Hybrid Inverter Mode is **inverter-agnostic** by design — it uses no inverter-specific API and only reads the same `grid_import` and `soc_home` sensors you already configured during setup. Any hybrid inverter that exposes those two values via Home Assistant should work.
-
-If you test it with your specific inverter brand/model, please share your results (success or otherwise) on **[issue #20](https://github.com/antbald/ha-ev-smart-charger/issues/20)** so other users can benefit.
-
-**Key entities:** `evsc_hybrid_inverter_mode`, `evsc_hybrid_battery_full_threshold`, `evsc_hybrid_probe_duration`, `evsc_hybrid_max_import_duration`, `evsc_hybrid_max_failed_probes`, `sensor.evsc_hybrid_inverter_diagnostic`
-
----
-
 ### Cached EV SOC
 
 Many cloud-based EV integrations (e.g., manufacturer apps) expose SOC sensors that temporarily go `unknown` or `unavailable` due to API rate limits or connectivity issues. This causes downstream automations to fail or make wrong decisions.
@@ -1276,7 +1127,7 @@ The card uses an Apple-inspired visual language:
 The card now ships with two tabs at the top:
 
 - **Dashboard** — operational only. Hero with dual SOC ring + charging pill, Override & Boost stack, Weekly Planner (per-day EV/home SOC targets + Car Ready toggle), bento-style Night Smart Charge card with crescent illustration, and Charging Profile chips.
-- **Settings** — every configuration parameter grouped under expandable accordion categories: Solar Surplus, Night Smart Charge, Home Battery Support, Hybrid Inverter Mode, Boost Schedule, Notifications, Logging & Diagnostics. Each parameter shows its title, the underlying entity key, a description of what it does and the default/range — all in the language detected from your Home Assistant profile (`en` / `it` / `nl`, English fallback for everything else).
+- **Settings** — every configuration parameter grouped under expandable accordion categories: Solar Surplus, Night Smart Charge, Home Battery Support, Boost Schedule, Notifications, Logging & Diagnostics. Each parameter shows its title, the underlying entity key, a description of what it does and the default/range — all in the language detected from your Home Assistant profile (`en` / `it` / `nl`, English fallback for everything else).
 
 Click a category to expand its parameters inline; clicking again collapses it. The Dashboard view stays clutter-free while every knob remains one click away.
 

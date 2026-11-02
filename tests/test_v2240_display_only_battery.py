@@ -146,7 +146,6 @@ async def test_reconfigure_to_display_only_keeps_the_soc_sensor(hass):
             CONF_GRID_IMPORT: "sensor.grid",
         }
     )
-    await flow.async_step_reconfigure_hybrid_inverter({})
     await flow.async_step_reconfigure_pv_forecast({})
     hass.services.async_register("notify", "mobile_app_phone", lambda call: None)
     await flow.async_step_reconfigure_notifications(
