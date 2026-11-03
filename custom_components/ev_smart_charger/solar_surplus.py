@@ -56,6 +56,7 @@ from .localization import translate_runtime
 from .power_model import (
     ChargingModel,
     is_disconnected_status,
+    is_unavailable_status,
     is_ev_full,
     read_ev_soc_limit,
 )
@@ -1024,14 +1025,24 @@ class SolarSurplusAutomation:
         # warns + returns (transient sensor outage, unchanged behaviour).
         if self._charger_status:
             charger_status = get_state(self.hass, self._charger_status)
-            if not charger_status:
+            # v2.36.1: get_state returns the literal 'unavailable' / 'unknown'
+            # string, which passed as "connected" before. The charger is not
+            # reporting, so nothing can be started: skip like a missing state.
+            if is_unavailable_status(charger_status):
                 # v2.34.2: right after a restart the status sensor is not up yet.
                 # v2.34.3: once per outage, not every tick.
                 if in_startup_grace(self.hass) or self._status_unavailable_warned:
                     self.logger.debug("Charger status unavailable")
                 else:
                     self._status_unavailable_warned = True
-                    self.logger.warning("Charger status unavailable")
+                    self.logger.warning("Charger status unavailable - charger not responding")
+                await self._update_diagnostic_sensor(
+                    "SKIPPED: Charger offline",
+                    {
+                        "reason": f"Charger status is '{charger_status}'",
+                        "last_check": dt_util.now().isoformat(),
+                    },
+                )
                 return
             self._status_unavailable_warned = False
 
@@ -1056,7 +1067,7 @@ class SolarSurplusAutomation:
                 )
                 return
 
-            self.logger.info(f"Charger status: '{charger_status}' - proceeding")
+            self.logger.debug(f"Charger status: '{charger_status}' - proceeding")
         else:
             self.logger.info("No charger status sensor - proceeding (status optional)")
         charger_is_on = await self.charger_controller.is_charging()

@@ -327,7 +327,7 @@ class ManualStopControl:
                 "charger_status": new_state.state,
                 "previous_status": old_state.state,
             },
-            severity="warning",
+            severity="info",
         )
         self.logger.separator()
 
@@ -352,7 +352,7 @@ class ManualStopControl:
             reason_code="override_interlock",
             reason_detail=f"{entity_id} turned off: {reason}",
             raw_values={"entity_id": entity_id},
-            severity="warning",
+            severity="info",
         )
 
     @callback
@@ -405,7 +405,7 @@ class ManualStopControl:
             reason_code="manual_stop_engaged",
             reason_detail=reason,
             raw_values={"holding": self._holding},
-            severity="warning",
+            severity="info" if success else "warning",
         )
 
     def _release_control(self, reason: str) -> None:

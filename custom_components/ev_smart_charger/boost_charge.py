@@ -28,7 +28,12 @@ from .const import (
     PRIORITY_BOOST_CHARGE,
 )
 from .localization import translate_runtime
-from .power_model import cap_ev_target, is_disconnected_status, read_ev_soc_limit
+from .power_model import (
+    cap_ev_target,
+    is_disconnected_status,
+    is_unavailable_status,
+    read_ev_soc_limit,
+)
 from .runtime import EVSCRuntimeData
 from .utils import state_helper
 from .utils.logging_helper import EVSCLogger
@@ -271,6 +276,18 @@ class BoostCharge:
         state = self.hass.states.get(entity)
         return state is not None and is_disconnected_status(state.state)
 
+    def _charger_offline(self) -> bool:
+        """True when the mapped status sensor has no value (v2.36.1).
+
+        The charger integration is not reporting, so a start command cannot
+        reach it. Only blocks a start; a running session is left alone.
+        """
+        entity = self.config.get(CONF_EV_CHARGER_STATUS)
+        if not entity:
+            return False
+        state = self.hass.states.get(entity)
+        return is_unavailable_status(state.state if state else None)
+
     @callback
     async def _async_boost_switch_changed(self, event) -> None:
         """Handle boost switch state changes."""
@@ -315,6 +332,12 @@ class BoostCharge:
         if self._car_disconnected():
             await self._handle_start_failure(
                 translate_runtime(self.hass, "boost.reason.unplugged")
+            )
+            return
+
+        if self._charger_offline():
+            await self._handle_start_failure(
+                translate_runtime(self.hass, "boost.reason.charger_offline")
             )
             return
 
@@ -709,6 +732,9 @@ class BoostCharge:
             charger_status = state_helper.get_state(self.hass, charger_status_entity)
             if is_disconnected_status(charger_status):
                 self.logger.debug("Schedule start trigger: car not plugged in, skipping")
+                return
+            if is_unavailable_status(charger_status):
+                self.logger.info("Schedule start trigger: charger not responding, skipping")
                 return
 
         # Check if SOC target is already met — skip silently

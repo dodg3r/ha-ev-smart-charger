@@ -625,6 +625,7 @@ const FRONTEND_LOCALES = {
     "metric.charger": "Charger",
     "charger.no_car": "No car",
     "charger.connected": "Car connected",
+    "charger.offline": "No contact",
     "charger.full": "Fully charged",
     "car.label": "Car",
     "reason.surplus_low_need": "Car connected · solar surplus {kw} kW, too little to start (needs {need} kW)",
@@ -652,6 +653,7 @@ const FRONTEND_LOCALES = {
     "reason.boost": "Boost in control",
     "status.capped_by_fuse": "capped by main fuse ({phase})",
     "status.no_car": "No car connected",
+    "status.charger_offline": "Charger not responding · status unavailable",
     "status.manual_stop": "Stopped manually · Stop Charging is on",
     "status.fuse_paused": "Paused by main fuse protection · {phase} at {amps} A of {fuse} A",
     "status.fuse_invalid": "Paused · main fuse meter data unavailable",
@@ -843,6 +845,7 @@ const FRONTEND_LOCALES = {
     "metric.charger": "Laddare",
     "charger.no_car": "Ingen bil",
     "charger.connected": "Bil ansluten",
+    "charger.offline": "Ingen kontakt",
     "charger.full": "Fulladdad",
     "car.label": "Bil",
     "reason.surplus_low_need": "Bil ansluten · solöverskott {kw} kW, för lite för att starta (kräver {need} kW)",
@@ -870,6 +873,7 @@ const FRONTEND_LOCALES = {
     "reason.boost": "Boost styr",
     "status.capped_by_fuse": "begränsad av huvudsäkringen ({phase})",
     "status.no_car": "Ingen bil ansluten",
+    "status.charger_offline": "Laddaren svarar inte · status otillgänglig",
     "status.manual_stop": "Stoppad manuellt · Stoppa laddning är på",
     "status.fuse_paused": "Pausad av säkringsskyddet · {phase} på {amps} A av {fuse} A",
     "status.fuse_invalid": "Pausad · mätardata för huvudsäkringen saknas",
@@ -1061,6 +1065,7 @@ const FRONTEND_LOCALES = {
     "metric.charger": "Caricatore",
     "charger.no_car": "Nessuna auto",
     "charger.connected": "Auto collegata",
+    "charger.offline": "Nessun contatto",
     "charger.full": "Carica completa",
     "car.label": "Auto",
     "reason.surplus_low_need": "Auto collegata · surplus {kw} kW, troppo poco per iniziare (servono {need} kW)",
@@ -1088,6 +1093,7 @@ const FRONTEND_LOCALES = {
     "reason.boost": "Boost attivo",
     "status.capped_by_fuse": "limitata dal fusibile principale ({phase})",
     "status.no_car": "Nessuna auto collegata",
+    "status.charger_offline": "Il caricatore non risponde · stato non disponibile",
     "status.manual_stop": "Fermata manualmente · Blocca ricarica attivo",
     "status.fuse_paused": "In pausa per protezione fusibile principale · {phase} a {amps} A su {fuse} A",
     "status.fuse_invalid": "In pausa · dati del contatore non disponibili",
@@ -1279,6 +1285,7 @@ const FRONTEND_LOCALES = {
     "metric.charger": "Lader",
     "charger.no_car": "Geen auto",
     "charger.connected": "Auto aangesloten",
+    "charger.offline": "Geen contact",
     "charger.full": "Volledig geladen",
     "car.label": "Auto",
     "reason.surplus_low_need": "Auto aangesloten · overschot {kw} kW, te weinig om te starten (nodig {need} kW)",
@@ -1306,6 +1313,7 @@ const FRONTEND_LOCALES = {
     "reason.boost": "Boost actief",
     "status.capped_by_fuse": "begrensd door hoofdzekering ({phase})",
     "status.no_car": "Geen auto aangesloten",
+    "status.charger_offline": "Lader reageert niet · status niet beschikbaar",
     "status.manual_stop": "Handmatig gestopt · Laden stoppen staat aan",
     "status.fuse_paused": "Gepauzeerd door hoofdzekeringbeveiliging · {phase} op {amps} A van {fuse} A",
     "status.fuse_invalid": "Gepauzeerd · meetgegevens hoofdzekering niet beschikbaar",
@@ -2230,10 +2238,14 @@ class EvSmartChargerDashboard extends HTMLElement {
   /**
    * v2.23.0: which way the car is connected, from the status sensor.
    * "none" (unplugged) / "complete" / "connected" / null (unknown).
+   * v2.36.1: "offline" when a status sensor is mapped but has no value
+   * (unknown / unavailable): the charger is not reporting.
    */
   _carConnection() {
-    const status = this._stateObj(this._config.charger_status_entity)?.state;
-    if (!status || ["unknown", "unavailable"].includes(status)) return null;
+    const entity = this._config.charger_status_entity;
+    if (!entity) return null;
+    const status = this._stateObj(entity)?.state;
+    if (!status || ["unknown", "unavailable"].includes(status)) return "offline";
     const norm = String(status).trim().toLowerCase().replace(/[\s-]+/g, "_");
     if ([
       "charger_free", "available", "disconnected", "unplugged", "not_connected",
@@ -2522,6 +2534,9 @@ class EvSmartChargerDashboard extends HTMLElement {
     if (conn === "none") {
       return { text: this._t("status.no_car"), tone: "idle" };
     }
+    if (conn === "offline") {
+      return { text: this._t("status.charger_offline"), tone: "alert" };
+    }
     if (fuse?.kind === "paused") return { text: fuse.text, tone: "alert" };
     if (conn === "complete") {
       return { text: this._t("status.complete"), tone: "done" };
@@ -2570,6 +2585,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     if (this._isOn(this._entityId("manualStop"))) return this._t("charger.stopped");
     const conn = this._carConnection();
     if (conn === "none") return this._t("charger.no_car");
+    if (conn === "offline") return this._t("charger.offline");
     if (this._fuseNote()?.kind === "paused") return this._t("charger.fuse_paused");
     const ev = this._numericState(this._config.ev_soc_entity);
     if (conn === "complete" || this._isEvFull(ev)) return this._t("charger.full");

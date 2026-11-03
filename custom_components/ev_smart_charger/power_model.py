@@ -183,6 +183,16 @@ def is_disconnected_status(status: str | None) -> bool:
     return str(status).strip().lower() in _DISCONNECTED_STATUSES
 
 
+def is_unavailable_status(status: str | None) -> bool:
+    """True when a mapped status sensor has no value (v2.36.1).
+
+    ``unknown`` / ``unavailable`` / empty mean the charger integration is not
+    reporting, so the car's plug state is unknown: callers must not treat it
+    as connected (no start), nor as unplugged (no stop of a running session).
+    """
+    return status is None or str(status).strip().lower() in ("", "unknown", "unavailable")
+
+
 def is_charge_complete_status(status: str | None) -> bool:
     """True when the textual charger status unambiguously means 'charge done'.
 

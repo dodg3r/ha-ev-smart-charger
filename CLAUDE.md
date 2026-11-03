@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.36.0
+**Current Version:** 2.36.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,31 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.36.1 (2026-11-03) — fork dodg3r
+**FIX: an unavailable charger status counted as a connected car**
+
+Reported from HiBerry (OCPP charger offline): the dashboard said "Car
+connected · waiting for solar surplus" and the log "Charger status:
+'unavailable' - proceeding". `state_helper.get_state` returns the literal
+`unavailable` / `unknown` string, so the "status missing" guard in Solar
+Surplus never fired and `is_disconnected_status()` read it as connected.
+- NEW `power_model.is_unavailable_status()` (None / empty / unknown /
+  unavailable).
+- Solar Surplus step 7: an unavailable status skips the tick (warns once per
+  outage after the startup grace) and publishes `SKIPPED: Charger offline`;
+  the per-tick "Charger status: … - proceeding" line is DEBUG.
+- Boost: no start (manual or scheduled) while the status is unavailable
+  (`_charger_offline()`, `boost.reason.charger_offline` EN/IT/NL); a running
+  session is not stopped by an outage.
+- Dashboard: `_carConnection()` returns `offline` when a mapped status has
+  no value; hero status "Charger not responding · status unavailable"
+  (alert tone), charger tile "No contact". EN/SV/IT/NL.
+- Manual stop events (engaged, auto-disarm, interlock) log at INFO; only a
+  failed stop is a WARNING.
+- Tests: NEW `tests/test_v2361_charger_offline.py`.
+
+---
 
 ### v2.36.0 (2026-11-02) — fork dodg3r
 **Hybrid Inverter Mode removed; Solar / Off-Grid Max Amperage default 16 A**
