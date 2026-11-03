@@ -50,6 +50,7 @@ from .planned_night_charge import PlannedNightCharge as NightSmartCharge
 from .boost_charge import BoostCharge
 from .automations import SmartChargerBlocker
 from .manual_stop import ManualStopControl
+from .car_auto_select import CarAutoSelect
 from .live_activity_monitor import EVChargingLiveActivityMonitor
 from .power_model import ChargingModel
 from .solar_surplus import SolarSurplusAutomation
@@ -97,6 +98,7 @@ async def _async_cleanup_partial_setup(runtime_data: EVSCRuntimeData) -> None:
         ("solar_surplus", "Solar Surplus automation"),
         ("smart_blocker", "Smart Charger Blocker"),
         ("manual_stop", "Manual Stop control"),
+        ("car_auto_select", "Automatic car selection"),
         ("boost_charge", "Boost Charge"),
         ("night_smart_charge", "Night Smart Charge"),
         ("priority_balancer", "Priority Balancer"),
@@ -498,6 +500,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             manual_stop = None
             runtime_data.manual_stop = None
 
+        # ========== PHASE 6.3: AUTOMATIC CAR SELECTION (v2.37.0) ==========
+        try:
+            car_auto_select = CarAutoSelect(hass, entry)
+            await car_auto_select.async_setup()
+            runtime_data.car_auto_select = car_auto_select
+        except Exception:
+            _LOGGER.exception("Failed to set up automatic car selection")
+            runtime_data.car_auto_select = None
+
         # ========== PHASE 7: CREATE SOLAR SURPLUS (depends on Priority Balancer & Charger Controller) ==========
         _LOGGER.info("☀️  Phase 7: Creating Solar Surplus automation")
         solar_surplus = SolarSurplusAutomation(
@@ -737,6 +748,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if smart_blocker:
         _LOGGER.info("🗑️  Removing Smart Charger Blocker")
         await smart_blocker.async_remove()
+
+    car_auto_select = runtime_data.car_auto_select
+    if car_auto_select:
+        await car_auto_select.async_remove()
 
     manual_stop = runtime_data.manual_stop
     if manual_stop:

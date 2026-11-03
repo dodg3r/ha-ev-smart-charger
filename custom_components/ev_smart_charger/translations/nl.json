@@ -392,17 +392,21 @@
       },
       "reconfigure_car": {
         "title": "Autoprofiel",
-        "description": "Geef de auto een vrije naam, bijv. het kenteken.",
+        "description": "Geef de auto een vrije naam, bijv. het kenteken. Stel locatie en verbindingsstatus in om automatisch naar deze auto te wisselen als hij thuis wordt aangesloten.",
         "data": {
           "name": "Naam",
           "soc_car": "Batterij-SOC",
           "ev_soc_limit": "Laadlimiet (optioneel)",
-          "battery_capacity": "Batterijcapaciteit (kWh)"
+          "battery_capacity": "Batterijcapaciteit (kWh)",
+          "car_location": "Locatie (optioneel)",
+          "car_connection": "Verbindingsstatus (optioneel)"
         },
         "data_description": {
           "soc_car": "Sensor met de laadtoestand van deze auto in procenten.",
           "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten. De waarde telt als vol.",
-          "battery_capacity": "Bruikbare batterijcapaciteit, gebruikt voor het plannen van nachtladen."
+          "battery_capacity": "Bruikbare batterijcapaciteit, gebruikt voor het plannen van nachtladen.",
+          "car_location": "Locatie van de auto, bijv. device_tracker.mijn_auto_location. Samen met de verbindingsstatus wordt deze auto automatisch gekozen als hij thuis is.",
+          "car_connection": "Sensor die aangeeft of de laadkabel is aangesloten, bijv. sensor.mijn_auto_charging_connection_status. Deze auto wordt de actieve auto als hij connected meldt en thuis is."
         }
       },
       "cars": {
@@ -414,17 +418,21 @@
       },
       "car": {
         "title": "Autoprofiel",
-        "description": "Geef de auto een vrije naam, bijv. het kenteken.",
+        "description": "Geef de auto een vrije naam, bijv. het kenteken. Stel locatie en verbindingsstatus in om automatisch naar deze auto te wisselen als hij thuis wordt aangesloten.",
         "data": {
           "name": "Naam",
           "soc_car": "Batterij-SOC",
           "ev_soc_limit": "Laadlimiet (optioneel)",
-          "battery_capacity": "Batterijcapaciteit (kWh)"
+          "battery_capacity": "Batterijcapaciteit (kWh)",
+          "car_location": "Locatie (optioneel)",
+          "car_connection": "Verbindingsstatus (optioneel)"
         },
         "data_description": {
           "soc_car": "Sensor met de laadtoestand van deze auto in procenten.",
           "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten. De waarde telt als vol.",
-          "battery_capacity": "Bruikbare batterijcapaciteit, gebruikt voor het plannen van nachtladen."
+          "battery_capacity": "Bruikbare batterijcapaciteit, gebruikt voor het plannen van nachtladen.",
+          "car_location": "Locatie van de auto, bijv. device_tracker.mijn_auto_location. Samen met de verbindingsstatus wordt deze auto automatisch gekozen als hij thuis is.",
+          "car_connection": "Sensor die aangeeft of de laadkabel is aangesloten, bijv. sensor.mijn_auto_charging_connection_status. Deze auto wordt de actieve auto als hij connected meldt en thuis is."
         }
       }
     },
@@ -643,17 +651,21 @@
       },
       "car": {
         "title": "Autoprofiel",
-        "description": "Geef de auto een vrije naam, bijv. het kenteken.",
+        "description": "Geef de auto een vrije naam, bijv. het kenteken. Stel locatie en verbindingsstatus in om automatisch naar deze auto te wisselen als hij thuis wordt aangesloten.",
         "data": {
           "name": "Naam",
           "soc_car": "Batterij-SOC",
           "ev_soc_limit": "Laadlimiet (optioneel)",
-          "battery_capacity": "Batterijcapaciteit (kWh)"
+          "battery_capacity": "Batterijcapaciteit (kWh)",
+          "car_location": "Locatie (optioneel)",
+          "car_connection": "Verbindingsstatus (optioneel)"
         },
         "data_description": {
           "soc_car": "Sensor met de laadtoestand van deze auto in procenten.",
           "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten. De waarde telt als vol.",
-          "battery_capacity": "Bruikbare batterijcapaciteit, gebruikt voor het plannen van nachtladen."
+          "battery_capacity": "Bruikbare batterijcapaciteit, gebruikt voor het plannen van nachtladen.",
+          "car_location": "Locatie van de auto, bijv. device_tracker.mijn_auto_location. Samen met de verbindingsstatus wordt deze auto automatisch gekozen als hij thuis is.",
+          "car_connection": "Sensor die aangeeft of de laadkabel is aangesloten, bijv. sensor.mijn_auto_charging_connection_status. Deze auto wordt de actieve auto als hij connected meldt en thuis is."
         }
       }
     },

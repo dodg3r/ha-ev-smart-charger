@@ -392,17 +392,21 @@
       },
       "reconfigure_car": {
         "title": "Profilo auto",
-        "description": "Dai all'auto un nome a piacere, ad es. la targa.",
+        "description": "Dai all'auto un nome a piacere, ad es. la targa. Imposta posizione e stato connessione per passare automaticamente a quest'auto quando viene collegata a casa.",
         "data": {
           "name": "Nome",
           "soc_car": "SOC batteria",
           "ev_soc_limit": "Limite di carica (opzionale)",
-          "battery_capacity": "Capacità batteria (kWh)"
+          "battery_capacity": "Capacità batteria (kWh)",
+          "car_location": "Posizione (facoltativo)",
+          "car_connection": "Stato connessione (facoltativo)"
         },
         "data_description": {
           "soc_car": "Sensore con lo stato di carica di quest'auto in percentuale.",
           "ev_soc_limit": "Sensore con il limite di carica dell'auto in percentuale. Il suo valore conta come carica completa.",
-          "battery_capacity": "Capacità utile della batteria, usata per pianificare la ricarica notturna."
+          "battery_capacity": "Capacità utile della batteria, usata per pianificare la ricarica notturna.",
+          "car_location": "Posizione dell'auto, es. device_tracker.mia_auto_location. Insieme allo stato connessione seleziona l'auto automaticamente quando è a casa.",
+          "car_connection": "Sensore che indica se il cavo di ricarica è collegato, es. sensor.mia_auto_charging_connection_status. L'auto diventa quella attiva quando è connected e l'auto è a casa."
         }
       },
       "cars": {
@@ -414,17 +418,21 @@
       },
       "car": {
         "title": "Profilo auto",
-        "description": "Dai all'auto un nome a piacere, ad es. la targa.",
+        "description": "Dai all'auto un nome a piacere, ad es. la targa. Imposta posizione e stato connessione per passare automaticamente a quest'auto quando viene collegata a casa.",
         "data": {
           "name": "Nome",
           "soc_car": "SOC batteria",
           "ev_soc_limit": "Limite di carica (opzionale)",
-          "battery_capacity": "Capacità batteria (kWh)"
+          "battery_capacity": "Capacità batteria (kWh)",
+          "car_location": "Posizione (facoltativo)",
+          "car_connection": "Stato connessione (facoltativo)"
         },
         "data_description": {
           "soc_car": "Sensore con lo stato di carica di quest'auto in percentuale.",
           "ev_soc_limit": "Sensore con il limite di carica dell'auto in percentuale. Il suo valore conta come carica completa.",
-          "battery_capacity": "Capacità utile della batteria, usata per pianificare la ricarica notturna."
+          "battery_capacity": "Capacità utile della batteria, usata per pianificare la ricarica notturna.",
+          "car_location": "Posizione dell'auto, es. device_tracker.mia_auto_location. Insieme allo stato connessione seleziona l'auto automaticamente quando è a casa.",
+          "car_connection": "Sensore che indica se il cavo di ricarica è collegato, es. sensor.mia_auto_charging_connection_status. L'auto diventa quella attiva quando è connected e l'auto è a casa."
         }
       }
     },
@@ -643,17 +651,21 @@
       },
       "car": {
         "title": "Profilo auto",
-        "description": "Dai all'auto un nome a piacere, ad es. la targa.",
+        "description": "Dai all'auto un nome a piacere, ad es. la targa. Imposta posizione e stato connessione per passare automaticamente a quest'auto quando viene collegata a casa.",
         "data": {
           "name": "Nome",
           "soc_car": "SOC batteria",
           "ev_soc_limit": "Limite di carica (opzionale)",
-          "battery_capacity": "Capacità batteria (kWh)"
+          "battery_capacity": "Capacità batteria (kWh)",
+          "car_location": "Posizione (facoltativo)",
+          "car_connection": "Stato connessione (facoltativo)"
         },
         "data_description": {
           "soc_car": "Sensore con lo stato di carica di quest'auto in percentuale.",
           "ev_soc_limit": "Sensore con il limite di carica dell'auto in percentuale. Il suo valore conta come carica completa.",
-          "battery_capacity": "Capacità utile della batteria, usata per pianificare la ricarica notturna."
+          "battery_capacity": "Capacità utile della batteria, usata per pianificare la ricarica notturna.",
+          "car_location": "Posizione dell'auto, es. device_tracker.mia_auto_location. Insieme allo stato connessione seleziona l'auto automaticamente quando è a casa.",
+          "car_connection": "Sensore che indica se il cavo di ricarica è collegato, es. sensor.mia_auto_charging_connection_status. L'auto diventa quella attiva quando è connected e l'auto è a casa."
         }
       }
     },

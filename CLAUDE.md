@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.36.1
+**Current Version:** 2.37.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,28 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.37.0 (2026-11-03) — fork dodg3r
+**Automatic car selection: the car that is home and plugged in becomes the active car**
+
+Requested by the maintainer (Volvo EX90: `device_tracker.volvo_ex90_location`
+= `home` and `sensor.volvo_ex90_charging_connection_status` = `connected`).
+- Two optional fields per car profile (car form in all three flows, EN/IT/NL):
+  `CONF_CAR_LOCATION` (device_tracker / person) and `CONF_CAR_CONNECTION`
+  (sensor / binary_sensor), cleared → None. Shown in the `evsc_active_car`
+  select's `cars` attribute (`location_entity`, `connection_entity`).
+- NEW `car_auto_select.py` (`CarAutoSelect`, Phase 6.3): tracks those
+  entities; a car matches when every mapped condition holds (location in
+  `CAR_LOCATION_HOME_STATES`, connection in `CAR_CONNECTED_STATES`:
+  connected / on / plugged_in / plugged, case-insensitive). Only the edge
+  not-matching → matching acts, and only when exactly one car arrives: the
+  car is applied like the select (`apply_active_car` + `async_update_entry`,
+  which reloads). At setup the match state is only recorded, so a manual
+  choice survives the reload; no match or an unplug keeps the choice; an
+  already active car is not re-applied.
+- Tests: NEW `tests/test_v2370_car_auto_select.py`.
+
+---
 
 ### v2.36.1 (2026-11-03) — fork dodg3r
 **FIX: an unavailable charger status counted as a connected car**

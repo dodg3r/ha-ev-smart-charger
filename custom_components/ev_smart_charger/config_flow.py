@@ -11,6 +11,8 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_ACTIVE_CAR,
     CONF_CAR_NAME,
+    CONF_CAR_CONNECTION,
+    CONF_CAR_LOCATION,
     CONF_CARS,
     CONF_BATTERY_CAPACITY,
     CONF_BATTERY_POWER,
@@ -830,6 +832,12 @@ def _car_schema(car: dict[str, Any] | None = None) -> vol.Schema:
                 vol.Coerce(float),
                 vol.Range(min=MIN_BATTERY_CAPACITY, max=MAX_BATTERY_CAPACITY),
             ),
+            vol.Optional(
+                CONF_CAR_LOCATION, **_field_config(car.get(CONF_CAR_LOCATION))
+            ): _entity_selector(["device_tracker", "person"]),
+            vol.Optional(
+                CONF_CAR_CONNECTION, **_field_config(car.get(CONF_CAR_CONNECTION))
+            ): _entity_selector(["sensor", "binary_sensor"]),
         }
     )
 
@@ -940,6 +948,8 @@ class _StepNavigator:
             car = dict(user_input)
             car[CONF_CAR_NAME] = str(car.get(CONF_CAR_NAME) or "").strip()
             car[CONF_EV_SOC_LIMIT] = car.get(CONF_EV_SOC_LIMIT) or None
+            car[CONF_CAR_LOCATION] = car.get(CONF_CAR_LOCATION) or None
+            car[CONF_CAR_CONNECTION] = car.get(CONF_CAR_CONNECTION) or None
             others = [
                 c[CONF_CAR_NAME] for i, c in enumerate(cars) if i != self._editing_car
             ]

@@ -14,6 +14,8 @@ from .const import (
     CHARGING_PROFILES,
     CONF_ACTIVE_CAR,
     CONF_BATTERY_CAPACITY,
+    CONF_CAR_CONNECTION,
+    CONF_CAR_LOCATION,
     CONF_CAR_NAME,
     CONF_EV_SOC_LIMIT,
     CONF_SOC_CAR,
@@ -163,6 +165,8 @@ class EVSCCarSelect(EVSCEntityMixin, SelectEntity):
                     "ev_soc_entity": car.get(CONF_SOC_CAR),
                     "ev_soc_limit_entity": car.get(CONF_EV_SOC_LIMIT),
                     "battery_capacity_kwh": car.get(CONF_BATTERY_CAPACITY),
+                    "location_entity": car.get(CONF_CAR_LOCATION),
+                    "connection_entity": car.get(CONF_CAR_CONNECTION),
                 }
                 for car in get_cars(self._data)
             ],

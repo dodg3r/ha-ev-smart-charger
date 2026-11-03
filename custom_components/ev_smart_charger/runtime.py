@@ -46,6 +46,7 @@ class EVSCRuntimeData:
     live_activity_monitor: Any | None = None
     smart_blocker: Any | None = None
     manual_stop: Any | None = None  # Manual Stop Charging control (v2.10.0 — issue #55)
+    car_auto_select: Any | None = None  # Automatic car selection (v2.37.0)
     solar_surplus: Any | None = None
     log_manager: Any | None = None
     diagnostic_manager: Any | None = None

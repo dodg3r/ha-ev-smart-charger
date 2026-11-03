@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.36.1"
+VERSION = "2.37.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -720,6 +720,14 @@ GUEST_CAR = "Guest"
 # Names a user car may not take (they read as the guest profile).
 RESERVED_CAR_NAMES = frozenset({"guest", "gäst", "gast", "ospite"})
 HELPER_ACTIVE_CAR_SUFFIX = "evsc_active_car"
+# v2.37.0: automatic car selection. Optional per car: a location entity
+# (device_tracker / person, matches "home") and a connection sensor (matches
+# "connected", or "on" for a binary_sensor). When both mapped conditions of a
+# car become true, that car becomes the active one.
+CONF_CAR_LOCATION = "car_location"
+CONF_CAR_CONNECTION = "car_connection"
+CAR_LOCATION_HOME_STATES = frozenset({"home"})
+CAR_CONNECTED_STATES = frozenset({"connected", "on", "plugged_in", "plugged"})
 
 
 def guest_car() -> dict:
@@ -759,6 +767,12 @@ def get_own_cars(config: dict) -> list[dict]:
 def get_cars(config: dict) -> list[dict]:
     """All profiles: the guest first, then the user's own cars."""
     return [guest_car(), *get_own_cars(config)]
+
+
+def car_has_auto_select(car: dict) -> bool:
+    """A car takes part in automatic selection when at least one of its
+    location / connection entities is mapped."""
+    return bool(car.get(CONF_CAR_LOCATION) or car.get(CONF_CAR_CONNECTION))
 
 
 def get_active_car_name(config: dict) -> str:
