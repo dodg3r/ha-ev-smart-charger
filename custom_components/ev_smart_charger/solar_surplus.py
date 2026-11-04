@@ -49,12 +49,17 @@ from .const import (
     SURPLUS_INCREASE_DELAY,
     NIGHT_CHARGE_COOLDOWN_SECONDS,
     NOTIF_ID_BALANCER_DISABLED,
+    CHARGER_SETTLE_SECONDS,
+    SOLAR_RESTART_BLOCK_SECONDS,
+    SOLAR_RECONNECT_BLOCK_SECONDS,
     has_home_battery,
 )
 from .localization import translate_runtime
 from .power_model import (
     ChargingModel,
+    is_active_charging_status,
     is_disconnected_status,
+    is_evse_paused_status,
     is_unavailable_status,
     is_ev_full,
     read_ev_soc_limit,
@@ -161,6 +166,13 @@ class SolarSurplusAutomation:
         self._spike_check_unsub = None         # async_call_later cancel handle
         self._spike_baseline_production = None # last per-tick production reading (W)
         self._last_spike_action = None         # monotonic ts of last fast step-down
+
+        # v2.40.0: charger session settling (monotonic timestamps).
+        self._settle_until: float | None = None       # no decisions before this
+        self._start_block_until: float | None = None  # no solar start before this
+        self._status_charging: bool | None = None     # last status was "charging"
+        self._status_disconnected: bool | None = None  # last status was "no car"
+        self._status_unsub = None
 
         # State tracking
         self._last_grid_import_high = None  # Timestamp when grid import exceeded threshold
@@ -557,6 +569,17 @@ class SolarSurplusAutomation:
                 f"Consumption-spike listener registered on {', '.join(grid_sensors)}"
             )
 
+        # v2.40.0: follow the charger status, so a start, a stop or an
+        # external load balancer's pause / resume opens a settle window.
+        if self._charger_status:
+            state = self.hass.states.get(self._charger_status)
+            self._note_status(state.state if state else None, initial=True)
+            self._status_unsub = async_track_state_change_event(
+                self.hass,
+                [self._charger_status],
+                self._async_charger_status_changed,
+            )
+
         self.logger.success("Solar Surplus automation initialized")
         await self._start_timer()
 
@@ -656,6 +679,65 @@ class SolarSurplusAutomation:
     # fast-down / slow-up. Production drops always take the legacy path.
     # ─────────────────────────────────────────────────────────────
 
+    # ----- v2.40.0: settle window / start block ---------------------------
+    def _arm_settle(self, seconds: float = CHARGER_SETTLE_SECONDS) -> None:
+        """No Solar Surplus decision for ``seconds`` (readings are catching up)."""
+        until = time.monotonic() + seconds
+        if self._settle_until is None or until > self._settle_until:
+            self._settle_until = until
+
+    def _arm_start_block(self, seconds: float) -> None:
+        """No solar start for ``seconds``."""
+        until = time.monotonic() + seconds
+        if self._start_block_until is None or until > self._start_block_until:
+            self._start_block_until = until
+
+    def _settle_remaining(self) -> float:
+        if self._settle_until is None:
+            return 0.0
+        return max(0.0, self._settle_until - time.monotonic())
+
+    def _start_block_remaining(self) -> float:
+        if self._start_block_until is None:
+            return 0.0
+        return max(0.0, self._start_block_until - time.monotonic())
+
+    def _note_status(self, status: str | None, initial: bool = False) -> None:
+        """Track the charger status and open the windows on a change.
+
+        To / from "charging" (whoever caused it: this integration, the car or
+        an external load balancer) -> settle window, because the power reading
+        lags up to a minute after a start and the grid reading after a stop.
+        Charging stopped -> no solar start for a while. Car plugged in -> a
+        short wait before a solar start.
+        """
+        if is_unavailable_status(status):
+            return
+        charging = is_active_charging_status(status)
+        disconnected = is_disconnected_status(status)
+        if not initial:
+            if self._status_charging is not None and charging != self._status_charging:
+                self._arm_settle()
+                if not charging:
+                    self._arm_start_block(SOLAR_RESTART_BLOCK_SECONDS)
+            if self._status_disconnected and not disconnected:
+                self._arm_start_block(SOLAR_RECONNECT_BLOCK_SECONDS)
+        self._status_charging = charging
+        self._status_disconnected = disconnected
+
+    @callback
+    def _async_charger_status_changed(self, event) -> None:
+        new_state = event.data.get("new_state")
+        self._note_status(new_state.state if new_state else None)
+
+    async def _skip_tick(self, state: str, reason: str, extra: dict | None = None) -> None:
+        """Publish a hold without acting; timers restart afterwards."""
+        self._reset_state_tracking()
+        attrs = {"reason": reason, "last_check": dt_util.now().isoformat()}
+        if extra:
+            attrs.update(extra)
+        await self._update_diagnostic_sensor(state, attrs)
+
     def _get_spike_response_delay(self) -> float:
         """Return the configured spike debounce in seconds (0 = disabled)."""
         return get_float(
@@ -744,6 +826,14 @@ class SolarSurplusAutomation:
         if not self._has_control():
             return False, grid_import, grid_threshold
         if not await self.charger_controller.is_charging():
+            return False, grid_import, grid_threshold
+        # v2.40.0: readings are not trustworthy right after a status change,
+        # and a paused charger (load balancer) is not ours to correct.
+        if self._settle_remaining() > 0:
+            return False, grid_import, grid_threshold
+        if self._charger_status and is_evse_paused_status(
+            get_state(self.hass, self._charger_status)
+        ):
             return False, grid_import, grid_threshold
         if grid_import <= grid_threshold:
             return False, grid_import, grid_threshold
@@ -853,6 +943,7 @@ class SolarSurplusAutomation:
                 await self.charger_controller.set_amperage(
                     target, "Consumption spike fast response"
                 )
+                self._arm_settle()  # v2.40.0
         else:
             self.logger.info(
                 f"{self.logger.ACTION} Consumption spike fast response: import "
@@ -912,6 +1003,7 @@ class SolarSurplusAutomation:
 
         # === 1. Check Forza Ricarica (Kill Switch) ===
         if get_bool(self.hass, self._forza_ricarica_entity):
+            self._reset_state_tracking()  # v2.40.0
             self.logger.skip("Forza Ricarica is ON")
             await self._emit_diagnostic(
                 event="periodic_check",
@@ -928,6 +1020,9 @@ class SolarSurplusAutomation:
 
         # === 2. Check Boost Charge (manual override) ===
         if self._boost_charge and self._boost_charge.is_active():
+            # v2.40.0: timers must not count while Boost owns the charger
+            # (grid import protection acted at once after Boost ended).
+            self._reset_state_tracking()
             if self._has_control():
                 self._release_control("Boost Charge active")
                 self._handle_control_loss("Boost Charge active")
@@ -960,6 +1055,7 @@ class SolarSurplusAutomation:
 
         # === 4. Check Night Smart Charge ===
         if self._night_smart_charge and self._night_smart_charge.is_active():
+            self._reset_state_tracking()  # v2.40.0
             if self._has_control():
                 self._release_control("Night Smart Charge active")
                 self._handle_control_loss("Night Smart Charge active")
@@ -1075,6 +1171,30 @@ class SolarSurplusAutomation:
         # do not start it (the car would only pause the session). A running
         # session is left alone; the car stops drawing by itself.
         if await self._car_full_skip(charger_is_on):
+            return
+
+        # === 7c. Charger paused by itself / an external load balancer (v2.40.0) ===
+        # SuspendedEVSE: the charger side holds the session. Nothing to
+        # correct: no start, no stop, no step; the session stays ours.
+        if self._charger_status and is_evse_paused_status(charger_status):
+            self.logger.debug("Charger paused the session (SuspendedEVSE) - holding")
+            await self._skip_tick(
+                "WAITING: Paused by charger",
+                "The charger or an external load balancer paused the session",
+            )
+            return
+
+        # === 7d. Settle window (v2.40.0) ===
+        # Right after charging started or stopped, the charger's power reading
+        # (up to ~60 s on a start) or the grid reading (on a stop) is still old.
+        settle = self._settle_remaining()
+        if settle > 0:
+            self.logger.debug(f"Charger settling - {settle:.0f}s left, no decision")
+            await self._skip_tick(
+                "WAITING: Charger settling",
+                "Readings are catching up after a charger start or stop",
+                {"settle_remaining_s": round(settle)},
+            )
             return
 
         # === 8. Priority Balancer Decision ===
@@ -1409,6 +1529,31 @@ class SolarSurplusAutomation:
             return
 
         # Grid Import Protection
+        # v2.40.0: with the charger off the import is the house's own load;
+        # the delay only counts while charging, so it does not run out before
+        # a start and act at once.
+        if grid_import > grid_threshold and not charger_is_on:
+            self._last_grid_import_high = None
+            self.logger.debug(
+                "Grid import %sW > %sW with the charger off - no start",
+                round(grid_import), round(grid_threshold),
+            )
+            await self._update_diagnostic_sensor(
+                "GRID_IMPORT_PROTECTION",
+                {
+                    "last_check": dt_util.now().isoformat(),
+                    "priority": priority if priority else "DISABLED",
+                    "decision": "no_start_while_importing",
+                    **self._get_grid_import_debug_context(
+                        grid_import=grid_import,
+                        grid_threshold=grid_threshold,
+                        grid_import_delay=grid_import_delay,
+                        current_amps=current_amps,
+                        target_amps=target_amps,
+                    ),
+                },
+            )
+            return
         if grid_import > grid_threshold:
             debug_context = self._get_grid_import_debug_context(
                 grid_import=grid_import,
@@ -1442,20 +1587,33 @@ class SolarSurplusAutomation:
                     **debug_context,
                 },
             )
-            await self._handle_grid_import_protection(grid_import, grid_threshold, grid_import_delay, current_amps)
+            await self._handle_grid_import_protection(
+                grid_import, grid_threshold, grid_import_delay, current_amps, target_amps
+            )
             return
-        else:
+        elif grid_import <= grid_threshold:
             # Reset timer when import goes back below threshold
             self._last_grid_import_high = None
 
         # Start charger if OFF and we have target amperage
         if not charger_is_on and target_amps > 0:
+            # v2.40.0: not right after a stop or a plug-in.
+            block = self._start_block_remaining()
+            if block > 0:
+                self.logger.debug(f"Solar start blocked - {block:.0f}s left")
+                await self._skip_tick(
+                    "WAITING: Start blocked",
+                    "Charging just stopped or the car was just plugged in",
+                    {"start_block_remaining_s": round(block)},
+                )
+                return
             self.logger.action(f"Starting charger with {target_amps}A")
             if await self._acquire_control("turn_on", "Solar surplus available"):
                 await self.charger_controller.start_charger(
                     target_amps,
                     "Solar surplus available",
                 )
+                self._arm_settle()
             return
 
         # EV_FREE Mode: Apply delay before stopping (same as PRIORITY_EV)
@@ -2029,8 +2187,14 @@ class SolarSurplusAutomation:
         grid_threshold: float,
         grid_import_delay: float,
         current_amps: int,
+        target_amps: int | None = None,
     ) -> None:
-        """Handle grid import protection with delay."""
+        """Handle grid import protection with delay.
+
+        v2.40.0: when the surplus cannot carry even the lowest level
+        (``target_amps == 0``, no battery support) the charger stops at once
+        instead of walking down one level per delay.
+        """
         current_time = time.monotonic()
 
         if self._last_grid_import_high is None:
@@ -2088,6 +2252,8 @@ class SolarSurplusAutomation:
 
         # Gradual ramp down: one level at a time via AmperageCalculator
         next_amps = AmperageCalculator.get_next_level_down(current_amps, self._amp_levels)
+        if target_amps == 0 and not self._battery_support_active:
+            next_amps = 0  # v2.40.0: no surplus for the lowest level -> stop
 
         if next_amps > 0:
             self.logger.info(f"Stepping down ONE level: {current_amps}A -> {next_amps}A")
@@ -2114,6 +2280,7 @@ class SolarSurplusAutomation:
             )
             if await self._ensure_control("Grid import protection"):
                 await self.charger_controller.set_amperage(next_amps, "Grid import protection")
+                self._arm_settle()
         elif current_amps == 0:
             self.logger.debug("Charger is already off (0A) - keeping charger stopped")
             await self._update_diagnostic_sensor(
@@ -2132,11 +2299,12 @@ class SolarSurplusAutomation:
             )
         else:
             # At minimum level or non-standard level — stop charger
-            reason = (
-                "Grid import protection - minimum level reached"
-                if current_amps in self._amp_levels
-                else f"Grid import protection - non-standard level {current_amps}A"
-            )
+            if target_amps == 0 and not self._battery_support_active:
+                reason = "Grid import protection - no surplus for the lowest level"
+            elif current_amps in self._amp_levels:
+                reason = "Grid import protection - minimum level reached"
+            else:
+                reason = f"Grid import protection - non-standard level {current_amps}A"
             self.logger.info(f"Stopping charger: {reason}")
             self.logger.info(
                 "Grid import protection action: stop current=%sA import=%sW threshold=%sW",
@@ -2195,6 +2363,7 @@ class SolarSurplusAutomation:
             self.logger.info(f"Stepping down ONE level: {current_amps}A -> {next_amps}A")
             if await self._ensure_control("Surplus decrease"):
                 await self.charger_controller.set_amperage(next_amps, "Surplus decrease")
+                self._arm_settle()  # v2.40.0
         elif current_amps == 0:
             self.logger.info("Charger is off (0A) - starting at minimum 6A")
             if await self._ensure_control("Surplus decrease - start at 6A"):
@@ -2202,6 +2371,7 @@ class SolarSurplusAutomation:
                     6,
                     "Surplus decrease - charger was off, starting at 6A",
                 )
+                self._arm_settle()  # v2.40.0
         else:
             # At minimum level or non-standard level — stop charger
             self.logger.info(f"At minimum/non-standard level ({current_amps}A) - stopping charger")
@@ -2258,6 +2428,7 @@ class SolarSurplusAutomation:
             self._reset_state_tracking()
             if await self._acquire_control("turn_on", "Stable surplus confirmed"):
                 await self.charger_controller.start_charger(target_amps, "Stable surplus confirmed")
+                self._arm_settle()  # v2.40.0
         else:
             # Already charging, require stability for INCREASES (cloud protection)
             if self._surplus_stable_since is None:
@@ -2292,6 +2463,7 @@ class SolarSurplusAutomation:
             self._surplus_stable_since = None
             if await self._ensure_control("Stable surplus increase"):
                 await self.charger_controller.set_amperage(next_amps, "Stable surplus step-up")
+                self._arm_settle()  # v2.40.0: the reading lags the new level
 
     def _reset_state_tracking(self) -> None:
         """Reset state tracking flags."""
@@ -2341,6 +2513,11 @@ class SolarSurplusAutomation:
         now_m = time.monotonic()
         now_dt = dt_util.now()
         candidates: list[tuple[str, float]] = []
+        # v2.40.0: the settle window and the start block hold everything else.
+        if self._settle_remaining() > 0:
+            candidates.append(("settle", self._settle_remaining()))
+        if self._start_block_remaining() > 0 and not self._tick_current_amps:
+            candidates.append(("start_block", self._start_block_remaining()))
         if self._spike_high_since is not None:
             delay = self._get_spike_response_delay()
             candidates.append(("spike", self._spike_high_since + delay - now_m))
@@ -2440,6 +2617,11 @@ class SolarSurplusAutomation:
         """Force an immediate periodic check, bypassing the rate limit."""
         if reason:
             self.logger.info(f"Immediate Solar Surplus check requested: {reason}")
+        # v2.40.0: called when another automation (Boost, Night Smart Charge)
+        # hands over. Its stop has not reached the readings yet: wait, and do
+        # not start right away.
+        self._arm_settle()
+        self._arm_start_block(SOLAR_RESTART_BLOCK_SECONDS)
         await self._async_periodic_check(ignore_rate_limit=True)
 
     async def async_remove(self) -> None:
@@ -2451,6 +2633,10 @@ class SolarSurplusAutomation:
         if self._soc_listener_unsub:
             self._soc_listener_unsub()
             self._soc_listener_unsub = None
+
+        if self._status_unsub:
+            self._status_unsub()
+            self._status_unsub = None
 
         # v2.8.0: consumption-spike fast response cleanup
         if self._grid_listener_unsub:

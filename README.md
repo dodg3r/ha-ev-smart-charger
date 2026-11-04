@@ -742,6 +742,16 @@ Solar Surplus runs every `evsc_check_interval` minutes during **daytime hours on
 - Charger stops only if surplus drops below 5.5 A for `evsc_surplus_drop_delay` seconds
 - Amperage increases require 60 s of stable surplus; decreases require only `evsc_surplus_drop_delay`
 
+**Charger settle and start blocks (v2.40.0, fork):**
+
+Charger power and current readings lag: over OCPP they arrive with the meter values, up to 60 s after a start (a drop to 0 is immediate), and the grid reading lags after a stop. Solar Surplus therefore waits instead of acting on half-updated values:
+
+- **Settle (60 s):** after every change of the charger status to or from charging — whoever caused it: this integration, the car or an external load balancer — and after each of its own commands (start, step up / down), Solar Surplus makes no decision. The dashboard shows "Charger settling · new values in …".
+- **Restart block (120 s):** after charging stops (any cause, including a Boost or Night Smart Charge handover) no solar start is made.
+- **Plug-in block (30 s):** after the car is plugged in no solar start is made.
+- **Paused by the charger (`SuspendedEVSE`):** the charger or an external load balancer has paused charging. Solar Surplus holds: no start, stop or step.
+- **Grid import protection** only runs its delay while the charger charges and Solar Surplus owns it; house load with the charger off, or a session run by Boost / Force Charge / Night Smart Charge, does not run the timer down. With import above the threshold and the charger off, no start is made. When the surplus can no longer carry the lowest level, the protection stops the charger directly instead of stepping down level by level.
+
 **Consumption-spike fast response (v2.8.0):**
 
 The periodic grid-import protection is tuned for clouds (one level down per ~2-minute cycle). A household demand spike — washing machine, dishwasher, induction hob — while the EV charges on surplus would leak 0.5–1 kWh/day into the grid before the slow ramp caught up. The fast response fixes exactly this case:

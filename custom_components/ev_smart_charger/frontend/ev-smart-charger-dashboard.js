@@ -643,6 +643,9 @@ const FRONTEND_LOCALES = {
     "pending.increase": "More sun · raising in {s}",
     "pending.start": "Solar surplus · starting in {s}",
     "pending.deadband_start": "Small solar surplus · starting at minimum in {s}",
+    "pending.settle": "Charger settling · readings in {s}",
+    "pending.start_block": "Charging just stopped · solar start possible in {s}",
+    "reason.paused_by_charger": "Paused by the charger or the load balancer",
     "reason.surplus_low": "Car connected · solar surplus {kw} kW, too little to start",
     "reason.offgrid": "Grid lost · charging limited",
     "reason.night": "Car connected · waiting for the sun",
@@ -864,6 +867,9 @@ const FRONTEND_LOCALES = {
     "pending.increase": "Mer sol · höjer om {s}",
     "pending.start": "Solöverskott · startar om {s}",
     "pending.deadband_start": "Litet solöverskott · startar på lägsta strömmen om {s}",
+    "pending.settle": "Laddaren stabiliseras · nya värden om {s}",
+    "pending.start_block": "Laddningen stoppade nyss · solstart möjlig om {s}",
+    "reason.paused_by_charger": "Pausad av laddaren eller lastbalanseraren",
     "reason.surplus_low": "Bil ansluten · solöverskott {kw} kW, för lite för att starta",
     "reason.offgrid": "Nätet borta · laddningen begränsad",
     "reason.night": "Bil ansluten · väntar på solen",
@@ -1085,6 +1091,9 @@ const FRONTEND_LOCALES = {
     "pending.increase": "Più sole · aumento tra {s}",
     "pending.start": "Surplus solare · avvio tra {s}",
     "pending.deadband_start": "Surplus solare ridotto · avvio al minimo tra {s}",
+    "pending.settle": "Caricatore in assestamento · nuovi valori tra {s}",
+    "pending.start_block": "Ricarica appena fermata · avvio solare possibile tra {s}",
+    "reason.paused_by_charger": "In pausa dal caricatore o dal bilanciatore di carico",
     "reason.surplus_low": "Auto collegata · surplus {kw} kW, troppo poco per iniziare",
     "reason.offgrid": "Rete assente · ricarica limitata",
     "reason.night": "Auto collegata · in attesa del sole",
@@ -1306,6 +1315,9 @@ const FRONTEND_LOCALES = {
     "pending.increase": "Meer zon · verhogen over {s}",
     "pending.start": "Zonne-overschot · starten over {s}",
     "pending.deadband_start": "Klein zonne-overschot · starten op minimum over {s}",
+    "pending.settle": "Lader stabiliseert · nieuwe waarden over {s}",
+    "pending.start_block": "Laden net gestopt · zonnestart mogelijk over {s}",
+    "reason.paused_by_charger": "Gepauzeerd door de lader of de load balancer",
     "reason.surplus_low": "Auto aangesloten · overschot {kw} kW, te weinig om te starten",
     "reason.offgrid": "Net weg · laden beperkt",
     "reason.night": "Auto aangesloten · wacht op de zon",
@@ -2423,6 +2435,8 @@ class EvSmartChargerDashboard extends HTMLElement {
       ? this._tf("reason.no_surplus_need", { need: (needW / 1000).toFixed(1) })
       : this._t("reason.waiting_surplus"));
     if (up.includes("CHARGER OFFLINE")) return this._t("status.charger_offline");
+    // v2.40.0: the charger (or an external load balancer) paused the session
+    if (up.includes("PAUSED BY CHARGER")) return this._t("reason.paused_by_charger");
     if (up.startsWith("GRID_IMPORT") || up.startsWith("SPIKE_STEP_DOWN")) {
       return charging ? this._t("reason.grid_import_reducing") : noSurplus();
     }
@@ -2573,7 +2587,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     }
     {
       const p = this._solarPending();
-      if (p && (p.kind === "start" || p.kind === "deadband_start")) {
+      if (p && ["start", "deadband_start", "settle", "start_block"].includes(p.kind)) {
         const text = this._pendingText(p);
         if (text) return { text, tone: "idle" };
       }

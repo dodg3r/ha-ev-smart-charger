@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.39.0
+**Current Version:** 2.40.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,39 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.40.0 (2026-11-04) — fork dodg3r
+**Solar Surplus waits for the charger's readings; start blocks; SuspendedEVSE hold**
+
+Reported by the maintainer: after a Boost stop Solar Surplus stepped 16 → 15 A
+on stale values, and the charger's power / current over OCPP arrive up to 60 s
+after a start (history: Charging 14:00:55, 16 A reported 14:01:53).
+- `const.py`: `CHARGER_SETTLE_SECONDS = 60`, `SOLAR_RESTART_BLOCK_SECONDS =
+  120`, `SOLAR_RECONNECT_BLOCK_SECONDS = 30`.
+- `power_model`: `is_evse_paused_status()` (SuspendedEVSE),
+  `is_active_charging_status()` (charging / charger_charging).
+- Solar Surplus tracks the status sensor (`_note_status`,
+  `_async_charger_status_changed`): a change to or from charging arms the
+  settle window (`_arm_settle`), charging stopped arms the 120 s start block,
+  disconnected → connected the 30 s block. Its own start / step up / step
+  down / spike step-down / grid step-down also arm the settle window, and
+  `async_request_immediate_check` (Boost / Night handover) arms both.
+- Tick: SuspendedEVSE → `WAITING: Paused by charger` (hold); settle →
+  `WAITING: Charger settling`; a start while blocked → `WAITING: Start
+  blocked`. The spike fast path stands down while settling or paused.
+- Skip branches for Force Charge / Boost / Night active reset the state
+  tracking (`_skip_tick`), so the grid-import timer never runs on a session
+  Solar Surplus does not own. Grid import above the threshold with the
+  charger off: timer reset, no start.
+- `_handle_grid_import_protection(target_amps=)`: target 0 without battery
+  support → stop directly ("no surplus for the lowest level").
+- Diagnostic `pending_action` adds `settle` and `start_block`; dashboard
+  texts `pending.settle`, `pending.start_block`, `reason.paused_by_charger`
+  (EN/SV/IT/NL).
+- Tests: NEW `tests/test_v2400_charger_settle.py`;
+  `test_no_start_when_grid_import_is_above_threshold` expects a reset timer.
+
+---
 
 ### v2.39.0 (2026-11-04) — fork dodg3r
 **Three-phase only; every charger sensor required; net grid + per-phase meter sensors with solar**

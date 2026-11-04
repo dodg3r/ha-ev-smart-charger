@@ -150,6 +150,27 @@ def is_ev_paused_status(status: str | None) -> bool:
     return key in _EV_PAUSED_STATUSES or key.replace("_", "") in _EV_PAUSED_STATUSES
 
 
+# v2.40.0: the charger (EVSE) or an external load balancer paused the session.
+_EVSE_PAUSED_STATUSES = frozenset({"suspended_evse", "suspendedevse"})
+# v2.40.0: the car is actually being charged right now.
+_ACTIVE_CHARGING_STATUSES = frozenset({"charging", "charger_charging"})
+
+
+def is_evse_paused_status(status: str | None) -> bool:
+    """True when the charger or an external load balancer paused the session."""
+    if not status:
+        return False
+    key = _status_key(status)
+    return key in _EVSE_PAUSED_STATUSES or key.replace("_", "") in _EVSE_PAUSED_STATUSES
+
+
+def is_active_charging_status(status: str | None) -> bool:
+    """True when the status says the car is being charged (not paused)."""
+    if not status:
+        return False
+    return _status_key(status) in _ACTIVE_CHARGING_STATUSES
+
+
 # v2.30.0: statuses that mean "no session is open" (OCPP vocabulary). Used to
 # skip a stop press that the charger would only reject.
 _SESSION_IDLE_STATUSES = frozenset({"preparing", "idle", "finishing", "available"})

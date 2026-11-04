@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.39.0"
+VERSION = "2.40.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -977,3 +977,16 @@ TELEMETRY_ENDPOINT = (
     "/exec"
 )
 TELEMETRY_PING_INTERVAL_HOURS = 24
+
+# v2.40.0: charger session settling (Solar Surplus). The charger's power and
+# current readings can lag up to a minute after a start, and the grid reading
+# lags after a stop, so Solar Surplus makes no decision for this long after the
+# status changes to or from "charging" or after its own command.
+CHARGER_SETTLE_SECONDS = 60
+# After charging stopped (any cause), Solar Surplus does not start the charger
+# again for this long: catches short in-between statuses like
+# charging -> finishing -> preparing and the handover after Boost.
+SOLAR_RESTART_BLOCK_SECONDS = 120
+# After the car is plugged in (disconnected -> connected), wait this long
+# before a solar start: some chargers blink "available" briefly.
+SOLAR_RECONNECT_BLOCK_SECONDS = 30

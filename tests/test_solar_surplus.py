@@ -315,7 +315,9 @@ async def test_no_start_when_grid_import_is_above_threshold(hass, automation):
         await automation._async_periodic_check()
 
     automation.charger_controller.start_charger.assert_not_called()
-    assert automation._last_grid_import_high is not None
+    # v2.40.0: the delay only counts while charging (house load does not
+    # run it out before a start)
+    assert automation._last_grid_import_high is None
 
 async def test_periodic_check_skips_when_boost_active(hass, automation):
     """Solar Surplus should not take control while Boost Charge is active."""
