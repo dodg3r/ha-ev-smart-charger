@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.37.0
+**Current Version:** 2.37.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,23 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.37.1 (2026-11-04) — fork dodg3r
+**Status line says how much surplus a start needs, also when there is none**
+
+Reported by the maintainer: "Car connected · waiting for solar surplus" with
+2.1 kW solar and 921 W grid import. The start requirement was only shown when
+the surplus was positive (`CHECKING: <W>` with W > 0); a zero or negative
+surplus and the grid-import states fell back to the generic text.
+- Dashboard `_friendlySolarReason()`: new `reason.no_surplus_need` ("Car
+  connected · no solar surplus (needs X kW to start)", EN/SV/IT/NL) for a
+  surplus ≤ 0, `GRID_IMPORT_*` / `SPIKE_STEP_DOWN` while not charging and
+  unknown codes; "SKIPPED: Charger offline" maps to `status.charger_offline`.
+- `_solarStartNeedW()` remembers the last known start threshold
+  (`_lastStartNeedW`) for diagnostic events that carry none.
+- Frontend only.
+
+---
 
 ### v2.37.0 (2026-11-03) — fork dodg3r
 **Automatic car selection: the car that is home and plugged in becomes the active car**

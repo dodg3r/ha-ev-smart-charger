@@ -629,6 +629,7 @@ const FRONTEND_LOCALES = {
     "charger.full": "Fully charged",
     "car.label": "Car",
     "reason.surplus_low_need": "Car connected · solar surplus {kw} kW, too little to start (needs {need} kW)",
+    "reason.no_surplus_need": "Car connected · no solar surplus (needs {need} kW to start)",
     "charger.stopped": "Stopped",
     "charger.fuse_paused": "Paused (fuse)",
     "charger.idle": "Not charging",
@@ -849,6 +850,7 @@ const FRONTEND_LOCALES = {
     "charger.full": "Fulladdad",
     "car.label": "Bil",
     "reason.surplus_low_need": "Bil ansluten · solöverskott {kw} kW, för lite för att starta (kräver {need} kW)",
+    "reason.no_surplus_need": "Bil ansluten · inget solöverskott (kräver {need} kW för att starta)",
     "charger.stopped": "Stoppad",
     "charger.fuse_paused": "Pausad (säkring)",
     "charger.idle": "Laddar inte",
@@ -1069,6 +1071,7 @@ const FRONTEND_LOCALES = {
     "charger.full": "Carica completa",
     "car.label": "Auto",
     "reason.surplus_low_need": "Auto collegata · surplus {kw} kW, troppo poco per iniziare (servono {need} kW)",
+    "reason.no_surplus_need": "Auto collegata · nessun surplus solare (servono {need} kW per iniziare)",
     "charger.stopped": "Fermato",
     "charger.fuse_paused": "In pausa (fusibile)",
     "charger.idle": "Non in carica",
@@ -1289,6 +1292,7 @@ const FRONTEND_LOCALES = {
     "charger.full": "Volledig geladen",
     "car.label": "Auto",
     "reason.surplus_low_need": "Auto aangesloten · overschot {kw} kW, te weinig om te starten (nodig {need} kW)",
+    "reason.no_surplus_need": "Auto aangesloten · geen zonne-overschot (nodig {need} kW om te starten)",
     "charger.stopped": "Gestopt",
     "charger.fuse_paused": "Gepauzeerd (zekering)",
     "charger.idle": "Laadt niet",
@@ -2293,11 +2297,19 @@ class EvSmartChargerDashboard extends HTMLElement {
   _solarStartNeedW() {
     const attrs = this._stateObj(this._entityId("solarDiagnostic"))?.attributes || {};
     const w = Number(attrs.start_threshold_w);
-    if (Number.isFinite(w) && w > 0) return w;
+    if (Number.isFinite(w) && w > 0) {
+      this._lastStartNeedW = w;
+      return w;
+    }
     const a = Number(attrs.start_threshold_a);
-    if (!Number.isFinite(a) || a <= 0) return null;
-    const volts = this._config.phase_mode === "three" ? 3 * VOLTAGE_EU : VOLTAGE_EU;
-    return a * volts;
+    if (Number.isFinite(a) && a > 0) {
+      const volts = this._config.phase_mode === "three" ? 3 * VOLTAGE_EU : VOLTAGE_EU;
+      this._lastStartNeedW = a * volts;
+      return this._lastStartNeedW;
+    }
+    // v2.37.1: some diagnostic events (grid import, …) carry no threshold;
+    // reuse the last known one.
+    return this._lastStartNeedW ?? null;
   }
 
   _escapeHtml(value) {
@@ -2403,8 +2415,14 @@ class EvSmartChargerDashboard extends HTMLElement {
     const d = String(diag || "").trim();
     const up = d.toUpperCase();
     if (!d || ["UNKNOWN", "UNAVAILABLE"].includes(up)) return null;
+    // v2.37.1: how much surplus a start needs, also when there is none now.
+    const needW = this._solarStartNeedW();
+    const noSurplus = () => (needW != null
+      ? this._tf("reason.no_surplus_need", { need: (needW / 1000).toFixed(1) })
+      : this._t("reason.waiting_surplus"));
+    if (up.includes("CHARGER OFFLINE")) return this._t("status.charger_offline");
     if (up.startsWith("GRID_IMPORT") || up.startsWith("SPIKE_STEP_DOWN")) {
-      return this._t(charging ? "reason.grid_import_reducing" : "reason.waiting_surplus");
+      return charging ? this._t("reason.grid_import_reducing") : noSurplus();
     }
     if (up.startsWith("OFFGRID")) return this._t("reason.offgrid");
     if (up.includes("NIGHTTIME")) return this._t("reason.night");
@@ -2421,7 +2439,6 @@ class EvSmartChargerDashboard extends HTMLElement {
       const m = d.match(/(-?\d+(?:\.\d+)?)\s*W/i);
       const w = m ? Number(m[1]) : NaN;
       if (Number.isFinite(w) && w > 0) {
-        const needW = this._solarStartNeedW();
         if (needW != null) {
           return this._tf("reason.surplus_low_need", {
             kw: (w / 1000).toFixed(1),
@@ -2430,9 +2447,9 @@ class EvSmartChargerDashboard extends HTMLElement {
         }
         return this._tf("reason.surplus_low", { kw: (w / 1000).toFixed(1) });
       }
-      return this._t("reason.waiting_surplus");
+      return noSurplus();
     }
-    return this._t("reason.waiting_surplus");
+    return noSurplus();
   }
 
   /**
