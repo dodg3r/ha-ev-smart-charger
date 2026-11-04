@@ -2,7 +2,6 @@
 from __future__ import annotations
 import asyncio
 import logging
-from datetime import timedelta
 from pathlib import Path
 
 try:
@@ -14,11 +13,6 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import entity_registry as er, issue_registry as ir
-from homeassistant.helpers.event import (
-    async_call_later,
-    async_track_time_interval,
-)
-from homeassistant.util import dt as dt_util
 
 from .utils import state_helper
 from .const import (
@@ -29,7 +23,6 @@ from .const import (
     FRONTEND_CARD_FILENAME,
     FRONTEND_URL_BASE,
     PLATFORMS,
-    TELEMETRY_PING_INTERVAL_HOURS,
     VERSION,
     get_expected_entity_count,
     has_home_battery,
@@ -57,7 +50,6 @@ from .solar_surplus import SolarSurplusAutomation
 from .log_manager import LogManager
 from .diagnostic_manager import DiagnosticManager
 from .runtime import EVSCRuntimeData, get_runtime_data
-from .telemetry import send_telemetry_ping, telemetry_logger
 
 _LOGGER = logging.getLogger(__name__)
 FRONTEND_DIR = Path(__file__).parent / "frontend"
@@ -573,7 +565,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             evsc_loggers.append(boost_charge.logger)
         if live_activity_monitor:
             evsc_loggers.append(live_activity_monitor.logger)
-        evsc_loggers.append(telemetry_logger)
 
         # Setup log manager with toggle listener
         log_manager = LogManager(hass, entry.entry_id, runtime_data=runtime_data)
@@ -640,62 +631,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             except Exception as err:
                 _LOGGER.warning("Auto-dashboard cleanup failed: %s", err)
 
-    # ========== PHASE 9: ANONYMOUS TELEMETRY ==========
-    # Previous attempts (v1.6.10/v1.6.11) tried to defer the first ping until HA
-    # reached CoreState.running via async_at_start(), but on some installations
-    # EVENT_HOMEASSISTANT_STARTED is never emitted during the integration's
-    # lifetime (log confirms hass.state=NOT_RUNNING at setup and the callback
-    # never fires even though the event loop is clearly active).
-    #
-    # New strategy — no state gating, just fire-and-forget with two layers:
-    #   1. Schedule the first ping ~30s after setup via async_call_later. This
-    #      gives HA time to finish bootstrapping network components without
-    #      depending on any core-state transition.
-    #   2. telemetry.py has 5 retries × 60s delay, so even if the network isn't
-    #      ready at t=30s the ping survives up to ~5 minutes.
-    #   3. Daily timer runs every TELEMETRY_PING_INTERVAL_HOURS regardless.
-    _LOGGER.info("📊 Phase 9: Scheduling telemetry ping")
-    telemetry_logger.info(f"📊 Phase 9 reached — hass.state={hass.state}")
-
-    @callback
-    def _fire_startup_ping(_now=None) -> None:
-        """Fire telemetry ping (called ~30s after setup by async_call_later)."""
-        telemetry_logger.info(
-            f"📊 Startup ping timer fired at {dt_util.now().isoformat()} — "
-            "creating telemetry task"
-        )
-        try:
-            hass.async_create_task(send_telemetry_ping(hass))
-            telemetry_logger.info("📊 Telemetry task created successfully")
-        except Exception as err:
-            telemetry_logger.info(f"📊 ❌ Failed to create telemetry task: {err}")
-            _LOGGER.exception("Failed to schedule telemetry ping")
-
-    try:
-        cancel_startup = async_call_later(hass, 30, _fire_startup_ping)
-        entry.async_on_unload(cancel_startup)
-        telemetry_logger.info(
-            "📊 Startup ping scheduled via async_call_later (30s delay)"
-        )
-    except Exception as err:
-        telemetry_logger.info(f"📊 ❌ async_call_later failed: {err}")
-        _LOGGER.exception("Failed to schedule startup telemetry ping")
-
-    @callback
-    def _schedule_daily_ping(_now=None) -> None:
-        telemetry_logger.info("📊 Daily ping timer fired")
-        hass.async_create_task(send_telemetry_ping(hass))
-
-    entry.async_on_unload(
-        async_track_time_interval(
-            hass,
-            _schedule_daily_ping,
-            timedelta(hours=TELEMETRY_PING_INTERVAL_HOURS),
-        )
-    )
-    telemetry_logger.info(
-        f"📊 Daily ping timer registered ({TELEMETRY_PING_INTERVAL_HOURS}h interval)"
-    )
+    # Phase 9 (anonymous telemetry to the upstream maintainer) is removed in
+    # this fork (v2.41.1): nothing is sent anywhere. telemetry.py is unused.
 
     _LOGGER.info("=" * 64)
     _LOGGER.info(f"✅ EV Smart Charger v{VERSION} - Setup completed successfully!")

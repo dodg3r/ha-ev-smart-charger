@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.41.0
+**Current Version:** 2.41.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,18 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.41.1 (2026-11-04) — fork dodg3r
+**No telemetry: the daily anonymous ping to the upstream maintainer is removed**
+
+Requested by the maintainer. Phase 9 of `async_setup_entry` (startup ping after
+30 s plus the daily `TELEMETRY_PING_INTERVAL_HOURS` timer calling
+`send_telemetry_ping`) is gone, together with the now unused imports
+(`timedelta`, `async_call_later`, `async_track_time_interval`, `dt_util`,
+`telemetry_logger`). `telemetry.py` stays in the tree but is never called.
+README "Analytics & Privacy" says the fork sends nothing.
+
+---
 
 ### v2.41.0 (2026-11-04) — fork dodg3r
 **Setup asks the sensors per part: meter, charger, solar, battery; load balancing none / display / adjust**

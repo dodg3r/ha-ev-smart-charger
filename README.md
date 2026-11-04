@@ -1443,24 +1443,9 @@ sensor — see the `charging_power_w` diagnostic attribute.
 
 ## Analytics & Privacy
 
-EV Smart Charger sends one anonymous ping per day to help the maintainer track active installations, version adoption, and approximate geographic distribution.
-
-**What is sent:**
-
-| Field | Example | Purpose |
-|---|---|---|
-| `installation_id` | `a3f2…` (random UUID) | Count unique installs — never reused across uninstalls |
-| `version` | `1.6.18` | Version adoption tracking |
-| `ha_version` | `2026.4.0` | HA compatibility insight |
-| `timezone` | `Europe/Rome` | Approximate region |
-| `country` | `IT` | Derived from timezone — no geolocation |
-| `continent` | `EU` | Aggregate geographic distribution |
-
-**What is NOT sent:** IP address, hostname, entity IDs, sensor values, configuration data, credentials, or any personally identifiable information.
-
-Data is stored in a private sheet accessible only to the maintainer. Aggregated statistics may be published publicly.
-
-**Opt-out:** Set the environment variable `EVSC_DISABLE_TELEMETRY=true` on your Home Assistant host (e.g., in `/etc/environment` or your Docker Compose file).
+This fork sends nothing anywhere. The upstream integration sent an anonymous
+daily ping (installation id, versions, time zone) to its maintainer; that ping
+is removed in v2.41.1.
 
 ---
 
