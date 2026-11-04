@@ -4,7 +4,7 @@
 
 ### The universal EV charging solution for Home Assistant — *any* electrical system, *any* wallbox
 
-**One integration for every setup.** Single-phase or three-phase. Tuya or any other wallbox. Cloud-connected or local. If your charger has a Home Assistant integration — cloud *or* local — and exposes its current as a `number`, `select`, `input_number` or `input_select` entity, **this works with it.** Maximise solar self-consumption · balance EV vs home battery · automate overnight charging · ride curtailment on zero-export inverters — all from a single Liquid Glass dashboard.
+**One integration for every setup.** Three-phase homes (single-phase was removed in v2.39.0 of this fork). Tuya or any other wallbox. Cloud-connected or local. If your charger has a Home Assistant integration — cloud *or* local — and exposes its current as a `number`, `select`, `input_number` or `input_select` entity, **this works with it.** Maximise solar self-consumption · balance EV vs home battery · automate overnight charging · ride curtailment on zero-export inverters — all from a single Liquid Glass dashboard.
 
 [![GitHub Release](https://img.shields.io/github/v/release/antbald/ha-ev-smart-charger?style=for-the-badge&logo=github&color=007AFF)](https://github.com/antbald/ha-ev-smart-charger/releases)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-FF6F00?style=for-the-badge&logo=home-assistant&logoColor=white)](https://github.com/custom-components/hacs)
@@ -40,7 +40,7 @@ Most projects target one charger brand or assume a single-phase home. EV Smart C
 
 | Dimension | What's supported |
 |---|---|
-| **Electrical system** | ✅ Single-phase **and** three-phase (opt-in; speed balanced across all three phases) |
+| **Electrical system** | ✅ Three-phase (speed balanced across all three phases). Single-phase was removed in v2.39.0 of this fork. |
 | **Wallbox brand** | ✅ Tuya **and** any other — no brand lock-in. The logic drives whatever entities your charger's HA integration exposes |
 | **Connectivity** | ✅ Cloud **or** local Home Assistant integration — if HA can see your charger, this can drive it |
 | **Current control** | ✅ `number`, `input_number`, `select`, `input_select` — discrete Tuya levels **or** 1 A fine steps (generic) |
@@ -315,33 +315,27 @@ flowchart TD
 
 ## Requirements
 
-**Mandatory — Charger:**
+**Mandatory — Charger (v2.39.0, every setup):**
 
-- A `switch` entity to turn the charger on/off
+- A `switch` entity to turn the charger on/off, **or** a pair of start/stop `button` entities
 - A current control entity in one of: `number`, `input_number`, `select`, `input_select` (range `6–32 A`)
-- A status sensor that reports one of the four accepted values:
+- A status sensor (e.g. `charging`, `available`, `finished`; Tuya `charger_charging` / `charger_free` / `charger_end` / `charger_wait` and OCPP states are understood)
+- The charging power (`W`/`kW`): one total sensor, or L1 with optional L2/L3
+- The charger current (`A`): one phase (all phases carry the same current), or L1 with optional L2/L3 — with current per phase the integration sees how many phases the car charges on
 
-  | Status Value | Meaning |
-  |---|---|
-  | `charger_charging` | Actively charging |
-  | `charger_free` | Connected and idle / unplugged |
-  | `charger_end` | Session finished |
-  | `charger_wait` | Paused / waiting |
+**Mandatory — with solar panels (v2.39.0):**
 
-**Mandatory — Energy Sensors:**
+- Solar production (`W`/`kW`): total, or L1 with optional L2/L3
+- **Net grid power**: one sensor, positive when buying, negative when selling (for example the net sensor made for the Energy dashboard). Used directly for the surplus.
+- Grid import power L1, L2, L3 and grid export power L1, L2, L3 (the meter's per-phase values)
+- Solar forecast today and tomorrow (`kWh`)
+- An electricity price sensor (Nord Pool or any sensor with `raw_today`/`raw_tomorrow`)
 
-- EV battery SOC (`%`)
-- Solar production (`W`)
-- Grid import (`W`, positive = importing, negative = exporting) — or import plus a separate grid export sensor
-- EV charging power (`W`) — unless the meter step maps the charger current
+**Car sensors:** set per car in the car profiles (EV SOC, optional charge limit, capacity, optional location / connection).
 
-**Optional energy sensors:**
+**Optional:**
 
 - Home battery SOC (`%`) — leave empty if you do not have a home battery. The integration will run in **PV-only mode** (see below).
-
-**Optional but recommended:**
-
-- A PV forecast sensor (`kWh`) for Night Smart Charge decision logic
 - One or more `notify.mobile_app_*` services for push notifications
 - A `person` entity for presence-aware notification filtering
 - A `number` or `input_number` helper to receive the calculated nightly energy target
@@ -363,13 +357,9 @@ If your home battery has its own control (for example an AI optimiser) but you s
 
 ---
 
-### Three-phase support + charger model — v2.0.0+
+### Three-phase + charger model
 
-Two opt-in choices appear in the first config-flow steps (and in Reconfigure / Options, so existing users can switch). Both default to the previous behaviour — **single-phase + Tuya** — so if you do nothing, nothing changes.
-
-**Phase mode**
-- **Single-phase** (default): one sensor each for solar production and grid import; charging speed computed at 230 V. Identical to all previous versions.
-- **Three-phase**: you map **three sensors each** (one per phase L1/L2/L3) for production, consumption and grid import. The integration sums them and balances the charging speed across the three phases (conversion at 3 × 230 = 690 V). SOC sensors stay single.
+**Three-phase only (v2.39.0, fork):** the phase-mode step is gone and every entry is three-phase; an old single-phase entry is treated as three-phase. The charging speed is balanced across the three phases (conversion at 3 × 230 = 690 V). Power sensors can be one total, or L1 with optional L2/L3 (they are summed).
 
 ⚠️ **Power on three-phase**: every amperage setting is **per phase**, so it draws ~3× the power of single-phase. `16 A` ≈ **11 kW**, and the minimum a three-phase charger can draw is ~**4.1 kW** (6 A/phase). This matters for `evsc_battery_support_amperage` and `evsc_night_charge_amperage` — make sure your home-battery inverter can sustain the chosen power, otherwise the deficit is pulled from the grid and grid-import protection will throttle the session.
 
@@ -377,7 +367,7 @@ Two opt-in choices appear in the first config-flow steps (and in Reconfigure / O
 - **Tuya** (default): current is set only to fixed levels `6/8/10/13/16/20/24/32 A`; to lower it the charger is switched off then back on (a few seconds' pause).
 - **Generic (1 A steps)**: for non-Tuya wallboxes that expose the current as a `number` entity. Any integer ampere (6–32) is allowed, and **lowering the current happens live without interrupting the session**. The amperage controls switch to 1 A steps.
 
-No data migration: existing config entries keep working unchanged. To enable three-phase or generic mode on an existing install, open the integration and run **Reconfigure** (or Configure / Options).
+The charger model is the first step of **Reconfigure** (or Configure / Options).
 
 ---
 
@@ -425,26 +415,36 @@ Choose the display name used in the Home Assistant UI.
 | Charger switch | One of the two (v2.14.0) | `switch` |
 | Start / Stop charging buttons (v2.14.0) | One of the two | `button` (both) |
 | Charging current control | Yes | `number`, `input_number`, `select`, `input_select` |
-| Charger status sensor | No (v2.2.0) | `sensor` |
+| Charger status sensor | Yes (v2.39.0) | `sensor` |
+| Charging power — total or L1 (v2.39.0: moved here) | Yes | `sensor` (`W`/`kW`) |
+| Charging power L2 / L3 | No | `sensor` |
+| Charger current — one phase or L1 (v2.39.0) | Yes | `sensor` (`A`) |
+| Charger current L2 / L3 | No | `sensor` |
 
 The charger switch entity (or the start button, in button mode) is used as the unique ID for the config entry. Adding the same charger twice is prevented automatically.
 
 **Start / Stop buttons (v2.14.0):** for chargers that expose a pair of `button` entities instead of an on/off switch (e.g. Growatt THOR). Leave **Charger switch** empty and map **both** buttons; if a switch is mapped it always takes precedence and the buttons are ignored. A button has no on/off state, so for 60 s after each press the integration trusts the command it sent; after that it follows the charging-power sensor or the status sensor. Map at least one of them — without either, the integration can only assume the last command succeeded. In button mode the Smart Charger Blocker reacts to the status sensor only (there is no switch to watch), so mapping the status sensor is strongly recommended.
 
-**Charger status sensor (v2.2.0):** now optional. It is used as a *fallback* for charging detection when no charging-power sensor is mapped (see Step 3), and as the source of plug/idle/finished lifecycle. Mapping it is still recommended — it tells "plugged in but not charging" apart from "unplugged", which measured power alone cannot.
+**Charger status sensor (v2.39.0: required again):** the source of the plugged-in / idle / finished status — it tells "plugged in but not charging" apart from "unplugged", which measured power alone cannot.
+
+**Charger current (v2.39.0):** one sensor is read as the current of one phase, and the same value is used for every phase. With L2 and L3 mapped each phase is read on its own, so a car charging on one or two phases shows 0 A on the others. A single sensor with `L1`/`L2`/`L3` attributes (e.g. OCPP `current_import`) is read per phase.
 
 ### Step 3 — Energy Sensors
 
+With solar panels (v2.39.0):
+
 | Field | Required | Unit |
 |---|:---:|---|
-| EV battery SOC | Yes | `%` |
-| EV charge limit (v2.30.0) | No | `%` |
-| Home battery SOC | Yes | `%` |
-| Solar production | Yes | `W` |
-| Grid import | Yes | `W` |
-| Grid export (v2.38.0) | No | `W` |
-| EV charging power (v2.2.0) | Yes, with solar (v2.38.0) | `W` |
+| Home battery SOC | Yes, with a home battery | `%` |
+| Battery power | No | `W` (signed) |
+| Solar production — total or L1 | Yes | `W`/`kW` |
+| Solar production L2 / L3 | No | `W`/`kW` |
+| Net grid power (negative = selling) | Yes | `W`/`kW` |
+| Grid import L1, L2, L3 | Yes | `W` |
+| Grid export L1, L2, L3 | Yes | `W` |
 | Grid available (v2.6.0) | No | `binary_sensor` |
+
+Without solar panels the step asks grid import (L2/L3 and a separate export optional), as before.
 
 **Car profiles (v2.31.0, guest profile v2.32.0):** several cars can share the charger. The car's own sensors are not asked in the sensors step: the last step before the dashboard, **Car profiles** (also under *Configure* / *Reconfigure*), adds, edits and removes cars. Each car has a free name (e.g. its registration number), its own battery SOC sensor, an optional charge limit sensor and the battery capacity. A **Guest** profile always exists: it has no sensors, so Night Smart Charge charges it in the 5 cheapest night hours and Solar Surplus on surplus. Finishing the step without a car leaves only the guest; the first car you create becomes the active one. After that the active car only changes when you choose another one in the dropdown at the top of the dashboard (or with `select.…_evsc_active_car`); switching reloads the integration with that car's sensors. Daily targets and car-ready times are shared by all cars.
 
@@ -458,13 +458,13 @@ The charger switch entity (or the start button, in button mode) is used as the u
 
 That needs three things to be right:
 
-- **Grid import** with a direction: either one sensor that goes **negative when exporting**, or an import sensor plus the optional **grid export** sensor (positive watts when exporting; net grid = import − export). An import-only sensor that stays at 0 while exporting hides every surplus.
-- **EV charging power**, required with solar panels unless the meter step maps the charger current (the integration then computes it from current × voltage). An entry from before v2.38.0 without either falls back to the current setpoint × voltage while the car charges.
+- **Net grid power** with a direction: one sensor that goes **negative when selling** (v2.39.0). Older entries without solar may still use an import sensor plus a separate export sensor.
+- **EV charging power**, required in the charger step (v2.39.0). An entry from before v2.38.0 without it falls back to the current setpoint × voltage while the car charges.
 - **Battery power** (optional) when there is a home battery, so its charging is not counted as house load.
 
 A consumption sensor mapped by an older version is cleared at the next reconfigure and ignored until then.
 
-**EV charging power (v2.2.0):** the most reliable signal for whether the car is actually drawing current — when mapped it becomes the single source of truth for charging detection (and the dashboard's green "EV charging" banner), overriding the status string. In three-phase mode map all three per-phase sensors (they are summed) or leave all blank. The sensor must report positive watts while charging; if yours reports negative, wrap it in a template sensor (`{{ states('sensor.your_power') | float(0) | abs }}`) — the diagnostic sensor's `charging_power_w` will read a flat 0 W if the sign is reversed.
+**EV charging power (v2.2.0):** the most reliable signal for whether the car is actually drawing current — it is the single source of truth for charging detection (and the dashboard's green "EV charging" banner), overriding the status string. Map a total sensor, or L1 with L2/L3 (they are summed). The sensor must report positive watts while charging; if yours reports negative, wrap it in a template sensor (`{{ states('sensor.your_power') | float(0) | abs }}`) — the diagnostic sensor's `charging_power_w` will read a flat 0 W if the sign is reversed.
 
 **Battery power (v2.1.0):** optional signed power sensor for the home battery, mapped in the sensors step (v2.36.0) and used by the derived home consumption, the Solar Surplus dead-band buffer and Night Smart Charge grid mode to tell when the home battery silently covers the EV. **Sign convention: NEGATIVE = discharging, POSITIVE = charging.** If your sensor reports the opposite sign, invert it with a template sensor that negates the value, e.g. `{{ states('sensor.your_battery_power') | float(0) * -1 }}`.
 
@@ -474,9 +474,10 @@ A consumption sensor mapped by an older version is cleared at the next reconfigu
 
 | Field | Required | Unit |
 |---|:---:|---|
-| PV forecast sensor | No | `kWh` |
+| Solar forecast today | Yes (v2.39.0) | `kWh` |
+| Solar forecast tomorrow | Yes (v2.39.0) | `kWh` |
 
-Used by Night Smart Charge to decide between home battery and grid charging. If omitted, Night Smart Charge will always fall back to grid mode.
+Shown with solar panels only. Shown on the dashboard and kept for future planning.
 
 ### Step 5 — Notifications
 
@@ -493,7 +494,7 @@ The same mobile notify services can be used for EV charging Live Activities / Li
 
 | Field | Required | Default | Validation |
 |---|:---:|---|---|
-| Battery capacity | Yes | `50.0 kWh` | `10–200 kWh` |
+| Electricity price sensor | Yes (v2.39.0) | — | Nord Pool (core or HACS) or `raw_today`/`raw_tomorrow` |
 | Energy forecast target | No | — | `number` or `input_number` domain |
 
 The energy forecast target is an external helper entity where the integration writes the calculated nightly forecast value. Useful for automations or dashboards that need this figure.

@@ -74,11 +74,12 @@ THREE_CONFIG = {
 # ----------------------------------------------------------------------------
 
 
-def test_const_helpers_default_single_tuya():
-    """Empty config = single-phase, 230 V, Tuya levels (unchanged behaviour)."""
-    assert is_three_phase({}) is False
-    assert get_phase_count({}) == 1
-    assert get_effective_voltage({}) == VOLTAGE_EU  # 230
+def test_const_helpers_default_three_phase_tuya():
+    """v2.39.0: every entry is three-phase (690 V); default Tuya levels."""
+    assert is_three_phase({}) is True
+    assert get_phase_count({}) == 3
+    assert get_phase_count({CONF_PHASE_MODE: "single"}) == 3
+    assert get_effective_voltage({}) == VOLTAGE_EU * 3  # 690
     assert get_amp_levels({}) == CHARGER_AMP_LEVELS
 
 
@@ -92,16 +93,17 @@ def test_const_helpers_three_phase_generic():
     assert 7 in GENERIC_AMP_LEVELS and 11 in GENERIC_AMP_LEVELS  # 1 A granularity
 
 
-def test_charging_model_single():
+def test_charging_model_total_sensors():
+    """One total sensor per quantity: three phases, 690 V."""
     model = ChargingModel.from_config(SINGLE_CONFIG)
-    assert model.phase_count == 1
-    assert model.effective_voltage == 230
+    assert model.phase_count == 3
+    assert model.effective_voltage == 690
     assert model.amp_levels == CHARGER_AMP_LEVELS
     assert model.charger_model == CHARGER_MODEL_TUYA
     assert model.production_entities() == ["sensor.pv"]
     assert model.grid_import_entities() == ["sensor.grid"]
-    # 3680 W single-phase → 16 A
-    assert model.watts_to_amps(3680) == pytest.approx(16.0)
+    # 11040 W → 16 A per phase
+    assert model.watts_to_amps(11040) == pytest.approx(16.0)
 
 
 def test_charging_model_three_phase():
@@ -153,8 +155,8 @@ async def test_read_production_sums_phases(hass):
     assert model.read_production(hass) == pytest.approx(3000.0)
 
 
-async def test_read_production_single_phase_unchanged(hass):
-    """Single-phase production reads exactly the one configured sensor."""
+async def test_read_production_total_sensor(hass):
+    """A total production sensor is read as is."""
     hass.states.async_set("sensor.pv", "2200")
     model = ChargingModel.from_config(SINGLE_CONFIG)
     assert model.read_production(hass) == pytest.approx(2200.0)
@@ -513,3 +515,45 @@ def test_consumption_is_computed_with_signed_grid():
     assert model.read_consumption(hass) == pytest.approx(1200)
     surplus = model.read_production(hass) - model.read_consumption(hass)
     assert surplus == pytest.approx(3800)
+
+
+async def test_charger_current_single_sensor_is_every_phase(hass):
+    """v2.39.0: one charger current sensor without phase attributes is one
+    phase; every phase carries the same current."""
+    from custom_components.ev_smart_charger.const import CONF_FUSE_CHARGER_CURRENT
+    from custom_components.ev_smart_charger.power_model import read_charger_phase_currents
+
+    hass.states.async_set("sensor.ev_current", "10")
+    config = {CONF_FUSE_CHARGER_CURRENT: "sensor.ev_current"}
+    assert read_charger_phase_currents(hass, config, 3) == [10.0, 10.0, 10.0]
+
+
+async def test_charger_current_with_l2_l3_reads_each_phase(hass):
+    """v2.39.0: the one-phase field is L1 when L2/L3 are mapped, so a car on
+    one phase shows 0 A on the others."""
+    from custom_components.ev_smart_charger.const import (
+        CONF_FUSE_CHARGER_CURRENT,
+        CONF_FUSE_CHARGER_CURRENT_L2,
+        CONF_FUSE_CHARGER_CURRENT_L3,
+    )
+    from custom_components.ev_smart_charger.power_model import read_charger_phase_currents
+
+    hass.states.async_set("sensor.i1", "16")
+    hass.states.async_set("sensor.i2", "0")
+    hass.states.async_set("sensor.i3", "0")
+    config = {
+        CONF_FUSE_CHARGER_CURRENT: "sensor.i1",
+        CONF_FUSE_CHARGER_CURRENT_L2: "sensor.i2",
+        CONF_FUSE_CHARGER_CURRENT_L3: "sensor.i3",
+    }
+    assert read_charger_phase_currents(hass, config, 3) == [16.0, 0.0, 0.0]
+
+
+async def test_charger_current_attributes_still_per_phase(hass):
+    """A sensor with L1/L2/L3 attributes (OCPP current_import) keeps working."""
+    from custom_components.ev_smart_charger.const import CONF_FUSE_CHARGER_CURRENT
+    from custom_components.ev_smart_charger.power_model import read_charger_phase_currents
+
+    hass.states.async_set("sensor.ocpp", "32", {"L1": 16, "L2": 16, "L3": 0})
+    config = {CONF_FUSE_CHARGER_CURRENT: "sensor.ocpp"}
+    assert read_charger_phase_currents(hass, config, 3) == [16.0, 16.0, 0.0]

@@ -260,16 +260,19 @@ def _build_card_config(entry: ConfigEntry) -> dict[str, Any]:
         if value:
             config[card_key] = value
 
-    # v2.15.0: per-phase measured charger current sensors (fuse protection).
-    phase_currents = [
-        data[k]
-        for k in (
-            CONF_FUSE_CHARGER_CURRENT_L1,
-            CONF_FUSE_CHARGER_CURRENT_L2,
-            CONF_FUSE_CHARGER_CURRENT_L3,
-        )
-        if data.get(k)
-    ]
+    # v2.15.0 / v2.39.0: per-phase measured charger current. With L2 or L3
+    # mapped, L1 is the one-phase field (or an older dedicated L1 key).
+    phase_currents: list[str] = []
+    if data.get(CONF_FUSE_CHARGER_CURRENT_L2) or data.get(CONF_FUSE_CHARGER_CURRENT_L3):
+        phase_currents = [
+            entity
+            for entity in (
+                data.get(CONF_FUSE_CHARGER_CURRENT_L1) or data.get(CONF_FUSE_CHARGER_CURRENT),
+                data.get(CONF_FUSE_CHARGER_CURRENT_L2),
+                data.get(CONF_FUSE_CHARGER_CURRENT_L3),
+            )
+            if entity
+        ]
     if phase_currents:
         config["charger_current_entities"] = phase_currents
 

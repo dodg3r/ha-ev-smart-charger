@@ -26,6 +26,8 @@ from custom_components.ev_smart_charger.const import (
     CONF_FUSE_GRID_IMPORT_L2,
     CONF_FUSE_GRID_IMPORT_L3,
     CONF_FUSE_GRID_VOLTAGE_L1,
+    CONF_FUSE_GRID_VOLTAGE_L2,
+    CONF_FUSE_GRID_VOLTAGE_L3,
     CONF_FV_PRODUCTION,
     CONF_GRID_IMPORT,
     CONF_HAS_HOME_BATTERY,
@@ -87,12 +89,13 @@ def _meter_states(hass, imports=(500, 0, 0), exports=(0, 800, 700)):
 # ---------------------------------------------------------------------------
 
 
-def test_meter_import_needs_every_phase_and_integration_balancing():
+def test_meter_import_needs_every_phase():
     assert has_meter_import_power(THREE_METER) is True
     partial = dict(THREE_METER, **{CONF_FUSE_GRID_IMPORT_L3: None})
     assert has_meter_import_power(partial) is False
+    # v2.39.0: asked in the sensors step whatever the load balancing
     other = dict(THREE_METER, **{CONF_LOAD_BALANCING: LOAD_BALANCING_NONE})
-    assert has_meter_import_power(other) is False
+    assert has_meter_import_power(other) is True
 
 
 # ---------------------------------------------------------------------------
@@ -170,12 +173,16 @@ def test_charging_power_uses_meter_voltage():
         CONF_LOAD_BALANCING: LOAD_BALANCING_INTEGRATION,
         CONF_FUSE_GRID_IMPORT_L1: "sensor.imp1",
         CONF_FUSE_GRID_VOLTAGE_L1: "sensor.v1",
+        CONF_FUSE_GRID_VOLTAGE_L2: "sensor.v2",
+        CONF_FUSE_GRID_VOLTAGE_L3: "sensor.v3",
         CONF_FUSE_CHARGER_CURRENT: "sensor.charger_current",
     }
+    # v2.39.0: one charger current sensor is one phase, the same on all three
     hass.states.set("sensor.charger_current", 10)
-    hass.states.set("sensor.v1", 240)
+    for idx in (1, 2, 3):
+        hass.states.set(f"sensor.v{idx}", 240)
     model = ChargingModel.from_config(config)
-    assert model.read_charging_power(hass) == pytest.approx(2400)
+    assert model.read_charging_power(hass) == pytest.approx(3 * 2400)
 
 
 def test_charging_power_from_dedicated_phase_sensors():
@@ -281,36 +288,23 @@ def _required(schema):
     return {str(key) for key in schema.schema if key.__class__.__name__ == "Required"}
 
 
-def test_sensor_schema_optional_when_derivable():
-    plain = _required(_sensor_schema({}, three_phase=True, home_battery=False))
-    assert CONF_GRID_IMPORT in plain
-    assert CONF_HOME_CONSUMPTION not in plain
-    derived = _required(
-        _sensor_schema({}, three_phase=True, home_battery=False, derivable=True)
-    )
-    assert CONF_GRID_IMPORT not in derived
-    assert CONF_FV_PRODUCTION in derived
+def test_sensor_schema_with_solar_requires_net_and_phases():
+    """v2.39.0: net grid + import / export per phase are required with solar;
+    production L2/L3 are optional; the charging power left this step."""
+    required = _required(_sensor_schema({}, home_battery=False))
+    assert required == {
+        CONF_FV_PRODUCTION,
+        CONF_GRID_IMPORT,
+        CONF_FUSE_GRID_IMPORT_L1,
+        CONF_FUSE_GRID_IMPORT_L2,
+        CONF_FUSE_GRID_IMPORT_L3,
+        CONF_FUSE_GRID_EXPORT_L1,
+        CONF_FUSE_GRID_EXPORT_L2,
+        CONF_FUSE_GRID_EXPORT_L3,
+    }
+    assert CONF_HOME_CONSUMPTION not in {str(k) for k in _sensor_schema({}).schema}
 
 
-def test_flow_derivable_after_meter_step():
-    flow = EVSCConfigFlow()
-    flow.mode_info = {CONF_PHASE_MODE: PHASE_MODE_THREE}
-    flow.features_info = {
-        CONF_HAS_SOLAR: True,
-        CONF_HAS_HOME_BATTERY: False,
-        CONF_LOAD_BALANCING: LOAD_BALANCING_INTEGRATION,
-    }
-    assert flow._derivable() is False
-    flow.fuse_info = {
-        key: THREE_METER[key]
-        for key in (
-            CONF_MAIN_FUSE_SIZE,
-            CONF_FUSE_GRID_IMPORT_L1,
-            CONF_FUSE_GRID_IMPORT_L2,
-            CONF_FUSE_GRID_IMPORT_L3,
-            CONF_FUSE_CHARGER_CURRENT,
-        )
-    }
-    assert flow._derivable() is True
-    flow.features_info = dict(flow.features_info, **{CONF_LOAD_BALANCING: LOAD_BALANCING_NONE})
-    assert flow._derivable() is False
+def test_sensor_schema_without_solar():
+    required = _required(_sensor_schema({}, solar=False, home_battery=False))
+    assert required == {CONF_GRID_IMPORT}

@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.38.0"
+VERSION = "2.39.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -110,7 +110,9 @@ NIGHT_GRID_DRAW_START_GRACE_SECONDS = 90
 # thresholds and amp levels stay valid downstream.
 PHASE_MODE_SINGLE = "single"
 PHASE_MODE_THREE = "three"
-DEFAULT_PHASE_MODE = PHASE_MODE_SINGLE
+# v2.39.0: single-phase installs are no longer supported; every entry is
+# three-phase (an old "single" value is ignored).
+DEFAULT_PHASE_MODE = PHASE_MODE_THREE
 
 # Charger model: tuya (discrete CHARGER_AMP_LEVELS, safe stop/set/start on decrease,
 # default = current behaviour) or generic (1 A steps, live amperage decrease without
@@ -911,23 +913,18 @@ def get_load_balancing(config: dict) -> str:
 
 
 def is_three_phase(config: dict) -> bool:
-    """Return True if the install is configured as three-phase (v2.0.0)."""
-    return config.get(CONF_PHASE_MODE, DEFAULT_PHASE_MODE) == PHASE_MODE_THREE
+    """Always True since v2.39.0 (single-phase installs were removed)."""
+    return True
 
 
 def get_phase_count(config: dict) -> int:
-    """Return the number of phases (1 single, 3 three-phase) (v2.0.0)."""
-    return 3 if is_three_phase(config) else 1
+    """Number of phases: always 3 since v2.39.0."""
+    return 3
 
 
 def has_charger_current(config: dict) -> bool:
-    """True when the charger current is mapped in the meter step (v2.38.0).
-
-    The integration can then compute the EV charging power itself, so no
-    charging-power sensor is needed.
-    """
-    if get_load_balancing(config) != LOAD_BALANCING_INTEGRATION:
-        return False
+    """True when the charger current is mapped (v2.38.0; v2.39.0: in the
+    charger step, whatever the load balancing)."""
     if config.get(CONF_FUSE_CHARGER_CURRENT):
         return True
     keys = FUSE_CHARGER_CURRENT_KEYS[: get_phase_count(config)]
@@ -938,11 +935,10 @@ def has_meter_import_power(config: dict) -> bool:
     """True when the meter's import power is mapped on every phase (v2.18.0).
 
     That is what lets the integration derive grid import (import − export per
-    phase) and, with the charger current, home consumption. Only meaningful
-    when the meter step is shown, i.e. load balancing by the integration.
+    phase) and, with the charger current, home consumption.
+    v2.39.0: asked in the sensors step with solar panels, whatever the load
+    balancing.
     """
-    if get_load_balancing(config) != LOAD_BALANCING_INTEGRATION:
-        return False
     keys = FUSE_GRID_IMPORT_KEYS[: get_phase_count(config)]
     return all(config.get(key) for key in keys)
 

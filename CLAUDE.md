@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.38.0
+**Current Version:** 2.39.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,55 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.39.0 (2026-11-04) — fork dodg3r
+**Three-phase only; every charger sensor required; net grid + per-phase meter sensors with solar**
+
+Requested by the maintainer (setup: solar, no home battery, external load
+balancer; the other setups follow later).
+- Single-phase removed: `is_three_phase()` is always True, `get_phase_count()`
+  3, `DEFAULT_PHASE_MODE` three; `_apply_features()` writes
+  `CONF_PHASE_MODE = three`. The phase-mode step is gone: the charger model
+  is the entry point of reconfigure (`reconfigure`) and options (`init`);
+  `async_step_phase_mode`, `async_step_reconfigure_charger_model` and the
+  options `charger_model` step are removed.
+- Charger step (all setups, required): switch or start/stop buttons,
+  current control, status sensor (required again), charging power
+  (`CONF_CHARGING_POWER`, L2/L3 optional — moved here from the sensors step)
+  and charger current (`CONF_FUSE_CHARGER_CURRENT` = one phase or L1,
+  `CONF_FUSE_CHARGER_CURRENT_L2/L3` optional — moved here from the meter
+  step). `_normalize_charger_input` writes cleared L2/L3 as None and drops the
+  old dedicated `CONF_FUSE_CHARGER_CURRENT_L1`. Optional fields use
+  `suggested_value` (`_suggested`) so they can be cleared.
+- `read_charger_phase_currents`: with L2/L3 mapped each phase is read
+  (first = old L1 key or the one-phase field); a single sensor without
+  L1/L2/L3 attributes counts for EVERY phase (was total / phases). Same in
+  the card (`_measuredChargerPhaseCurrents`) and `dashboard_manager`
+  (`charger_current_entities` = [one-phase field, L2, L3]).
+- Sensors step with solar (required): production (L2/L3 optional), net grid
+  (`CONF_GRID_IMPORT`, signed, used directly), grid import L1–L3 and grid
+  export L1–L3 (`FUSE_GRID_IMPORT_KEYS` / `FUSE_GRID_EXPORT_KEYS`, moved here
+  from the meter step). Without solar: grid import (L2/L3, export optional)
+  as before. `derivable` / `ev_power_known` are gone; the sensors step comes
+  before the meter step again.
+- Meter step: fuse size, grid current L1–L3, voltage L1–L3 (`_FUSE_STEP_KEYS`);
+  `_validate_main_fuse(merged)` accepts the import power from the sensors
+  step as the reading of a phase. `_fuse_step` moved to `_StepNavigator`
+  (options uses it too). `_apply_features` clears only the meter-step keys
+  when load balancing is not by the integration.
+- `has_charger_current()` / `has_meter_import_power()` no longer depend on
+  the load balancing choice.
+- Solar forecast today + tomorrow required (forecast step, solar only);
+  price sensor required (external step).
+- Texts EN/IT/NL rewritten for the charger, sensors, meter, forecast and
+  external steps; `reconfigure` / `init` carry the charger model texts.
+- README: requirements and steps 2–6.
+- Tests: flow walkthroughs use `CHARGER_INPUT` / `SOLAR_SENSORS` /
+  `FORECAST_INPUT` / `EXTERNAL_INPUT` (test_config_flow.py); watt values in
+  solar surplus / spike / start-offset tests scaled to 690 V; new tests for
+  the charger current per phase, the sensor schema and the meter step.
+
+---
 
 ### v2.38.0 (2026-11-04) — fork dodg3r
 **Home consumption is always computed; grid import/export is the requirement**

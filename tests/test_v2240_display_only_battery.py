@@ -48,6 +48,8 @@ from custom_components.ev_smart_charger.const import (
 from custom_components.ev_smart_charger.dashboard_manager import _build_card_config
 from custom_components.ev_smart_charger.priority_balancer import PriorityBalancer
 
+from .test_config_flow import CHARGER_INPUT, EXTERNAL_INPUT, FORECAST_INPUT, SOLAR_SENSORS
+
 DISPLAY_ONLY = {
     CONF_SOC_CAR: "sensor.car_soc",
     CONF_SOC_HOME: "sensor.home_soc",
@@ -118,10 +120,7 @@ async def test_reconfigure_to_display_only_keeps_the_soc_sensor(hass):
     flow.hass = hass
     flow.context = {"entry_id": entry.entry_id}
 
-    await flow.async_step_reconfigure({CONF_PHASE_MODE: PHASE_MODE_SINGLE})
-    result = await flow.async_step_reconfigure_charger_model(
-        {CONF_CHARGER_MODEL: CHARGER_MODEL_GENERIC}
-    )
+    result = await flow.async_step_reconfigure({CONF_CHARGER_MODEL: CHARGER_MODEL_GENERIC})
     assert result["data_schema"]({})[CONF_HOME_BATTERY_CONTROL] is True
     await flow.async_step_reconfigure_features(
         {
@@ -131,29 +130,17 @@ async def test_reconfigure_to_display_only_keeps_the_soc_sensor(hass):
             CONF_LOAD_BALANCING: LOAD_BALANCING_NONE,
         }
     )
-    await flow.async_step_reconfigure_entities(
-        {
-            CONF_EV_CHARGER_SWITCH: "switch.charger",
-            CONF_EV_CHARGER_CURRENT: "number.charger_current",
-            CONF_EV_CHARGER_STATUS: "sensor.charger_status",
-        }
-    )
+    await flow.async_step_reconfigure_entities(dict(CHARGER_INPUT))
     await flow.async_step_reconfigure_sensors(
-        {
-            CONF_SOC_CAR: "sensor.car_soc",
-            CONF_SOC_HOME: "sensor.home_soc",
-            CONF_FV_PRODUCTION: "sensor.pv",
-            CONF_CHARGING_POWER: "sensor.ev_power",
-            CONF_GRID_IMPORT: "sensor.grid",
-        }
+        {CONF_SOC_HOME: "sensor.home_soc", **SOLAR_SENSORS}
     )
-    await flow.async_step_reconfigure_pv_forecast({})
+    await flow.async_step_reconfigure_pv_forecast(dict(FORECAST_INPUT))
     hass.services.async_register("notify", "mobile_app_phone", lambda call: None)
     await flow.async_step_reconfigure_notifications(
         {CONF_NOTIFY_SERVICES: [], CONF_CAR_OWNER: "person.owner"}
     )
     await flow.async_step_reconfigure_external_connectors(
-        {CONF_BATTERY_CAPACITY: DEFAULT_BATTERY_CAPACITY}
+        {**EXTERNAL_INPUT, CONF_BATTERY_CAPACITY: DEFAULT_BATTERY_CAPACITY}
     )
     with patch.object(hass.config_entries, "async_update_entry") as update_entry:
         await flow.async_step_reconfigure_dashboard({"create_dashboard": False})

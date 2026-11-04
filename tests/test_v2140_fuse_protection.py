@@ -30,6 +30,8 @@ from custom_components.ev_smart_charger.const import (
     CONF_FUSE_GRID_IMPORT_L2,
     CONF_FUSE_GRID_IMPORT_L3,
     CONF_FUSE_GRID_VOLTAGE_L1,
+    CONF_FUSE_GRID_VOLTAGE_L2,
+    CONF_FUSE_GRID_VOLTAGE_L3,
     CONF_MAIN_FUSE_SIZE,
     CONF_PHASE_MODE,
     CONF_SOC_CAR,
@@ -497,19 +499,24 @@ async def test_guard_zero_total_ignores_stale_attributes(hass):
     await guard.async_remove()
 
 
-async def test_guard_single_phase_power_fallback(hass):
+async def test_guard_power_fallback(hass):
+    """Without meter current sensors the current is power / voltage."""
     config = {
         CONF_MAIN_FUSE_SIZE: 16,
-        CONF_PHASE_MODE: PHASE_MODE_SINGLE,
         CONF_CHARGER_MODEL: CHARGER_MODEL_GENERIC,
         CONF_EV_CHARGER_SWITCH: "switch.charger",
         CONF_EV_CHARGER_CURRENT: "number.charger_current",
         CONF_FUSE_GRID_IMPORT_L1: "sensor.p_in1",
+        CONF_FUSE_GRID_IMPORT_L2: "sensor.p_in2",
+        CONF_FUSE_GRID_IMPORT_L3: "sensor.p_in3",
         CONF_FUSE_GRID_VOLTAGE_L1: "sensor.u1",
+        CONF_FUSE_GRID_VOLTAGE_L2: "sensor.u2",
+        CONF_FUSE_GRID_VOLTAGE_L3: "sensor.u3",
         CONF_FUSE_CHARGER_CURRENT: "sensor.charger_current_import",
     }
-    hass.states.async_set("sensor.p_in1", "1150")
-    hass.states.async_set("sensor.u1", "230")
+    for phase in (1, 2, 3):
+        hass.states.async_set(f"sensor.p_in{phase}", "1150")
+        hass.states.async_set(f"sensor.u{phase}", "230")
     hass.states.async_set("switch.charger", "off")
     hass.states.async_set("number.charger_current", "6")
     hass.states.async_set("sensor.charger_current_import", "0")
@@ -537,29 +544,47 @@ async def test_main_fuse_step_requires_readings_when_enabled(hass):
         CONF_FUSE_GRID_CURRENT_L1: "fuse_phase_reading_required",
         CONF_FUSE_GRID_CURRENT_L2: "fuse_phase_reading_required",
         CONF_FUSE_GRID_CURRENT_L3: "fuse_phase_reading_required",
-        CONF_FUSE_CHARGER_CURRENT: "fuse_charger_current_required",
     }
+
+
+async def test_main_fuse_step_accepts_import_power_from_sensors_step(hass):
+    """v2.39.0: the per-phase import power mapped in the sensors step counts
+    as the reading of that phase."""
+    flow = EVSCConfigFlow()
+    flow.hass = hass
+    flow.sensor_info = {
+        CONF_FUSE_GRID_IMPORT_L1: "sensor.p_in1",
+        CONF_FUSE_GRID_IMPORT_L2: "sensor.p_in2",
+        CONF_FUSE_GRID_IMPORT_L3: "sensor.p_in3",
+    }
+
+    result = await flow.async_step_main_fuse({CONF_MAIN_FUSE_SIZE: "25"})
+
+    assert result["step_id"] == "pv_forecast"
+    assert flow.fuse_info[CONF_MAIN_FUSE_SIZE] == 25
 
 
 async def test_main_fuse_step_stores_normalized_data(hass):
     flow = EVSCConfigFlow()
     flow.hass = hass
     flow.mode_info = {CONF_PHASE_MODE: PHASE_MODE_THREE}
+    flow.sensor_info = {CONF_FUSE_GRID_IMPORT_L3: "sensor.p_in3"}
     payload = {
         CONF_MAIN_FUSE_SIZE: "25",
         CONF_FUSE_GRID_CURRENT_L1: "sensor.i1",
         CONF_FUSE_GRID_CURRENT_L2: "sensor.i2",
-        CONF_FUSE_GRID_IMPORT_L3: "sensor.p_in3",
-        CONF_FUSE_CHARGER_CURRENT: "sensor.charger_current_import",
     }
 
     result = await flow.async_step_main_fuse(payload)
 
-    # v2.18.0: the meter step comes before the sensors step.
-    assert result["step_id"] == "sensors"
+    # v2.39.0: the meter step comes after the sensors step.
+    assert result["step_id"] == "pv_forecast"
     assert flow.fuse_info[CONF_MAIN_FUSE_SIZE] == 25
     assert flow.fuse_info[CONF_FUSE_GRID_CURRENT_L1] == "sensor.i1"
     assert flow.fuse_info[CONF_FUSE_GRID_CURRENT_L3] is None
+    # the meter step does not touch the keys of the other steps
+    assert CONF_FUSE_GRID_IMPORT_L3 not in flow.fuse_info
+    assert CONF_FUSE_CHARGER_CURRENT not in flow.fuse_info
 
 
 async def test_main_fuse_off_skips_validation(hass):
@@ -569,28 +594,16 @@ async def test_main_fuse_off_skips_validation(hass):
 
     result = await flow.async_step_main_fuse({CONF_MAIN_FUSE_SIZE: "0"})
 
-    assert result["step_id"] == "sensors"
+    assert result["step_id"] == "pv_forecast"
     assert flow.fuse_info[CONF_MAIN_FUSE_SIZE] == 0
-
-
-def test_normalize_drops_other_phases_in_single_phase():
-    data = _normalize_main_fuse_input(
-        {
-            CONF_MAIN_FUSE_SIZE: "20",
-            CONF_FUSE_GRID_CURRENT_L1: "sensor.i1",
-            CONF_FUSE_GRID_CURRENT_L2: "sensor.i2",
-        },
-        three_phase=False,
-    )
-    assert data[CONF_FUSE_GRID_CURRENT_L1] == "sensor.i1"
-    assert data[CONF_FUSE_GRID_CURRENT_L2] is None
 
 
 def test_normalize_clears_removed_mapping():
     """Leaving a field empty must remove the old mapping on reconfigure."""
-    data = _normalize_main_fuse_input({CONF_MAIN_FUSE_SIZE: "25"}, three_phase=True)
-    assert data[CONF_FUSE_CHARGER_CURRENT] is None
-    assert data[CONF_FUSE_GRID_IMPORT_L2] is None
+    data = _normalize_main_fuse_input({CONF_MAIN_FUSE_SIZE: "25"})
+    assert data[CONF_FUSE_GRID_CURRENT_L2] is None
+    assert data[CONF_FUSE_GRID_VOLTAGE_L1] is None
+    assert CONF_FUSE_CHARGER_CURRENT not in data
 
 
 # ----------------------------------------------------------------------------

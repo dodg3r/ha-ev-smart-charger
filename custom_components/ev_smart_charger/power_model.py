@@ -51,7 +51,6 @@ from .const import (
     get_effective_voltage,
     get_phase_count,
     has_meter_import_power,
-    is_three_phase,
 )
 from .utils.state_helper import get_float, get_state
 
@@ -310,56 +309,56 @@ def read_number(hass: HomeAssistant, entity_id: str | None) -> float | None:
 def read_charger_phase_currents(
     hass: HomeAssistant, config: dict, phase_count: int
 ) -> list[float | None]:
-    """Per-phase charger current (A) from the meter-step mapping.
+    """Per-phase charger current (A).
 
-    Dedicated per-phase sensors win; otherwise one sensor whose state is the
-    total and whose L1/L2/L3 attributes (if any) hold the phases. Used by the
-    fuse guard and by the derived charging power.
+    v2.39.0 mapping (charger step): ``CONF_FUSE_CHARGER_CURRENT`` is one phase
+    (or L1); L2/L3 (``FUSE_CHARGER_CURRENT_KEYS[1:]``) are optional. With L2 or
+    L3 mapped every phase is read on its own, so a car charging on fewer
+    phases shows 0 A on the others. With only the one sensor, its L1/L2/L3
+    attributes are used if it has them (e.g. OCPP current_import), otherwise
+    its value counts for every phase (all phases carry the same current).
+    Older entries may have the first phase in ``FUSE_CHARGER_CURRENT_KEYS[0]``.
     """
-    dedicated = [config.get(key) for key in FUSE_CHARGER_CURRENT_KEYS[:phase_count]]
-    if any(dedicated):
-        return [read_current_a(hass, entity) for entity in dedicated]
+    first = config.get(FUSE_CHARGER_CURRENT_KEYS[0]) or config.get(CONF_FUSE_CHARGER_CURRENT)
+    others = [config.get(key) for key in FUSE_CHARGER_CURRENT_KEYS[1:phase_count]]
+    if any(others):
+        return [read_current_a(hass, entity) for entity in [first, *others]]
 
-    total_entity = config.get(CONF_FUSE_CHARGER_CURRENT)
-    if not total_entity:
+    single = config.get(CONF_FUSE_CHARGER_CURRENT) or config.get(FUSE_CHARGER_CURRENT_KEYS[0])
+    if not single:
         return [None] * phase_count
-    state = hass.states.get(total_entity)
+    state = hass.states.get(single)
     if state is None:
         return [None] * phase_count
-    total = _parse_number(state.state)
+    value = _parse_number(state.state)
 
     # Charger reports no current at all: per-phase attributes are often
-    # left at their last value, so trust the total and report zero.
-    if total is not None and abs(total) < 0.1:
+    # left at their last value, so trust the state and report zero.
+    if value is not None and abs(value) < 0.1:
         return [0.0] * phase_count
 
     values: list[float | None] = []
     for candidates in FUSE_CHARGER_PHASE_ATTRIBUTES[:phase_count]:
-        value = None
+        attr = None
         for name in candidates:
             if name in state.attributes:
-                value = _parse_number(state.attributes.get(name))
+                attr = _parse_number(state.attributes.get(name))
                 break
-        values.append(value)
+        values.append(attr)
 
-    if phase_count == 1 and values[0] is None:
-        return [total]
-    if all(v is None for v in values) and total is not None:
-        # No per-phase attributes: assume the load is spread evenly.
-        return [total / phase_count] * phase_count
+    if all(v is None for v in values):
+        # No per-phase attributes: the sensor is one phase, and every phase
+        # carries the same current.
+        return [value] * phase_count
     return values
 
 
 def _entities_for(config: dict, keys: tuple[str, ...]) -> list[str]:
     """Return the configured entity ids for a quantity.
 
-    Single-phase → only L1 (``keys[0]``). Three-phase → L1/L2/L3, skipping any
-    that are not mapped (defensive; the config flow makes L2/L3 required in
-    three-phase, but a hand-edited entry might omit one).
+    L1/L2/L3, skipping any that are not mapped (L2/L3 are optional: a single
+    total sensor is mapped to L1).
     """
-    if not is_three_phase(config):
-        entity = config.get(keys[0])
-        return [entity] if entity else []
     return [config[k] for k in keys if config.get(k)]
 
 

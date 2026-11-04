@@ -43,8 +43,8 @@ async def test_default_offset_keeps_legacy_thresholds(hass, automation):
     assert automation._stop_threshold() == 5.5
     assert automation._import_allowance_w() == 0
     assert automation._effective_grid_threshold(50) == 50
-    # 6 A of surplus at 230 V: not enough to start
-    assert automation._calculate_target_amperage(6 * 230, current_amperage=0) == 0
+    # 6 A of surplus at 690 V (three-phase): not enough to start
+    assert automation._calculate_target_amperage(6 * 690, current_amperage=0) == 0
 
 
 async def test_missing_entity_is_legacy(hass, automation):
@@ -58,26 +58,26 @@ async def test_negative_offset_starts_on_less_sun(hass, automation):
     assert automation._start_threshold() == 4.5
     assert automation._stop_threshold() == 3.5
     # 4.6 A of surplus starts at the 6 A floor
-    assert automation._calculate_target_amperage(4.6 * 230, current_amperage=0) == 6
+    assert automation._calculate_target_amperage(4.6 * 690, current_amperage=0) == 6
     # 3.8 A keeps a running 6 A session
-    assert automation._calculate_target_amperage(3.8 * 230, current_amperage=6) == 6
+    assert automation._calculate_target_amperage(3.8 * 690, current_amperage=6) == 6
     # 3.0 A stops it
-    assert automation._calculate_target_amperage(3.0 * 230, current_amperage=6) == 0
+    assert automation._calculate_target_amperage(3.0 * 690, current_amperage=6) == 0
 
 
 async def test_negative_offset_allows_the_floor_gap_as_import(hass, automation):
     hass.states.async_set(OFFSET, "-2")
-    # gap at the stop threshold: 6 A - 3.5 A = 2.5 A at 230 V
-    assert automation._import_allowance_w() == pytest.approx(2.5 * 230)
-    assert automation._effective_grid_threshold(50) == pytest.approx(50 + 2.5 * 230)
+    # gap at the stop threshold: 6 A - 3.5 A = 2.5 A at 690 V (three-phase)
+    assert automation._import_allowance_w() == pytest.approx(2.5 * 690)
+    assert automation._effective_grid_threshold(50) == pytest.approx(50 + 2.5 * 690)
 
 
 async def test_positive_offset_waits_for_more_sun(hass, automation):
     hass.states.async_set(OFFSET, "2")
     assert automation._start_threshold() == 8.5
     assert automation._import_allowance_w() == 0
-    assert automation._calculate_target_amperage(8 * 230, current_amperage=0) == 0
-    assert automation._calculate_target_amperage(9 * 230, current_amperage=0) == 8
+    assert automation._calculate_target_amperage(8 * 690, current_amperage=0) == 0
+    assert automation._calculate_target_amperage(9 * 690, current_amperage=0) == 8
 
 
 async def test_offset_is_clamped(hass, automation):

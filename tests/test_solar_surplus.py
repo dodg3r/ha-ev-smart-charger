@@ -55,26 +55,24 @@ def automation(hass, mock_charger_controller, mock_priority_balancer):
 
 async def test_calculate_target_amperage(hass, automation):
     """Test target amperage calculation with hysteresis."""
-    # 230V * 6A = 1380W
-    # 230V * 10A = 2300W
-    
+    # v2.39.0: always three-phase, 690 V.
     # Case 1: Surplus sufficient to start (>= 6.5A)
-    # 7A * 230V = 1610W
-    target = automation._calculate_target_amperage(1610, current_amperage=0)
+    # 7A * 690V = 4830W
+    target = automation._calculate_target_amperage(4830, current_amperage=0)
     assert target == 6  # Should start at min level (6A)
     
     # Case 2: Surplus in dead band (6A) - Not charging
-    # 6A * 230V = 1380W
-    target = automation._calculate_target_amperage(1380, current_amperage=0)
+    # 6A * 690V = 4140W
+    target = automation._calculate_target_amperage(4140, current_amperage=0)
     assert target == 0  # Should wait for start threshold
     
     # Case 3: Surplus in dead band (6A) - Charging
-    target = automation._calculate_target_amperage(1380, current_amperage=6)
+    target = automation._calculate_target_amperage(4140, current_amperage=6)
     assert target == 6  # Should maintain current
     
     # Case 4: Surplus below stop threshold (5A)
-    # 5A * 230V = 1150W
-    target = automation._calculate_target_amperage(1150, current_amperage=6)
+    # 5A * 690V = 3450W
+    target = automation._calculate_target_amperage(3450, current_amperage=6)
     assert target == 0  # Should stop
 
 
@@ -613,11 +611,11 @@ async def test_start_timer_runs_initial_check(hass, automation):
 async def test_dead_band_steps_down_above_floor(hass, automation):
     """issue #51: in the hysteresis dead band, maintain ONLY at the floor.
     Above the floor a band-level surplus is a deficit → step one level down."""
-    # surplus 1288W → 5.6A, inside the 5.5–6.5A dead band.
+    # surplus 3864W → 5.6A at 690 V, inside the 5.5–6.5A dead band.
     # Tuya levels [6,8,10,13,16,20,24,32]: 20A is above floor → step to 16A.
-    assert automation._calculate_target_amperage(1288, current_amperage=20) == 16
+    assert automation._calculate_target_amperage(3864, current_amperage=20) == 16
     # At the floor (6A): maintain (original anti-oscillation intent).
-    assert automation._calculate_target_amperage(1288, current_amperage=6) == 6
+    assert automation._calculate_target_amperage(3864, current_amperage=6) == 6
 
 
 async def test_surplus_increase_steps_one_level(hass, automation):

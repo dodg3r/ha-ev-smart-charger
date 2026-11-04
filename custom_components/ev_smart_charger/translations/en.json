@@ -13,116 +13,114 @@
       },
       "entities": {
         "title": "Charger Entities - Step {step}/{total_steps}",
-        "description": "Map the entities that start or stop the charger, set the charging current, and report charger status.\n\n**Charger on/off control — pick ONE of the two:**\n- **Switch** (most wallboxes): map the on/off switch and leave both buttons empty.\n- **Start / Stop buttons** (e.g. Growatt THOR): leave the switch empty and map BOTH the start and the stop button.\n\nIf both are mapped, the switch is used. With buttons, also mapping the charging-power or charger-status sensor in the next step is strongly recommended: it is how the integration knows whether the charger is really running.",
+        "description": "Map everything about the charger. Every field is required unless it says optional.\n\n**On/off control — pick ONE:**\n- **Switch** (most wallboxes): map the switch and leave both buttons empty.\n- **Start / Stop buttons** (e.g. Growatt THOR): leave the switch empty and map both buttons.\n\n**Charging power and charger current:** map the total power, and the current of one phase, in the first field. If you have one sensor per phase, map L1 there and L2/L3 in the optional fields; with current per phase the integration sees how many phases the car charges on.",
         "data": {
           "ev_charger_switch": "Charger switch",
           "ev_charger_start_button": "Start charging button",
           "ev_charger_stop_button": "Stop charging button",
           "ev_charger_current": "Charging current control",
-          "ev_charger_status": "Charger status sensor"
+          "ev_charger_status": "Charger status sensor",
+          "charging_power": "Charging power (total or L1)",
+          "charging_power_l2": "Charging power L2 (optional)",
+          "charging_power_l3": "Charging power L3 (optional)",
+          "fuse_charger_current": "Charger current (one phase or L1)",
+          "fuse_charger_current_l2": "Charger current L2 (optional)",
+          "fuse_charger_current_l3": "Charger current L3 (optional)"
         },
         "data_description": {
           "ev_charger_switch": "Switch entity that turns the charger on or off. Leave empty if your charger exposes start/stop buttons instead.",
           "ev_charger_start_button": "Optional. For chargers that expose start/stop buttons instead of a switch (e.g. Growatt THOR). Map both buttons and leave the switch empty.",
           "ev_charger_stop_button": "Optional. Pressed to stop charging when the charger is controlled with buttons.",
           "ev_charger_current": "Current control entity. Supported domains: `number`, `input_number`, `select`, `input_select`.",
-          "ev_charger_status": "Optional. Reports `charger_charging`, `charger_free`, `charger_end`, or `charger_wait`. Used as the fallback for charging detection when no charging-power sensor is mapped, and as the source of plug/idle/finished status."
+          "ev_charger_status": "Reports the charger state (e.g. charging, available, finished). Used for the plugged-in, idle and finished status.",
+          "charging_power": "Measured charging power in W or kW: the total, or phase L1 when L2 and L3 are mapped below. Needed to compute the house consumption.",
+          "charging_power_l2": "Only when the first charging power field holds L1.",
+          "charging_power_l3": "Only when the first charging power field holds L1.",
+          "fuse_charger_current": "Measured charger current in A. One phase (all phases carry the same current), or L1 when L2 and L3 are mapped below. A sensor with L1/L2/L3 attributes (e.g. OCPP current_import) is read per phase.",
+          "fuse_charger_current_l2": "Map L2 and L3 to see how many phases the car charges on.",
+          "fuse_charger_current_l3": "Map L2 and L3 to see how many phases the car charges on."
         }
       },
       "sensors": {
         "title": "Energy Sensors - Step {step}/{total_steps}",
-        "description": "Map the sensors used by Solar Surplus, Priority Balancer, and Night Smart Charge. In three-phase mode you map three sensors per quantity (one per phase). House consumption is computed by the integration, no consumption sensor is needed.",
+        "description": "Map the energy sensors. With solar panels every field is required unless it says optional. House consumption is computed by the integration (production + net grid − charging power − battery power), no consumption sensor is needed.",
         "data": {
           "soc_car": "EV battery SOC",
           "ev_soc_limit": "EV charge limit (optional)",
           "soc_home": "Home battery SOC",
           "fv_production": "Solar production",
-          "grid_import": "Grid import",
-          "fv_production_l2": "Solar production (L2)",
-          "fv_production_l3": "Solar production (L3)",
-          "grid_import_l2": "Grid import (L2)",
-          "grid_import_l3": "Grid import (L3)",
+          "grid_import": "Net grid power",
+          "fv_production_l2": "Solar production L2 (optional)",
+          "fv_production_l3": "Solar production L3 (optional)",
+          "grid_import_l2": "Grid import L2 (optional)",
+          "grid_import_l3": "Grid import L3 (optional)",
           "grid_export": "Grid export (optional)",
-          "grid_export_l2": "Grid export (L2)",
-          "grid_export_l3": "Grid export (L3)",
-          "charging_power": "EV charging power",
-          "charging_power_l2": "EV charging power (L2)",
-          "charging_power_l3": "EV charging power (L3)",
+          "grid_export_l2": "Grid export L2 (optional)",
+          "grid_export_l3": "Grid export L3 (optional)",
           "grid_available": "Grid available (binary sensor)",
-          "battery_power": "Battery power sensor (W, signed)"
+          "battery_power": "Battery power sensor (W, signed)",
+          "fuse_grid_import_l1": "Grid import L1 (W)",
+          "fuse_grid_export_l1": "Grid export L1 (W)",
+          "fuse_grid_import_l2": "Grid import L2 (W)",
+          "fuse_grid_export_l2": "Grid export L2 (W)",
+          "fuse_grid_import_l3": "Grid import L3 (W)",
+          "fuse_grid_export_l3": "Grid export L3 (W)"
         },
         "data_description": {
           "soc_car": "Sensor with the EV state of charge in percent.",
           "ev_soc_limit": "Sensor with the car's own charge limit in percent (e.g. the target battery charge level from the car's integration). Its value counts as full: EV targets are capped to it and a car at the limit is not started. Leave empty for 100 %.",
           "soc_home": "Sensor with the home battery state of charge in percent. Shown because you answered that the house has a home battery; answer no in the first step to remove it.",
-          "fv_production": "Sensor with current PV production in watts. In three-phase mode: phase L1, or the TOTAL production if you only have a total sensor (then leave L2 and L3 empty).",
-          "grid_import": "Grid power in watts, positive = importing. A combined sensor that goes negative when exporting works on its own. If import and export are two sensors, map the export below. Three-phase: phase L1, or the TOTAL (then leave L2 and L3 empty). Leave empty if you mapped import power per phase in the meter step.",
-          "fv_production_l2": "Solar production on phase L2, in watts. Optional: leave empty when the L1 field holds the total.",
-          "fv_production_l3": "Solar production on phase L3, in watts. Optional: leave empty when the L1 field holds the total.",
-          "grid_import_l2": "Grid import on phase L2, in watts. Optional: leave empty when the L1 field holds the total.",
-          "grid_import_l3": "Grid import on phase L3, in watts. Optional: leave empty when the L1 field holds the total.",
-          "charging_power": "Measured EV charging power in watts. Required with solar panels (house consumption is computed as production + net grid − EV power − battery power), unless the meter step maps the charger current. Three-phase: phase L1, or the TOTAL (then leave L2 and L3 empty).",
-          "charging_power_l2": "EV charging power on phase L2, in watts. Optional: leave empty when the L1 field holds the total.",
-          "charging_power_l3": "EV charging power on phase L3, in watts. Optional: leave empty when the L1 field holds the total.",
+          "fv_production": "Solar production in W or kW: the total, or phase L1 when L2 and L3 are mapped below.",
+          "grid_import": "One sensor in W or kW: positive when buying from the grid, negative when selling (for example the net sensor made for the Energy dashboard). Used directly for the surplus.",
+          "fv_production_l2": "Only when the solar production field holds L1.",
+          "fv_production_l3": "Only when the solar production field holds L1.",
+          "grid_import_l2": "Only without solar panels, when the field above holds L1.",
+          "grid_import_l3": "Only without solar panels, when the field above holds L1.",
           "grid_available": "Optional. Binary sensor reporting grid availability (on = grid present, off = grid lost). When mapped and off, Night Smart Charge grid mode stops so it does not drain the home battery during a grid outage (useful on hybrid Battery First / UPS inverters). Leave empty to keep the previous behaviour.",
           "battery_power": "Optional. Signed battery power in watts — NEGATIVE = discharging, POSITIVE = charging. Used when home consumption is computed by the integration, by the Solar Surplus dead-band buffer and by the Night Smart Charge battery protection. If your sensor reports the opposite sign, invert it with a template sensor that negates the value — see the README for an example.",
-          "grid_export": "Only if export is a separate sensor (positive watts when exporting). Leave empty when the grid import sensor goes negative on export. Net grid = import − export.",
-          "grid_export_l2": "Grid export on phase L2, in watts. Optional.",
-          "grid_export_l3": "Grid export on phase L3, in watts. Optional."
+          "grid_export": "Only without solar panels, when import and export are two sensors.",
+          "grid_export_l2": "Only without solar panels, when import and export are two sensors.",
+          "grid_export_l3": "Only without solar panels, when import and export are two sensors.",
+          "fuse_grid_import_l1": "Power bought from the grid on this phase (0 while selling).",
+          "fuse_grid_export_l1": "Power sold to the grid on this phase (0 while buying).",
+          "fuse_grid_import_l2": "Power bought from the grid on this phase (0 while selling).",
+          "fuse_grid_export_l2": "Power sold to the grid on this phase (0 while buying).",
+          "fuse_grid_import_l3": "Power bought from the grid on this phase (0 while selling).",
+          "fuse_grid_export_l3": "Power sold to the grid on this phase (0 while buying)."
         }
       },
       "main_fuse": {
         "title": "Main Fuse Protection - Step {step}/{total_steps}",
-        "description": "Protects your house main fuse: the charger current is limited so that house load + EV never exceeds the fuse on any phase. It applies to every charging mode, including Force Charge and Boost.\n\nPick your main fuse size and map your electricity meter's per-phase sensors. Best: current per phase (A) plus import and export power per phase (W) so the direction of the current is known. Current alone also works (slightly more cautious while exporting). Power alone works too (current = power / voltage).\n\nThe charger's own current is needed so its load is not counted as house load: map one sensor with L1/L2/L3 attributes (for example OCPP current_import) or one sensor per phase.\n\nIf a meter sensor becomes unavailable, charging drops to the minimum current and stops after 2 minutes. The safety margin can be changed later (EVSC Fuse Margin). Above the fuse plus a hard limit (default 10 A, EVSC Fuse Hard Trip) charging stops at once.\n\nWith import (and export) power on every phase, the integration also computes grid import and the EV charging power, so you can leave those sensors empty in the next step.",
+        "description": "Protects your house main fuse: the charger current is limited so that house load + EV never exceeds the fuse on any phase. It applies to every charging mode, including Force Charge and Boost.\n\nPick your main fuse size and map the meter's current per phase (A). The import and export power per phase from the sensors step give the direction of the current; without a current sensor the current is computed from that power (and the voltage, if mapped). The charger current from the charger step is subtracted, so the charger's own load is not counted as house load.\n\nIf a meter sensor becomes unavailable, charging drops to the minimum current and stops after 2 minutes. The safety margin can be changed later (EVSC Fuse Margin). Above the fuse plus a hard limit (default 10 A, EVSC Fuse Hard Trip) charging stops at once.",
         "data": {
           "main_fuse_size": "Main fuse size",
           "fuse_grid_current_l1": "Meter current L1 (A)",
           "fuse_grid_current_l2": "Meter current L2 (A)",
           "fuse_grid_current_l3": "Meter current L3 (A)",
-          "fuse_grid_import_l1": "Meter import power L1 (W)",
-          "fuse_grid_import_l2": "Meter import power L2 (W)",
-          "fuse_grid_import_l3": "Meter import power L3 (W)",
-          "fuse_grid_export_l1": "Meter export power L1 (W)",
-          "fuse_grid_export_l2": "Meter export power L2 (W)",
-          "fuse_grid_export_l3": "Meter export power L3 (W)",
           "fuse_grid_voltage_l1": "Meter voltage L1 (V)",
           "fuse_grid_voltage_l2": "Meter voltage L2 (V)",
-          "fuse_grid_voltage_l3": "Meter voltage L3 (V)",
-          "fuse_charger_current": "Charger current (A, with L1/L2/L3 attributes)",
-          "fuse_charger_current_l1": "Charger current L1 (A)",
-          "fuse_charger_current_l2": "Charger current L2 (A)",
-          "fuse_charger_current_l3": "Charger current L3 (A)"
+          "fuse_grid_voltage_l3": "Meter voltage L3 (V)"
         },
         "data_description": {
           "main_fuse_size": "The rating of your main fuse per phase.",
           "fuse_grid_current_l1": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
           "fuse_grid_current_l2": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
           "fuse_grid_current_l3": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
-          "fuse_grid_import_l1": "Power drawn from the grid on this phase (0 while exporting). Gives the direction of the current.",
-          "fuse_grid_import_l2": "Power drawn from the grid on this phase (0 while exporting). Gives the direction of the current.",
-          "fuse_grid_import_l3": "Power drawn from the grid on this phase (0 while exporting). Gives the direction of the current.",
-          "fuse_grid_export_l1": "Power returned to the grid on this phase (0 while importing).",
-          "fuse_grid_export_l2": "Power returned to the grid on this phase (0 while importing).",
-          "fuse_grid_export_l3": "Power returned to the grid on this phase (0 while importing).",
           "fuse_grid_voltage_l1": "Optional. Only used when no current sensor is mapped (current = power / voltage).",
           "fuse_grid_voltage_l2": "Optional. Only used when no current sensor is mapped (current = power / voltage).",
-          "fuse_grid_voltage_l3": "Optional. Only used when no current sensor is mapped (current = power / voltage).",
-          "fuse_charger_current": "Charger current sensor. Per-phase values are read from its L1/L2/L3 attributes.",
-          "fuse_charger_current_l1": "Optional. Dedicated per-phase sensors take precedence over the attributes.",
-          "fuse_charger_current_l2": "Optional. Dedicated per-phase sensors take precedence over the attributes.",
-          "fuse_charger_current_l3": "Optional. Dedicated per-phase sensors take precedence over the attributes."
+          "fuse_grid_voltage_l3": "Optional. Only used when no current sensor is mapped (current = power / voltage)."
         }
       },
       "pv_forecast": {
         "title": "Solar Forecast - Step {step}/{total_steps}",
-        "description": "Optional sensor used by Night Smart Charge to decide whether to charge from home battery or from the grid overnight.",
+        "description": "Solar forecast for today and tomorrow, in kWh. Both are required; they are shown on the dashboard and kept for future planning.",
         "data": {
-          "pv_forecast": "Solar forecast sensor (Night Smart Charge)",
-          "pv_forecast_tomorrow": "Tomorrow's solar forecast (dashboard chip)"
+          "pv_forecast": "Solar forecast today",
+          "pv_forecast_tomorrow": "Solar forecast tomorrow"
         },
         "data_description": {
-          "pv_forecast": "Optional forecast sensor in kWh — used by Night Smart Charge to decide whether to charge from home battery or from the grid overnight.",
-          "pv_forecast_tomorrow": "Optional. Map a sensor that reports the next-day solar production forecast in kWh (e.g. `sensor.solcast_pv_forecast_forecast_tomorrow`). Surfaces the orange 'Tomorrow Forecast' chip on the auto-dashboard."
+          "pv_forecast": "Sensor with today's solar production forecast in kWh.",
+          "pv_forecast_tomorrow": "Sensor with tomorrow's solar production forecast in kWh (e.g. sensor.solcast_pv_forecast_forecast_tomorrow)."
         }
       },
       "notifications": {
@@ -139,16 +137,16 @@
       },
       "external_connectors": {
         "title": "External Connectors - Step {step}/{total_steps}",
-        "description": "Configure optional integrations used to publish the nightly energy forecast target.",
+        "description": "The electricity price, and an optional helper where the nightly energy target is written.",
         "data": {
           "battery_capacity": "EV battery capacity (kWh)",
           "energy_forecast_target": "Energy forecast target helper",
-          "price_sensor": "Electricity price sensor (Night Smart Charge)"
+          "price_sensor": "Electricity price sensor"
         },
         "data_description": {
           "battery_capacity": "Battery capacity used to calculate the energy needed to reach the configured EV target.",
           "energy_forecast_target": "Optional helper entity where the calculated target is written. Supported domains: `number`, `input_number`.",
-          "price_sensor": "Optional. Nord Pool sensor (core or HACS) or any sensor with raw_today/raw_tomorrow attributes. Night Smart Charge charges in the cheapest hours before the car-ready time."
+          "price_sensor": "Nord Pool sensor (core or HACS) or any sensor with raw_today/raw_tomorrow attributes. Night Smart Charge charges in the cheapest hours before the car-ready time."
         }
       },
       "dashboard": {
@@ -162,109 +160,95 @@
         }
       },
       "reconfigure": {
-        "title": "Reconfigure Phase Mode - Step {step}/{total_steps}",
-        "description": "Choose how your electrical system is wired.\n\n**Single-phase** — one phase (230 V, charging up to ~3.7 kW): you map one sensor each for solar production and grid import, as before. This is the most common setup.\n\n**Three-phase** — three phases (230 V each, charging ~11–22 kW): you map three sensors each for production and grid import (one per phase, or a total); the integration sums them and balances the charging speed across all three phases. In three-phase every amperage setting means roughly 3× the power of single-phase (e.g. 16 A ≈ 11 kW) and the minimum is ~4.1 kW — make sure your battery inverter can sustain the chosen power.",
+        "title": "Reconfigure Wallbox Model - Step {step}/{total_steps}",
+        "description": "Choose how your wallbox adjusts the charging current.\n\n**Tuya** — current is set only to fixed values (6, 8, 10, 13, 16, 20, 24, 32 A); to lower it the wallbox is switched off and on (a few seconds' pause). This is the default and works with the most common wallboxes — pick it if unsure.\n\n**Generic** — accepts any whole-ampere value (6, 7, 8, … 32 A) via a `number` entity: finer control and, when decreasing, the current drops live without interrupting the session.",
         "data": {
-          "phase_mode": "Electrical phases"
+          "charger_model": "Wallbox type"
         },
         "data_description": {
-          "phase_mode": "Single-phase is the default and matches most homes. Choose three-phase only if your installation is genuinely three-phase."
+          "charger_model": "Tuya = fixed steps (default). Generic = 1 A steps for non-Tuya wallboxes that expose the current as a number entity."
         }
       },
       "reconfigure_sensors": {
         "title": "Reconfigure Energy Sensors - Step {step}/{total_steps}",
-        "description": "Update the energy and SOC sensors used by the integration. In three-phase mode you map three sensors per quantity (one per phase). House consumption is computed by the integration, no consumption sensor is needed.",
+        "description": "Map the energy sensors. With solar panels every field is required unless it says optional. House consumption is computed by the integration (production + net grid − charging power − battery power), no consumption sensor is needed.",
         "data": {
           "soc_car": "EV battery SOC",
           "ev_soc_limit": "EV charge limit (optional)",
           "soc_home": "Home battery SOC",
           "fv_production": "Solar production",
-          "grid_import": "Grid import",
-          "fv_production_l2": "Solar production (L2)",
-          "fv_production_l3": "Solar production (L3)",
-          "grid_import_l2": "Grid import (L2)",
-          "grid_import_l3": "Grid import (L3)",
+          "grid_import": "Net grid power",
+          "fv_production_l2": "Solar production L2 (optional)",
+          "fv_production_l3": "Solar production L3 (optional)",
+          "grid_import_l2": "Grid import L2 (optional)",
+          "grid_import_l3": "Grid import L3 (optional)",
           "grid_export": "Grid export (optional)",
-          "grid_export_l2": "Grid export (L2)",
-          "grid_export_l3": "Grid export (L3)",
-          "charging_power": "EV charging power",
-          "charging_power_l2": "EV charging power (L2)",
-          "charging_power_l3": "EV charging power (L3)",
+          "grid_export_l2": "Grid export L2 (optional)",
+          "grid_export_l3": "Grid export L3 (optional)",
           "grid_available": "Grid available (binary sensor)",
-          "battery_power": "Battery power sensor (W, signed)"
+          "battery_power": "Battery power sensor (W, signed)",
+          "fuse_grid_import_l1": "Grid import L1 (W)",
+          "fuse_grid_export_l1": "Grid export L1 (W)",
+          "fuse_grid_import_l2": "Grid import L2 (W)",
+          "fuse_grid_export_l2": "Grid export L2 (W)",
+          "fuse_grid_import_l3": "Grid import L3 (W)",
+          "fuse_grid_export_l3": "Grid export L3 (W)"
         },
         "data_description": {
           "soc_car": "Sensor with the EV state of charge in percent.",
           "ev_soc_limit": "Sensor with the car's own charge limit in percent (e.g. the target battery charge level from the car's integration). Its value counts as full: EV targets are capped to it and a car at the limit is not started. Leave empty for 100 %.",
           "soc_home": "Sensor with the home battery state of charge in percent. Shown because you answered that the house has a home battery; answer no in the first step to remove it.",
-          "fv_production": "Sensor with current PV production in watts. In three-phase mode: phase L1, or the TOTAL production if you only have a total sensor (then leave L2 and L3 empty).",
-          "grid_import": "Grid power in watts, positive = importing. A combined sensor that goes negative when exporting works on its own. If import and export are two sensors, map the export below. Three-phase: phase L1, or the TOTAL (then leave L2 and L3 empty). Leave empty if you mapped import power per phase in the meter step.",
-          "fv_production_l2": "Solar production on phase L2, in watts. Optional: leave empty when the L1 field holds the total.",
-          "fv_production_l3": "Solar production on phase L3, in watts. Optional: leave empty when the L1 field holds the total.",
-          "grid_import_l2": "Grid import on phase L2, in watts. Optional: leave empty when the L1 field holds the total.",
-          "grid_import_l3": "Grid import on phase L3, in watts. Optional: leave empty when the L1 field holds the total.",
-          "charging_power": "Measured EV charging power in watts. Required with solar panels (house consumption is computed as production + net grid − EV power − battery power), unless the meter step maps the charger current. Three-phase: phase L1, or the TOTAL (then leave L2 and L3 empty).",
-          "charging_power_l2": "EV charging power on phase L2, in watts. Optional: leave empty when the L1 field holds the total.",
-          "charging_power_l3": "EV charging power on phase L3, in watts. Optional: leave empty when the L1 field holds the total.",
+          "fv_production": "Solar production in W or kW: the total, or phase L1 when L2 and L3 are mapped below.",
+          "grid_import": "One sensor in W or kW: positive when buying from the grid, negative when selling (for example the net sensor made for the Energy dashboard). Used directly for the surplus.",
+          "fv_production_l2": "Only when the solar production field holds L1.",
+          "fv_production_l3": "Only when the solar production field holds L1.",
+          "grid_import_l2": "Only without solar panels, when the field above holds L1.",
+          "grid_import_l3": "Only without solar panels, when the field above holds L1.",
           "grid_available": "Optional. Binary sensor reporting grid availability (on = grid present, off = grid lost). When mapped and off, Night Smart Charge grid mode stops so it does not drain the home battery during a grid outage (useful on hybrid Battery First / UPS inverters). Leave empty to keep the previous behaviour.",
           "battery_power": "Optional. Signed battery power in watts — NEGATIVE = discharging, POSITIVE = charging. Used when home consumption is computed by the integration, by the Solar Surplus dead-band buffer and by the Night Smart Charge battery protection. If your sensor reports the opposite sign, invert it with a template sensor that negates the value — see the README for an example.",
-          "grid_export": "Only if export is a separate sensor (positive watts when exporting). Leave empty when the grid import sensor goes negative on export. Net grid = import − export.",
-          "grid_export_l2": "Grid export on phase L2, in watts. Optional.",
-          "grid_export_l3": "Grid export on phase L3, in watts. Optional."
+          "grid_export": "Only without solar panels, when import and export are two sensors.",
+          "grid_export_l2": "Only without solar panels, when import and export are two sensors.",
+          "grid_export_l3": "Only without solar panels, when import and export are two sensors.",
+          "fuse_grid_import_l1": "Power bought from the grid on this phase (0 while selling).",
+          "fuse_grid_export_l1": "Power sold to the grid on this phase (0 while buying).",
+          "fuse_grid_import_l2": "Power bought from the grid on this phase (0 while selling).",
+          "fuse_grid_export_l2": "Power sold to the grid on this phase (0 while buying).",
+          "fuse_grid_import_l3": "Power bought from the grid on this phase (0 while selling).",
+          "fuse_grid_export_l3": "Power sold to the grid on this phase (0 while buying)."
         }
       },
       "reconfigure_main_fuse": {
         "title": "Main Fuse Protection - Step {step}/{total_steps}",
-        "description": "Protects your house main fuse: the charger current is limited so that house load + EV never exceeds the fuse on any phase. It applies to every charging mode, including Force Charge and Boost.\n\nPick your main fuse size and map your electricity meter's per-phase sensors. Best: current per phase (A) plus import and export power per phase (W) so the direction of the current is known. Current alone also works (slightly more cautious while exporting). Power alone works too (current = power / voltage).\n\nThe charger's own current is needed so its load is not counted as house load: map one sensor with L1/L2/L3 attributes (for example OCPP current_import) or one sensor per phase.\n\nIf a meter sensor becomes unavailable, charging drops to the minimum current and stops after 2 minutes. The safety margin can be changed later (EVSC Fuse Margin). Above the fuse plus a hard limit (default 10 A, EVSC Fuse Hard Trip) charging stops at once.\n\nWith import (and export) power on every phase, the integration also computes grid import and the EV charging power, so you can leave those sensors empty in the next step.",
+        "description": "Protects your house main fuse: the charger current is limited so that house load + EV never exceeds the fuse on any phase. It applies to every charging mode, including Force Charge and Boost.\n\nPick your main fuse size and map the meter's current per phase (A). The import and export power per phase from the sensors step give the direction of the current; without a current sensor the current is computed from that power (and the voltage, if mapped). The charger current from the charger step is subtracted, so the charger's own load is not counted as house load.\n\nIf a meter sensor becomes unavailable, charging drops to the minimum current and stops after 2 minutes. The safety margin can be changed later (EVSC Fuse Margin). Above the fuse plus a hard limit (default 10 A, EVSC Fuse Hard Trip) charging stops at once.",
         "data": {
           "main_fuse_size": "Main fuse size",
           "fuse_grid_current_l1": "Meter current L1 (A)",
           "fuse_grid_current_l2": "Meter current L2 (A)",
           "fuse_grid_current_l3": "Meter current L3 (A)",
-          "fuse_grid_import_l1": "Meter import power L1 (W)",
-          "fuse_grid_import_l2": "Meter import power L2 (W)",
-          "fuse_grid_import_l3": "Meter import power L3 (W)",
-          "fuse_grid_export_l1": "Meter export power L1 (W)",
-          "fuse_grid_export_l2": "Meter export power L2 (W)",
-          "fuse_grid_export_l3": "Meter export power L3 (W)",
           "fuse_grid_voltage_l1": "Meter voltage L1 (V)",
           "fuse_grid_voltage_l2": "Meter voltage L2 (V)",
-          "fuse_grid_voltage_l3": "Meter voltage L3 (V)",
-          "fuse_charger_current": "Charger current (A, with L1/L2/L3 attributes)",
-          "fuse_charger_current_l1": "Charger current L1 (A)",
-          "fuse_charger_current_l2": "Charger current L2 (A)",
-          "fuse_charger_current_l3": "Charger current L3 (A)"
+          "fuse_grid_voltage_l3": "Meter voltage L3 (V)"
         },
         "data_description": {
           "main_fuse_size": "The rating of your main fuse per phase.",
           "fuse_grid_current_l1": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
           "fuse_grid_current_l2": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
           "fuse_grid_current_l3": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
-          "fuse_grid_import_l1": "Power drawn from the grid on this phase (0 while exporting). Gives the direction of the current.",
-          "fuse_grid_import_l2": "Power drawn from the grid on this phase (0 while exporting). Gives the direction of the current.",
-          "fuse_grid_import_l3": "Power drawn from the grid on this phase (0 while exporting). Gives the direction of the current.",
-          "fuse_grid_export_l1": "Power returned to the grid on this phase (0 while importing).",
-          "fuse_grid_export_l2": "Power returned to the grid on this phase (0 while importing).",
-          "fuse_grid_export_l3": "Power returned to the grid on this phase (0 while importing).",
           "fuse_grid_voltage_l1": "Optional. Only used when no current sensor is mapped (current = power / voltage).",
           "fuse_grid_voltage_l2": "Optional. Only used when no current sensor is mapped (current = power / voltage).",
-          "fuse_grid_voltage_l3": "Optional. Only used when no current sensor is mapped (current = power / voltage).",
-          "fuse_charger_current": "Charger current sensor. Per-phase values are read from its L1/L2/L3 attributes.",
-          "fuse_charger_current_l1": "Optional. Dedicated per-phase sensors take precedence over the attributes.",
-          "fuse_charger_current_l2": "Optional. Dedicated per-phase sensors take precedence over the attributes.",
-          "fuse_charger_current_l3": "Optional. Dedicated per-phase sensors take precedence over the attributes."
+          "fuse_grid_voltage_l3": "Optional. Only used when no current sensor is mapped (current = power / voltage)."
         }
       },
       "reconfigure_pv_forecast": {
         "title": "Reconfigure Solar Forecast - Step {step}/{total_steps}",
-        "description": "Update or clear the optional forecast sensor used by Night Smart Charge.",
+        "description": "Solar forecast for today and tomorrow, in kWh. Both are required; they are shown on the dashboard and kept for future planning.",
         "data": {
-          "pv_forecast": "Solar forecast sensor (Night Smart Charge)",
-          "pv_forecast_tomorrow": "Tomorrow's solar forecast (dashboard chip)"
+          "pv_forecast": "Solar forecast today",
+          "pv_forecast_tomorrow": "Solar forecast tomorrow"
         },
         "data_description": {
-          "pv_forecast": "Optional forecast sensor in kWh — used by Night Smart Charge to decide whether to charge from home battery or from the grid overnight.",
-          "pv_forecast_tomorrow": "Optional. Map a sensor that reports the next-day solar production forecast in kWh (e.g. `sensor.solcast_pv_forecast_forecast_tomorrow`). Surfaces the orange 'Tomorrow Forecast' chip on the auto-dashboard."
+          "pv_forecast": "Sensor with today's solar production forecast in kWh.",
+          "pv_forecast_tomorrow": "Sensor with tomorrow's solar production forecast in kWh (e.g. sensor.solcast_pv_forecast_forecast_tomorrow)."
         }
       },
       "reconfigure_notifications": {
@@ -281,16 +265,16 @@
       },
       "reconfigure_external_connectors": {
         "title": "Reconfigure External Connectors - Step {step}/{total_steps}",
-        "description": "Update the optional nightly energy forecast connectors.",
+        "description": "The electricity price, and an optional helper where the nightly energy target is written.",
         "data": {
           "battery_capacity": "EV battery capacity (kWh)",
           "energy_forecast_target": "Energy forecast target helper",
-          "price_sensor": "Electricity price sensor (Night Smart Charge)"
+          "price_sensor": "Electricity price sensor"
         },
         "data_description": {
           "battery_capacity": "Battery capacity used to calculate the energy needed to reach the configured EV target.",
           "energy_forecast_target": "Optional helper entity where the calculated target is written. Supported domains: `number`, `input_number`.",
-          "price_sensor": "Optional. Nord Pool sensor (core or HACS) or any sensor with raw_today/raw_tomorrow attributes. Night Smart Charge charges in the cheapest hours before the car-ready time."
+          "price_sensor": "Nord Pool sensor (core or HACS) or any sensor with raw_today/raw_tomorrow attributes. Night Smart Charge charges in the cheapest hours before the car-ready time."
         }
       },
       "reconfigure_dashboard": {
@@ -305,44 +289,36 @@
       },
       "reconfigure_entities": {
         "title": "Reconfigure Charger Entities - Step {step}/{total_steps}",
-        "description": "Update the charger entities for this config entry.\n\n**Charger on/off control — pick ONE of the two:**\n- **Switch** (most wallboxes): map the on/off switch and leave both buttons empty.\n- **Start / Stop buttons** (e.g. Growatt THOR): leave the switch empty and map BOTH the start and the stop button.\n\nIf both are mapped, the switch is used. With buttons, also mapping the charging-power or charger-status sensor in the next step is strongly recommended: it is how the integration knows whether the charger is really running.",
+        "description": "Map everything about the charger. Every field is required unless it says optional.\n\n**On/off control — pick ONE:**\n- **Switch** (most wallboxes): map the switch and leave both buttons empty.\n- **Start / Stop buttons** (e.g. Growatt THOR): leave the switch empty and map both buttons.\n\n**Charging power and charger current:** map the total power, and the current of one phase, in the first field. If you have one sensor per phase, map L1 there and L2/L3 in the optional fields; with current per phase the integration sees how many phases the car charges on.",
         "data": {
           "ev_charger_switch": "Charger switch",
           "ev_charger_start_button": "Start charging button",
           "ev_charger_stop_button": "Stop charging button",
           "ev_charger_current": "Charging current control",
-          "ev_charger_status": "Charger status sensor"
+          "ev_charger_status": "Charger status sensor",
+          "charging_power": "Charging power (total or L1)",
+          "charging_power_l2": "Charging power L2 (optional)",
+          "charging_power_l3": "Charging power L3 (optional)",
+          "fuse_charger_current": "Charger current (one phase or L1)",
+          "fuse_charger_current_l2": "Charger current L2 (optional)",
+          "fuse_charger_current_l3": "Charger current L3 (optional)"
         },
         "data_description": {
           "ev_charger_switch": "Switch entity that turns the charger on or off. Leave empty if your charger exposes start/stop buttons instead.",
           "ev_charger_start_button": "Optional. For chargers that expose start/stop buttons instead of a switch (e.g. Growatt THOR). Map both buttons and leave the switch empty.",
           "ev_charger_stop_button": "Optional. Pressed to stop charging when the charger is controlled with buttons.",
           "ev_charger_current": "Current control entity. Supported domains: `number`, `input_number`, `select`, `input_select`.",
-          "ev_charger_status": "Optional. Reports `charger_charging`, `charger_free`, `charger_end`, or `charger_wait`. Used as the fallback for charging detection when no charging-power sensor is mapped, and as the source of plug/idle/finished status."
-        }
-      },
-      "phase_mode": {
-        "title": "Phase Mode - Step {step}/{total_steps}",
-        "description": "Choose how your electrical system is wired.\n\n**Single-phase** — one phase (230 V, charging up to ~3.7 kW): you map one sensor each for solar production and grid import, as before. This is the most common setup.\n\n**Three-phase** — three phases (230 V each, charging ~11–22 kW): you map three sensors each for production and grid import (one per phase, or a total); the integration sums them and balances the charging speed across all three phases. In three-phase every amperage setting means roughly 3× the power of single-phase (e.g. 16 A ≈ 11 kW) and the minimum is ~4.1 kW — make sure your battery inverter can sustain the chosen power.",
-        "data": {
-          "phase_mode": "Electrical phases"
-        },
-        "data_description": {
-          "phase_mode": "Single-phase is the default and matches most homes. Choose three-phase only if your installation is genuinely three-phase."
+          "ev_charger_status": "Reports the charger state (e.g. charging, available, finished). Used for the plugged-in, idle and finished status.",
+          "charging_power": "Measured charging power in W or kW: the total, or phase L1 when L2 and L3 are mapped below. Needed to compute the house consumption.",
+          "charging_power_l2": "Only when the first charging power field holds L1.",
+          "charging_power_l3": "Only when the first charging power field holds L1.",
+          "fuse_charger_current": "Measured charger current in A. One phase (all phases carry the same current), or L1 when L2 and L3 are mapped below. A sensor with L1/L2/L3 attributes (e.g. OCPP current_import) is read per phase.",
+          "fuse_charger_current_l2": "Map L2 and L3 to see how many phases the car charges on.",
+          "fuse_charger_current_l3": "Map L2 and L3 to see how many phases the car charges on."
         }
       },
       "charger_model": {
         "title": "Wallbox Model - Step {step}/{total_steps}",
-        "description": "Choose how your wallbox adjusts the charging current.\n\n**Tuya** — current is set only to fixed values (6, 8, 10, 13, 16, 20, 24, 32 A); to lower it the wallbox is switched off and on (a few seconds' pause). This is the default and works with the most common wallboxes — pick it if unsure.\n\n**Generic** — accepts any whole-ampere value (6, 7, 8, … 32 A) via a `number` entity: finer control and, when decreasing, the current drops live without interrupting the session.",
-        "data": {
-          "charger_model": "Wallbox type"
-        },
-        "data_description": {
-          "charger_model": "Tuya = fixed steps (default). Generic = 1 A steps for non-Tuya wallboxes that expose the current as a number entity."
-        }
-      },
-      "reconfigure_charger_model": {
-        "title": "Reconfigure Wallbox Model - Step {step}/{total_steps}",
         "description": "Choose how your wallbox adjusts the charging current.\n\n**Tuya** — current is set only to fixed values (6, 8, 10, 13, 16, 20, 24, 32 A); to lower it the wallbox is switched off and on (a few seconds' pause). This is the default and works with the most common wallboxes — pick it if unsure.\n\n**Generic** — accepts any whole-ampere value (6, 7, 8, … 32 A) via a `number` entity: finer control and, when decreasing, the current drops live without interrupting the session.",
         "data": {
           "charger_model": "Wallbox type"
@@ -388,7 +364,8 @@
         "description": "Add the cars you charge here. Each car has its own sensors: battery SOC, the car's own charge limit and the battery capacity. The Guest profile always exists: it has no sensors and charges in the cheapest night hours, for a visitor's car. The active car is chosen on the dashboard (or with the Active car select).\n\n{cars}\n\nPick an action, or Continue (without a car only the Guest profile is created).",
         "data": {
           "car_action": "Action"
-        }
+        },
+        "data_description": {}
       },
       "reconfigure_car": {
         "title": "Car profile",
@@ -414,7 +391,8 @@
         "description": "Add the cars you charge here. Each car has its own sensors: battery SOC, the car's own charge limit and the battery capacity. The Guest profile always exists: it has no sensors and charges in the cheapest night hours, for a visitor's car. The active car is chosen on the dashboard (or with the Active car select).\n\n{cars}\n\nPick an action, or Continue (without a car only the Guest profile is created).",
         "data": {
           "car_action": "Action"
-        }
+        },
+        "data_description": {}
       },
       "car": {
         "title": "Car profile",
@@ -457,109 +435,95 @@
   "options": {
     "step": {
       "init": {
-        "title": "Update Phase Mode - Step {step}/{total_steps}",
-        "description": "Choose how your electrical system is wired.\n\n**Single-phase** — one phase (230 V, charging up to ~3.7 kW): you map one sensor each for solar production and grid import, as before. This is the most common setup.\n\n**Three-phase** — three phases (230 V each, charging ~11–22 kW): you map three sensors each for production and grid import (one per phase, or a total); the integration sums them and balances the charging speed across all three phases. In three-phase every amperage setting means roughly 3× the power of single-phase (e.g. 16 A ≈ 11 kW) and the minimum is ~4.1 kW — make sure your battery inverter can sustain the chosen power.",
+        "title": "Update Wallbox Model - Step {step}/{total_steps}",
+        "description": "Choose how your wallbox adjusts the charging current.\n\n**Tuya** — current is set only to fixed values (6, 8, 10, 13, 16, 20, 24, 32 A); to lower it the wallbox is switched off and on (a few seconds' pause). This is the default and works with the most common wallboxes — pick it if unsure.\n\n**Generic** — accepts any whole-ampere value (6, 7, 8, … 32 A) via a `number` entity: finer control and, when decreasing, the current drops live without interrupting the session.",
         "data": {
-          "phase_mode": "Electrical phases"
+          "charger_model": "Wallbox type"
         },
         "data_description": {
-          "phase_mode": "Single-phase is the default and matches most homes. Choose three-phase only if your installation is genuinely three-phase."
+          "charger_model": "Tuya = fixed steps (default). Generic = 1 A steps for non-Tuya wallboxes that expose the current as a number entity."
         }
       },
       "sensors": {
         "title": "Update Energy Sensors - Step {step}/{total_steps}",
-        "description": "Update the energy and SOC sensors used by the integration. In three-phase mode you map three sensors per quantity (one per phase). House consumption is computed by the integration, no consumption sensor is needed.",
+        "description": "Map the energy sensors. With solar panels every field is required unless it says optional. House consumption is computed by the integration (production + net grid − charging power − battery power), no consumption sensor is needed.",
         "data": {
           "soc_car": "EV battery SOC",
           "ev_soc_limit": "EV charge limit (optional)",
           "soc_home": "Home battery SOC",
           "fv_production": "Solar production",
-          "grid_import": "Grid import",
-          "fv_production_l2": "Solar production (L2)",
-          "fv_production_l3": "Solar production (L3)",
-          "grid_import_l2": "Grid import (L2)",
-          "grid_import_l3": "Grid import (L3)",
+          "grid_import": "Net grid power",
+          "fv_production_l2": "Solar production L2 (optional)",
+          "fv_production_l3": "Solar production L3 (optional)",
+          "grid_import_l2": "Grid import L2 (optional)",
+          "grid_import_l3": "Grid import L3 (optional)",
           "grid_export": "Grid export (optional)",
-          "grid_export_l2": "Grid export (L2)",
-          "grid_export_l3": "Grid export (L3)",
-          "charging_power": "EV charging power",
-          "charging_power_l2": "EV charging power (L2)",
-          "charging_power_l3": "EV charging power (L3)",
+          "grid_export_l2": "Grid export L2 (optional)",
+          "grid_export_l3": "Grid export L3 (optional)",
           "grid_available": "Grid available (binary sensor)",
-          "battery_power": "Battery power sensor (W, signed)"
+          "battery_power": "Battery power sensor (W, signed)",
+          "fuse_grid_import_l1": "Grid import L1 (W)",
+          "fuse_grid_export_l1": "Grid export L1 (W)",
+          "fuse_grid_import_l2": "Grid import L2 (W)",
+          "fuse_grid_export_l2": "Grid export L2 (W)",
+          "fuse_grid_import_l3": "Grid import L3 (W)",
+          "fuse_grid_export_l3": "Grid export L3 (W)"
         },
         "data_description": {
           "soc_car": "Sensor with the EV state of charge in percent.",
           "ev_soc_limit": "Sensor with the car's own charge limit in percent (e.g. the target battery charge level from the car's integration). Its value counts as full: EV targets are capped to it and a car at the limit is not started. Leave empty for 100 %.",
           "soc_home": "Sensor with the home battery state of charge in percent. Shown because you answered that the house has a home battery; answer no in the first step to remove it.",
-          "fv_production": "Sensor with current PV production in watts. In three-phase mode: phase L1, or the TOTAL production if you only have a total sensor (then leave L2 and L3 empty).",
-          "grid_import": "Grid power in watts, positive = importing. A combined sensor that goes negative when exporting works on its own. If import and export are two sensors, map the export below. Three-phase: phase L1, or the TOTAL (then leave L2 and L3 empty). Leave empty if you mapped import power per phase in the meter step.",
-          "fv_production_l2": "Solar production on phase L2, in watts. Optional: leave empty when the L1 field holds the total.",
-          "fv_production_l3": "Solar production on phase L3, in watts. Optional: leave empty when the L1 field holds the total.",
-          "grid_import_l2": "Grid import on phase L2, in watts. Optional: leave empty when the L1 field holds the total.",
-          "grid_import_l3": "Grid import on phase L3, in watts. Optional: leave empty when the L1 field holds the total.",
-          "charging_power": "Measured EV charging power in watts. Required with solar panels (house consumption is computed as production + net grid − EV power − battery power), unless the meter step maps the charger current. Three-phase: phase L1, or the TOTAL (then leave L2 and L3 empty).",
-          "charging_power_l2": "EV charging power on phase L2, in watts. Optional: leave empty when the L1 field holds the total.",
-          "charging_power_l3": "EV charging power on phase L3, in watts. Optional: leave empty when the L1 field holds the total.",
+          "fv_production": "Solar production in W or kW: the total, or phase L1 when L2 and L3 are mapped below.",
+          "grid_import": "One sensor in W or kW: positive when buying from the grid, negative when selling (for example the net sensor made for the Energy dashboard). Used directly for the surplus.",
+          "fv_production_l2": "Only when the solar production field holds L1.",
+          "fv_production_l3": "Only when the solar production field holds L1.",
+          "grid_import_l2": "Only without solar panels, when the field above holds L1.",
+          "grid_import_l3": "Only without solar panels, when the field above holds L1.",
           "grid_available": "Optional. Binary sensor reporting grid availability (on = grid present, off = grid lost). When mapped and off, Night Smart Charge grid mode stops so it does not drain the home battery during a grid outage (useful on hybrid Battery First / UPS inverters). Leave empty to keep the previous behaviour.",
           "battery_power": "Optional. Signed battery power in watts — NEGATIVE = discharging, POSITIVE = charging. Used when home consumption is computed by the integration, by the Solar Surplus dead-band buffer and by the Night Smart Charge battery protection. If your sensor reports the opposite sign, invert it with a template sensor that negates the value — see the README for an example.",
-          "grid_export": "Only if export is a separate sensor (positive watts when exporting). Leave empty when the grid import sensor goes negative on export. Net grid = import − export.",
-          "grid_export_l2": "Grid export on phase L2, in watts. Optional.",
-          "grid_export_l3": "Grid export on phase L3, in watts. Optional."
+          "grid_export": "Only without solar panels, when import and export are two sensors.",
+          "grid_export_l2": "Only without solar panels, when import and export are two sensors.",
+          "grid_export_l3": "Only without solar panels, when import and export are two sensors.",
+          "fuse_grid_import_l1": "Power bought from the grid on this phase (0 while selling).",
+          "fuse_grid_export_l1": "Power sold to the grid on this phase (0 while buying).",
+          "fuse_grid_import_l2": "Power bought from the grid on this phase (0 while selling).",
+          "fuse_grid_export_l2": "Power sold to the grid on this phase (0 while buying).",
+          "fuse_grid_import_l3": "Power bought from the grid on this phase (0 while selling).",
+          "fuse_grid_export_l3": "Power sold to the grid on this phase (0 while buying)."
         }
       },
       "main_fuse": {
         "title": "Main Fuse Protection - Step {step}/{total_steps}",
-        "description": "Protects your house main fuse: the charger current is limited so that house load + EV never exceeds the fuse on any phase. It applies to every charging mode, including Force Charge and Boost.\n\nPick your main fuse size and map your electricity meter's per-phase sensors. Best: current per phase (A) plus import and export power per phase (W) so the direction of the current is known. Current alone also works (slightly more cautious while exporting). Power alone works too (current = power / voltage).\n\nThe charger's own current is needed so its load is not counted as house load: map one sensor with L1/L2/L3 attributes (for example OCPP current_import) or one sensor per phase.\n\nIf a meter sensor becomes unavailable, charging drops to the minimum current and stops after 2 minutes. The safety margin can be changed later (EVSC Fuse Margin). Above the fuse plus a hard limit (default 10 A, EVSC Fuse Hard Trip) charging stops at once.\n\nWith import (and export) power on every phase, the integration also computes grid import and the EV charging power, so you can leave those sensors empty in the next step.",
+        "description": "Protects your house main fuse: the charger current is limited so that house load + EV never exceeds the fuse on any phase. It applies to every charging mode, including Force Charge and Boost.\n\nPick your main fuse size and map the meter's current per phase (A). The import and export power per phase from the sensors step give the direction of the current; without a current sensor the current is computed from that power (and the voltage, if mapped). The charger current from the charger step is subtracted, so the charger's own load is not counted as house load.\n\nIf a meter sensor becomes unavailable, charging drops to the minimum current and stops after 2 minutes. The safety margin can be changed later (EVSC Fuse Margin). Above the fuse plus a hard limit (default 10 A, EVSC Fuse Hard Trip) charging stops at once.",
         "data": {
           "main_fuse_size": "Main fuse size",
           "fuse_grid_current_l1": "Meter current L1 (A)",
           "fuse_grid_current_l2": "Meter current L2 (A)",
           "fuse_grid_current_l3": "Meter current L3 (A)",
-          "fuse_grid_import_l1": "Meter import power L1 (W)",
-          "fuse_grid_import_l2": "Meter import power L2 (W)",
-          "fuse_grid_import_l3": "Meter import power L3 (W)",
-          "fuse_grid_export_l1": "Meter export power L1 (W)",
-          "fuse_grid_export_l2": "Meter export power L2 (W)",
-          "fuse_grid_export_l3": "Meter export power L3 (W)",
           "fuse_grid_voltage_l1": "Meter voltage L1 (V)",
           "fuse_grid_voltage_l2": "Meter voltage L2 (V)",
-          "fuse_grid_voltage_l3": "Meter voltage L3 (V)",
-          "fuse_charger_current": "Charger current (A, with L1/L2/L3 attributes)",
-          "fuse_charger_current_l1": "Charger current L1 (A)",
-          "fuse_charger_current_l2": "Charger current L2 (A)",
-          "fuse_charger_current_l3": "Charger current L3 (A)"
+          "fuse_grid_voltage_l3": "Meter voltage L3 (V)"
         },
         "data_description": {
           "main_fuse_size": "The rating of your main fuse per phase.",
           "fuse_grid_current_l1": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
           "fuse_grid_current_l2": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
           "fuse_grid_current_l3": "Current through the main fuse on this phase. May be unsigned (rises on export too).",
-          "fuse_grid_import_l1": "Power drawn from the grid on this phase (0 while exporting). Gives the direction of the current.",
-          "fuse_grid_import_l2": "Power drawn from the grid on this phase (0 while exporting). Gives the direction of the current.",
-          "fuse_grid_import_l3": "Power drawn from the grid on this phase (0 while exporting). Gives the direction of the current.",
-          "fuse_grid_export_l1": "Power returned to the grid on this phase (0 while importing).",
-          "fuse_grid_export_l2": "Power returned to the grid on this phase (0 while importing).",
-          "fuse_grid_export_l3": "Power returned to the grid on this phase (0 while importing).",
           "fuse_grid_voltage_l1": "Optional. Only used when no current sensor is mapped (current = power / voltage).",
           "fuse_grid_voltage_l2": "Optional. Only used when no current sensor is mapped (current = power / voltage).",
-          "fuse_grid_voltage_l3": "Optional. Only used when no current sensor is mapped (current = power / voltage).",
-          "fuse_charger_current": "Charger current sensor. Per-phase values are read from its L1/L2/L3 attributes.",
-          "fuse_charger_current_l1": "Optional. Dedicated per-phase sensors take precedence over the attributes.",
-          "fuse_charger_current_l2": "Optional. Dedicated per-phase sensors take precedence over the attributes.",
-          "fuse_charger_current_l3": "Optional. Dedicated per-phase sensors take precedence over the attributes."
+          "fuse_grid_voltage_l3": "Optional. Only used when no current sensor is mapped (current = power / voltage)."
         }
       },
       "pv_forecast": {
         "title": "Update Solar Forecast - Step {step}/{total_steps}",
-        "description": "Update or clear the optional forecast sensor used by Night Smart Charge.",
+        "description": "Solar forecast for today and tomorrow, in kWh. Both are required; they are shown on the dashboard and kept for future planning.",
         "data": {
-          "pv_forecast": "Solar forecast sensor (Night Smart Charge)",
-          "pv_forecast_tomorrow": "Tomorrow's solar forecast (dashboard chip)"
+          "pv_forecast": "Solar forecast today",
+          "pv_forecast_tomorrow": "Solar forecast tomorrow"
         },
         "data_description": {
-          "pv_forecast": "Optional forecast sensor in kWh — used by Night Smart Charge to decide whether to charge from home battery or from the grid overnight.",
-          "pv_forecast_tomorrow": "Optional. Map a sensor that reports the next-day solar production forecast in kWh (e.g. `sensor.solcast_pv_forecast_forecast_tomorrow`). Surfaces the orange 'Tomorrow Forecast' chip on the auto-dashboard."
+          "pv_forecast": "Sensor with today's solar production forecast in kWh.",
+          "pv_forecast_tomorrow": "Sensor with tomorrow's solar production forecast in kWh (e.g. sensor.solcast_pv_forecast_forecast_tomorrow)."
         }
       },
       "notifications": {
@@ -576,16 +540,16 @@
       },
       "external_connectors": {
         "title": "Update External Connectors - Step {step}/{total_steps}",
-        "description": "Update the optional nightly energy forecast connectors.",
+        "description": "The electricity price, and an optional helper where the nightly energy target is written.",
         "data": {
           "battery_capacity": "EV battery capacity (kWh)",
           "energy_forecast_target": "Energy forecast target helper",
-          "price_sensor": "Electricity price sensor (Night Smart Charge)"
+          "price_sensor": "Electricity price sensor"
         },
         "data_description": {
           "battery_capacity": "Battery capacity used to calculate the energy needed to reach the configured EV target.",
           "energy_forecast_target": "Optional helper entity where the calculated target is written. Supported domains: `number`, `input_number`.",
-          "price_sensor": "Optional. Nord Pool sensor (core or HACS) or any sensor with raw_today/raw_tomorrow attributes. Night Smart Charge charges in the cheapest hours before the car-ready time."
+          "price_sensor": "Nord Pool sensor (core or HACS) or any sensor with raw_today/raw_tomorrow attributes. Night Smart Charge charges in the cheapest hours before the car-ready time."
         }
       },
       "dashboard": {
@@ -600,30 +564,32 @@
       },
       "entities": {
         "title": "Update Charger Entities - Step {step}/{total_steps}",
-        "description": "Compatibility wrapper around the canonical reconfigure flow. Update the charger entities for this entry.\n\n**Charger on/off control — pick ONE of the two:**\n- **Switch** (most wallboxes): map the on/off switch and leave both buttons empty.\n- **Start / Stop buttons** (e.g. Growatt THOR): leave the switch empty and map BOTH the start and the stop button.\n\nIf both are mapped, the switch is used. With buttons, also mapping the charging-power or charger-status sensor in the next step is strongly recommended: it is how the integration knows whether the charger is really running.",
+        "description": "Map everything about the charger. Every field is required unless it says optional.\n\n**On/off control — pick ONE:**\n- **Switch** (most wallboxes): map the switch and leave both buttons empty.\n- **Start / Stop buttons** (e.g. Growatt THOR): leave the switch empty and map both buttons.\n\n**Charging power and charger current:** map the total power, and the current of one phase, in the first field. If you have one sensor per phase, map L1 there and L2/L3 in the optional fields; with current per phase the integration sees how many phases the car charges on.",
         "data": {
           "ev_charger_switch": "Charger switch",
           "ev_charger_start_button": "Start charging button",
           "ev_charger_stop_button": "Stop charging button",
           "ev_charger_current": "Charging current control",
-          "ev_charger_status": "Charger status sensor"
+          "ev_charger_status": "Charger status sensor",
+          "charging_power": "Charging power (total or L1)",
+          "charging_power_l2": "Charging power L2 (optional)",
+          "charging_power_l3": "Charging power L3 (optional)",
+          "fuse_charger_current": "Charger current (one phase or L1)",
+          "fuse_charger_current_l2": "Charger current L2 (optional)",
+          "fuse_charger_current_l3": "Charger current L3 (optional)"
         },
         "data_description": {
           "ev_charger_switch": "Switch entity that turns the charger on or off. Leave empty if your charger exposes start/stop buttons instead.",
           "ev_charger_start_button": "Optional. For chargers that expose start/stop buttons instead of a switch (e.g. Growatt THOR). Map both buttons and leave the switch empty.",
           "ev_charger_stop_button": "Optional. Pressed to stop charging when the charger is controlled with buttons.",
           "ev_charger_current": "Current control entity. Supported domains: `number`, `input_number`, `select`, `input_select`.",
-          "ev_charger_status": "Optional. Reports `charger_charging`, `charger_free`, `charger_end`, or `charger_wait`. Used as the fallback for charging detection when no charging-power sensor is mapped, and as the source of plug/idle/finished status."
-        }
-      },
-      "charger_model": {
-        "title": "Update Wallbox Model - Step {step}/{total_steps}",
-        "description": "Choose how your wallbox adjusts the charging current.\n\n**Tuya** — current is set only to fixed values (6, 8, 10, 13, 16, 20, 24, 32 A); to lower it the wallbox is switched off and on (a few seconds' pause). This is the default and works with the most common wallboxes — pick it if unsure.\n\n**Generic** — accepts any whole-ampere value (6, 7, 8, … 32 A) via a `number` entity: finer control and, when decreasing, the current drops live without interrupting the session.",
-        "data": {
-          "charger_model": "Wallbox type"
-        },
-        "data_description": {
-          "charger_model": "Tuya = fixed steps (default). Generic = 1 A steps for non-Tuya wallboxes that expose the current as a number entity."
+          "ev_charger_status": "Reports the charger state (e.g. charging, available, finished). Used for the plugged-in, idle and finished status.",
+          "charging_power": "Measured charging power in W or kW: the total, or phase L1 when L2 and L3 are mapped below. Needed to compute the house consumption.",
+          "charging_power_l2": "Only when the first charging power field holds L1.",
+          "charging_power_l3": "Only when the first charging power field holds L1.",
+          "fuse_charger_current": "Measured charger current in A. One phase (all phases carry the same current), or L1 when L2 and L3 are mapped below. A sensor with L1/L2/L3 attributes (e.g. OCPP current_import) is read per phase.",
+          "fuse_charger_current_l2": "Map L2 and L3 to see how many phases the car charges on.",
+          "fuse_charger_current_l3": "Map L2 and L3 to see how many phases the car charges on."
         }
       },
       "features": {
@@ -647,7 +613,8 @@
         "description": "Add the cars you charge here. Each car has its own sensors: battery SOC, the car's own charge limit and the battery capacity. The Guest profile always exists: it has no sensors and charges in the cheapest night hours, for a visitor's car. The active car is chosen on the dashboard (or with the Active car select).\n\n{cars}\n\nPick an action, or Continue (without a car only the Guest profile is created).",
         "data": {
           "car_action": "Action"
-        }
+        },
+        "data_description": {}
       },
       "car": {
         "title": "Car profile",

@@ -214,6 +214,9 @@ def test_normalize_charger_input():
     )
     assert errors == {}
     assert data[CONF_EV_CHARGER_SWITCH] is None
+    # v2.39.0: cleared optional L2/L3 fields are written as None
+    assert data["charging_power_l2"] is None
+    assert data["fuse_charger_current_l3"] is None
 
     data, errors = _normalize_charger_input(
         {CONF_EV_CHARGER_SWITCH: "switch.c", CONF_EV_CHARGER_START_BUTTON: START}
@@ -244,6 +247,8 @@ async def test_config_flow_accepts_buttons_only(hass):
             CONF_EV_CHARGER_STOP_BUTTON: STOP,
             CONF_EV_CHARGER_CURRENT: "number.thor_current",
             CONF_EV_CHARGER_STATUS: "sensor.thor_status",
+            "charging_power": "sensor.thor_power",
+            "fuse_charger_current": "sensor.thor_current_l1",
         },
     )
     assert result["type"] == data_entry_flow.FlowResultType.FORM
@@ -257,6 +262,9 @@ async def test_config_flow_requires_a_control(hass):
         {
             CONF_EV_CHARGER_START_BUTTON: START,
             CONF_EV_CHARGER_CURRENT: "number.thor_current",
+            CONF_EV_CHARGER_STATUS: "sensor.thor_status",
+            "charging_power": "sensor.thor_power",
+            "fuse_charger_current": "sensor.thor_current_l1",
         },
     )
     assert result["type"] == data_entry_flow.FlowResultType.FORM

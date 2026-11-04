@@ -53,18 +53,21 @@ from custom_components.ev_smart_charger.const import (
     wants_home_battery,
 )
 
-from .test_config_flow import _schema_keys
+from .test_config_flow import (
+    CHARGER_INPUT,
+    EXTERNAL_INPUT,
+    FORECAST_INPUT,
+    SOLAR_SENSORS,
+    _schema_keys,
+)
 
 
-async def _to_features(hass, phase=PHASE_MODE_SINGLE):
+async def _to_features(hass):
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_NAME: "Test"}
-    )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {CONF_PHASE_MODE: phase}
     )
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_CHARGER_MODEL: CHARGER_MODEL_GENERIC}
@@ -86,7 +89,7 @@ async def _finish(hass, result):
         )
         assert result["step_id"] == "external_connectors"
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], {}
+            result["flow_id"], EXTERNAL_INPUT
         )
         assert result["step_id"] == "cars"
         result = await hass.config_entries.flow.async_configure(
@@ -100,16 +103,12 @@ async def _finish(hass, result):
     return result["data"]
 
 
-ENTITIES = {
-    CONF_EV_CHARGER_SWITCH: "switch.charger",
-    CONF_EV_CHARGER_CURRENT: "number.charger_current",
-    CONF_EV_CHARGER_STATUS: "sensor.charger_status",
-}
+ENTITIES = dict(CHARGER_INPUT)
 
 
 async def test_no_battery_with_load_balancing_flow(hass):
     """HiBerry: solar, no home battery, integration protects the main fuse."""
-    result = await _to_features(hass, PHASE_MODE_THREE)
+    result = await _to_features(hass)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
@@ -121,9 +120,20 @@ async def test_no_battery_with_load_balancing_flow(hass):
     assert result["step_id"] == "entities"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], ENTITIES)
 
-    # v2.18.0: the meter step comes before the sensors step.
+    # v2.39.0: the sensors step comes before the meter step.
+    assert result["step_id"] == "sensors"
+    # v2.39.0: − phase-mode step
+    assert result["description_placeholders"]["total_steps"] == "11"
+    keys = _schema_keys(result)
+    assert CONF_SOC_HOME not in keys
+    assert CONF_BATTERY_POWER not in keys
+    assert CONF_FV_PRODUCTION in keys
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], SOLAR_SENSORS
+    )
     assert result["step_id"] == "main_fuse"
-    assert result["description_placeholders"]["total_steps"] == "12"  # v2.32.0: + car profiles; v2.36.0: − hybrid step
+    assert CONF_FUSE_CHARGER_CURRENT not in _schema_keys(result)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
@@ -131,26 +141,12 @@ async def test_no_battery_with_load_balancing_flow(hass):
             CONF_FUSE_GRID_CURRENT_L1: "sensor.i1",
             CONF_FUSE_GRID_CURRENT_L2: "sensor.i2",
             CONF_FUSE_GRID_CURRENT_L3: "sensor.i3",
-            CONF_FUSE_CHARGER_CURRENT: "sensor.charger_current_import",
-        },
-    )
-    assert result["step_id"] == "sensors"
-
-    keys = _schema_keys(result)
-    assert CONF_SOC_HOME not in keys
-    assert CONF_BATTERY_POWER not in keys
-    assert CONF_FV_PRODUCTION in keys
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {
-            CONF_FV_PRODUCTION: "sensor.pv",
-            CONF_CHARGING_POWER: "sensor.ev_power",
-            CONF_GRID_IMPORT: "sensor.grid",
         },
     )
     assert result["step_id"] == "pv_forecast"
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], FORECAST_INPUT
+    )
 
     data = await _finish(hass, result)
     assert data[CONF_SOC_HOME] is None
@@ -158,6 +154,8 @@ async def test_no_battery_with_load_balancing_flow(hass):
     assert data[CONF_MAIN_FUSE_SIZE] == 20
     assert data[CONF_LOAD_BALANCING] == LOAD_BALANCING_INTEGRATION
     assert data[CONF_HAS_HOME_BATTERY] is False
+    assert data[CONF_FUSE_CHARGER_CURRENT] == "sensor.ev_current"
+    assert data[CONF_FUSE_GRID_CURRENT_L3] == "sensor.i3"
 
 
 async def test_no_solar_skips_solar_steps(hass):
@@ -219,6 +217,7 @@ def test_apply_features_clears_ruled_out_fields():
         CONF_PV_FORECAST: "sensor.forecast",
         CONF_MAIN_FUSE_SIZE: 20,
         CONF_FUSE_GRID_CURRENT_L1: "sensor.i1",
+        CONF_FUSE_CHARGER_CURRENT: "sensor.ev_current",
     }
     out = _apply_features(data)
     assert out[CONF_SOC_HOME] is None
@@ -227,6 +226,9 @@ def test_apply_features_clears_ruled_out_fields():
     assert out[CONF_PV_FORECAST] is None
     assert out[CONF_MAIN_FUSE_SIZE] == 0
     assert out[CONF_FUSE_GRID_CURRENT_L1] is None
+    # v2.39.0: the charger current belongs to the charger step and stays
+    assert out[CONF_FUSE_CHARGER_CURRENT] == "sensor.ev_current"
+    assert out[CONF_PHASE_MODE] == PHASE_MODE_THREE
 
 
 def test_active_steps_follow_answers():
@@ -271,10 +273,7 @@ async def test_reconfigure_battery_off_clears_battery_sensor(hass):
     flow.hass = hass
     flow.context = {"entry_id": entry.entry_id}
 
-    await flow.async_step_reconfigure({CONF_PHASE_MODE: PHASE_MODE_SINGLE})
-    result = await flow.async_step_reconfigure_charger_model(
-        {CONF_CHARGER_MODEL: CHARGER_MODEL_GENERIC}
-    )
+    result = await flow.async_step_reconfigure({CONF_CHARGER_MODEL: CHARGER_MODEL_GENERIC})
     assert result["step_id"] == "reconfigure_features"
     # The form opens with the answers derived from the existing entry.
     assert result["data_schema"]({})[CONF_HAS_HOME_BATTERY] is True
@@ -288,22 +287,15 @@ async def test_reconfigure_battery_off_clears_battery_sensor(hass):
     )
     result = await flow.async_step_reconfigure_entities(ENTITIES)
     assert CONF_SOC_HOME not in _schema_keys(result)
-    result = await flow.async_step_reconfigure_sensors(
-        {
-            CONF_SOC_CAR: "sensor.car_soc",
-            CONF_FV_PRODUCTION: "sensor.pv",
-            CONF_CHARGING_POWER: "sensor.ev_power",
-            CONF_GRID_IMPORT: "sensor.grid",
-        }
-    )
+    result = await flow.async_step_reconfigure_sensors(dict(SOLAR_SENSORS))
     assert result["step_id"] == "reconfigure_pv_forecast"
-    await flow.async_step_reconfigure_pv_forecast({})
+    await flow.async_step_reconfigure_pv_forecast(dict(FORECAST_INPUT))
     hass.services.async_register("notify", "mobile_app_phone", lambda call: None)
     await flow.async_step_reconfigure_notifications(
         {CONF_NOTIFY_SERVICES: [], CONF_CAR_OWNER: "person.owner"}
     )
     await flow.async_step_reconfigure_external_connectors(
-        {CONF_BATTERY_CAPACITY: DEFAULT_BATTERY_CAPACITY}
+        {**EXTERNAL_INPUT, CONF_BATTERY_CAPACITY: DEFAULT_BATTERY_CAPACITY}
     )
     with patch.object(hass.config_entries, "async_update_entry") as update_entry:
         await flow.async_step_reconfigure_dashboard({"create_dashboard": False})

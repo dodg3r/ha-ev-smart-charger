@@ -150,11 +150,11 @@ async def test_listener_resets_when_import_recovers(hass, automation):
 
 
 async def test_one_shot_step_down_zeroes_import(hass, automation):
-    """16A with 1500W import → lands directly on 8A in a single operation.
+    """16A with 4500W import → lands directly on 8A in a single operation.
 
-    max_allowed = 16 - (1500 + 100 margin) / 230V = 9.04A → highest level ≤ 9.04 = 8A.
+    max_allowed = 16 - (4500 + 100 margin) / 690V = 9.33A → highest level ≤ 9.33 = 8A.
     """
-    _arm_charging_spike(hass, automation, grid=1500, current_amps=16)
+    _arm_charging_spike(hass, automation, grid=4500, current_amps=16)
     automation._spike_high_since = 100.0
 
     await automation._execute_spike_step_down()
@@ -210,7 +210,7 @@ async def test_step_down_rate_limited(hass, automation):
 async def test_small_import_falls_back_to_single_level(hass, automation):
     """Import below one level step still steps at least one level down.
 
-    16A with 60W import: max_allowed = 16 - 160/230 = 15.3 → highest level 13A.
+    16A with 60W import: max_allowed = 16 - 160/690 = 15.8 → highest level 13A.
     """
     _arm_charging_spike(hass, automation, grid=60, threshold=50, current_amps=16)
     automation._spike_high_since = 100.0

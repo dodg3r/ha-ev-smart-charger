@@ -219,7 +219,9 @@ async def _initial_flow_to_cars(hass):
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"notify_services": [], "car_owner": "person.test"}
     )
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"price_sensor": "sensor.nordpool"}
+    )
     assert result["step_id"] == "cars"
     assert config_entries  # imported for the flow manager
     return result

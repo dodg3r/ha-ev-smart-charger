@@ -187,8 +187,9 @@ async def _component(hass, base):
         CONF_PRICE_SENSOR: "sensor.prices",
         CONF_EV_CHARGER_STATUS: "sensor.status",
         CONF_SOC_CAR: "sensor.soc",
-        # 20 kWh * 20 % / 0.9 = 4.4 kWh at 3.68 kW -> 2 hours
-        CONF_BATTERY_CAPACITY: 20,
+        # v2.39.0 (three-phase): 50 kWh * 20 % / 0.9 = 11.1 kWh at
+        # 16 A * 690 V = 11.04 kW -> 2 hours
+        CONF_BATTERY_CAPACITY: 50,
     }
     controller = _controller()
     night = PlannedNightCharge(

@@ -2157,7 +2157,8 @@ class EvSmartChargerDashboard extends HTMLElement {
   /**
    * v2.18.0: measured charger current per phase (A), from the meter-step
    * mapping — dedicated per-phase sensors, or one sensor whose L1/L2/L3
-   * attributes hold the phases (its state is the total). Mirrors
+   * attributes hold the phases (v2.39.0: without attributes its value is one
+   * phase and counts for every phase). Mirrors
    * read_charger_phase_currents in power_model.py. null when not mapped or
    * unreadable.
    */
@@ -2194,7 +2195,8 @@ class EvSmartChargerDashboard extends HTMLElement {
       values.push(value);
     }
     if (values.every((v) => v == null)) {
-      return total == null ? null : new Array(phases).fill(total / phases);
+      // v2.39.0: a single sensor is one phase; every phase carries the same.
+      return total == null ? null : new Array(phases).fill(total);
     }
     return values.some((v) => v == null) ? null : values;
   }
