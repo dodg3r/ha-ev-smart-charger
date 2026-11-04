@@ -36,6 +36,9 @@ from .const import (
     CONF_GRID_IMPORT,
     CONF_GRID_IMPORT_L2,
     CONF_GRID_IMPORT_L3,
+    CONF_GRID_EXPORT,
+    CONF_GRID_EXPORT_L2,
+    CONF_GRID_EXPORT_L3,
     CONF_HOME_CONSUMPTION,
     CONF_HOME_CONSUMPTION_L2,
     CONF_HOME_CONSUMPTION_L3,
@@ -84,6 +87,7 @@ from .const import (
     get_own_cars,
     get_load_balancing,
     get_main_fuse_size,
+    has_charger_current,
     has_meter_import_power,
     has_solar,
     is_three_phase,
@@ -173,13 +177,21 @@ def _normalize_charger_input(
 _OPTIONAL_PHASE_POWER_KEYS = (
     CONF_FV_PRODUCTION_L2,
     CONF_FV_PRODUCTION_L3,
-    CONF_HOME_CONSUMPTION_L2,
-    CONF_HOME_CONSUMPTION_L3,
     CONF_GRID_IMPORT_L2,
     CONF_GRID_IMPORT_L3,
-    # v2.18.0: optional when they can be derived from the meter step.
+    # v2.18.0: optional when it can be derived from the meter step.
     CONF_GRID_IMPORT,
+    # v2.38.0: optional separate grid export; home consumption is no longer
+    # asked for (always computed), so an old mapping is cleared.
+    CONF_GRID_EXPORT,
+    CONF_GRID_EXPORT_L2,
+    CONF_GRID_EXPORT_L3,
     CONF_HOME_CONSUMPTION,
+    CONF_HOME_CONSUMPTION_L2,
+    CONF_HOME_CONSUMPTION_L3,
+    CONF_CHARGING_POWER,
+    CONF_CHARGING_POWER_L2,
+    CONF_CHARGING_POWER_L3,
     # v2.30.0: optional car charge limit.
     CONF_EV_SOC_LIMIT,
     # v2.36.0: optional battery-power sensor (now in the sensors step).
@@ -329,6 +341,7 @@ def _sensor_schema(
     solar: bool = True,
     home_battery: bool = True,
     derivable: bool = False,
+    ev_power_known: bool = False,
 ) -> vol.Schema:
     """Build the sensor mapping schema.
 
@@ -358,41 +371,33 @@ def _sensor_schema(
         ] = _entity_selector("sensor")
 
     # Per-quantity power sensors, grouped L1[/L2/L3]. Single-phase = L1 only.
-    power_groups = [(CONF_GRID_IMPORT, CONF_GRID_IMPORT_L2, CONF_GRID_IMPORT_L3)]
+    # v2.38.0: home consumption is no longer asked for — it is computed as
+    # production + net grid − EV power − battery power. Grid import is
+    # required (positive = importing; a combined sensor may go negative when
+    # exporting), grid export is optional for installs with two sensors.
+    power_groups = [(CONF_GRID_IMPORT, CONF_GRID_IMPORT_L2, CONF_GRID_IMPORT_L3, False)]
     if solar:
-        power_groups = [
-            (CONF_FV_PRODUCTION, CONF_FV_PRODUCTION_L2, CONF_FV_PRODUCTION_L3),
-            (CONF_HOME_CONSUMPTION, CONF_HOME_CONSUMPTION_L2, CONF_HOME_CONSUMPTION_L3),
-            *power_groups,
-        ]
-    for l1, l2, l3 in power_groups:
-        marker = vol.Required
-        if derivable and l1 in (CONF_GRID_IMPORT, CONF_HOME_CONSUMPTION):
+        power_groups.insert(
+            0, (CONF_FV_PRODUCTION, CONF_FV_PRODUCTION_L2, CONF_FV_PRODUCTION_L3, False)
+        )
+    power_groups.append((CONF_GRID_EXPORT, CONF_GRID_EXPORT_L2, CONF_GRID_EXPORT_L3, True))
+    # v2.2.0 / v2.38.0: measured EV charging power. Required with solar
+    # panels unless the meter step maps the charger current (the integration
+    # then computes it): the house consumption cannot be computed without it.
+    power_groups.append(
+        (CONF_CHARGING_POWER, CONF_CHARGING_POWER_L2, CONF_CHARGING_POWER_L3,
+         ev_power_known or not solar)
+    )
+    for l1, l2, l3, optional in power_groups:
+        marker = vol.Optional if optional else vol.Required
+        if derivable and l1 == CONF_GRID_IMPORT:
             marker = vol.Optional
         fields[marker(l1, **_field_config(current_data.get(l1)))] = _entity_selector("sensor")
         if three_phase:
             # v2.16.1: L2/L3 optional. Only the sum is ever used, so an install
-            # with a single total sensor (e.g. an inverter that reports PV
-            # production as a total plus VA per phase) maps the total to L1.
+            # with a single total sensor maps the total to L1.
             fields[vol.Optional(l2, **_field_config(current_data.get(l2)))] = _entity_selector("sensor")
             fields[vol.Optional(l3, **_field_config(current_data.get(l3)))] = _entity_selector("sensor")
-
-    # v2.2.0: measured EV charging power — the SSOT for "is the car drawing now".
-    # Optional (most installs lack a charger CT; the switch echo + status string
-    # are the fallback). Single-phase = 1 sensor; three-phase = 3 summed. The
-    # "all three or none" rule is enforced in ChargingModel.read_charging_power
-    # (Optional fields cannot be made schema-Required without breaking the
-    # single-phase / no-sensor cases).
-    fields[
-        vol.Optional(CONF_CHARGING_POWER, **_field_config(current_data.get(CONF_CHARGING_POWER)))
-    ] = _entity_selector("sensor")
-    if three_phase:
-        fields[
-            vol.Optional(CONF_CHARGING_POWER_L2, **_field_config(current_data.get(CONF_CHARGING_POWER_L2)))
-        ] = _entity_selector("sensor")
-        fields[
-            vol.Optional(CONF_CHARGING_POWER_L3, **_field_config(current_data.get(CONF_CHARGING_POWER_L3)))
-        ] = _entity_selector("sensor")
 
     # v2.6.0 (issue #36): optional grid-availability binary_sensor. When mapped
     # and OFF, Night Smart Charge grid mode stops (avoids draining the home
@@ -876,6 +881,13 @@ class _StepNavigator:
         )
         return has_meter_import_power(data)
 
+    def _ev_power_known(self) -> bool:
+        """v2.38.0: the meter step maps the charger current."""
+        data = _merge_entry_data(
+            self._base_data(), self.mode_info, self._features(), self.fuse_info
+        )
+        return has_charger_current(data)
+
     def _placeholders(self, logical: str) -> dict[str, str]:
         steps = _active_steps(self._flow_kind, self._features())
         index = steps.index(logical) + 1 if logical in steps else len(steps)
@@ -1108,6 +1120,7 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
                 solar=has_solar(features),
                 home_battery=wants_home_battery(features),
                 derivable=self._derivable(),
+                ev_power_known=self._ev_power_known(),
             ),
             errors={},
             description_placeholders=self._placeholders("sensors"),
@@ -1305,6 +1318,7 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
                 solar=has_solar(features),
                 home_battery=wants_home_battery(features),
                 derivable=self._derivable(),
+                ev_power_known=self._ev_power_known(),
             ),
             errors={},
             description_placeholders=self._placeholders("sensors"),
@@ -1510,6 +1524,7 @@ class EVSCOptionsFlow(_StepNavigator, config_entries.OptionsFlowWithConfigEntry)
                 solar=has_solar(features),
                 home_battery=wants_home_battery(features),
                 derivable=self._derivable(),
+                ev_power_known=self._ev_power_known(),
             ),
             description_placeholders=self._placeholders("sensors"),
         )

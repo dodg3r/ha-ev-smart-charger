@@ -2138,7 +2138,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     for (const id of exports) {
       const w = this._powerW(id);
       if (w == null) return this._t("common.unavailable");
-      net -= w;
+      net -= Math.abs(w);
     }
     return this._formatPowerW(net);
   }

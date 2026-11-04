@@ -22,6 +22,9 @@ from custom_components.ev_smart_charger.const import (
     CONF_HOME_CONSUMPTION,
     CONF_HOME_CONSUMPTION_L2,
     CONF_HOME_CONSUMPTION_L3,
+    CONF_GRID_EXPORT,
+    CONF_GRID_EXPORT_L2,
+    CONF_GRID_EXPORT_L3,
     CONF_GRID_IMPORT,
     CONF_GRID_IMPORT_L2,
     CONF_GRID_IMPORT_L3,
@@ -118,7 +121,7 @@ async def test_form(hass: HomeAssistant):
             CONF_SOC_HOME: "sensor.home_soc",
             CONF_BATTERY_POWER: "sensor.battery_power",
             CONF_FV_PRODUCTION: "sensor.solar",
-            CONF_HOME_CONSUMPTION: "sensor.consumption",
+            CONF_CHARGING_POWER: "sensor.ev_power",
             CONF_GRID_IMPORT: "sensor.grid",
         },
     )
@@ -251,7 +254,7 @@ async def test_external_connectors_validates_energy_target_entity_exists(hass: H
         {
             CONF_SOC_HOME: "sensor.home_soc",
             CONF_FV_PRODUCTION: "sensor.solar",
-            CONF_HOME_CONSUMPTION: "sensor.consumption",
+            CONF_CHARGING_POWER: "sensor.ev_power",
             CONF_GRID_IMPORT: "sensor.grid",
         },
     )
@@ -330,8 +333,8 @@ async def test_three_phase_generic_flow(hass: HomeAssistant):
     keys = _schema_keys(result)
     for key in (
         CONF_FV_PRODUCTION_L2, CONF_FV_PRODUCTION_L3,
-        CONF_HOME_CONSUMPTION_L2, CONF_HOME_CONSUMPTION_L3,
         CONF_GRID_IMPORT_L2, CONF_GRID_IMPORT_L3,
+        CONF_GRID_EXPORT, CONF_GRID_EXPORT_L2, CONF_GRID_EXPORT_L3,
     ):
         assert key in keys, f"three-phase sensors form is missing {key}"
 
@@ -342,9 +345,7 @@ async def test_three_phase_generic_flow(hass: HomeAssistant):
             CONF_FV_PRODUCTION: "sensor.pv1",
             CONF_FV_PRODUCTION_L2: "sensor.pv2",
             CONF_FV_PRODUCTION_L3: "sensor.pv3",
-            CONF_HOME_CONSUMPTION: "sensor.cons1",
-            CONF_HOME_CONSUMPTION_L2: "sensor.cons2",
-            CONF_HOME_CONSUMPTION_L3: "sensor.cons3",
+            CONF_CHARGING_POWER: "sensor.ev_power",
             CONF_GRID_IMPORT: "sensor.grid1",
             CONF_GRID_IMPORT_L2: "sensor.grid2",
             CONF_GRID_IMPORT_L3: "sensor.grid3",
@@ -387,8 +388,9 @@ async def test_three_phase_generic_flow(hass: HomeAssistant):
     # all six per-phase keys persisted
     assert data[CONF_FV_PRODUCTION_L2] == "sensor.pv2"
     assert data[CONF_FV_PRODUCTION_L3] == "sensor.pv3"
-    assert data[CONF_HOME_CONSUMPTION_L2] == "sensor.cons2"
-    assert data[CONF_HOME_CONSUMPTION_L3] == "sensor.cons3"
+    assert data[CONF_HOME_CONSUMPTION_L2] is None
+    assert data[CONF_HOME_CONSUMPTION_L3] is None
+    assert data[CONF_GRID_EXPORT] is None
     assert data[CONF_GRID_IMPORT_L2] == "sensor.grid2"
     assert data[CONF_GRID_IMPORT_L3] == "sensor.grid3"
 
@@ -427,7 +429,6 @@ async def test_status_optional_and_charging_power_roundtrip(hass: HomeAssistant)
         result["flow_id"],
         {
             CONF_FV_PRODUCTION: "sensor.solar",
-            CONF_HOME_CONSUMPTION: "sensor.consumption",
             CONF_GRID_IMPORT: "sensor.grid",
             CONF_CHARGING_POWER: "sensor.ev_charging_power",
         },

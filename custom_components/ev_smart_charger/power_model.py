@@ -26,6 +26,7 @@ from .const import (
     CONF_CHARGING_POWER,
     CONF_CHARGING_POWER_L2,
     CONF_CHARGING_POWER_L3,
+    CONF_EV_CHARGER_CURRENT,
     CONF_EV_CHARGER_STATUS,
     CONF_EV_SOC_LIMIT,
     CONF_FV_PRODUCTION,
@@ -35,9 +36,9 @@ from .const import (
     CONF_GRID_IMPORT,
     CONF_GRID_IMPORT_L2,
     CONF_GRID_IMPORT_L3,
-    CONF_HOME_CONSUMPTION,
-    CONF_HOME_CONSUMPTION_L2,
-    CONF_HOME_CONSUMPTION_L3,
+    CONF_GRID_EXPORT,
+    CONF_GRID_EXPORT_L2,
+    CONF_GRID_EXPORT_L3,
     CONF_FUSE_CHARGER_CURRENT,
     FUSE_CHARGER_CURRENT_KEYS,
     FUSE_CHARGER_PHASE_ATTRIBUTES,
@@ -248,7 +249,7 @@ def is_ev_full(soc: float | None, limit: float | None) -> bool:
 # Per-quantity config keys, ordered L1, L2, L3. L1 reuses the existing single-phase
 # key so single-phase installs read exactly the same entity as before.
 _PRODUCTION_KEYS = (CONF_FV_PRODUCTION, CONF_FV_PRODUCTION_L2, CONF_FV_PRODUCTION_L3)
-_CONSUMPTION_KEYS = (CONF_HOME_CONSUMPTION, CONF_HOME_CONSUMPTION_L2, CONF_HOME_CONSUMPTION_L3)
+_GRID_EXPORT_KEYS = (CONF_GRID_EXPORT, CONF_GRID_EXPORT_L2, CONF_GRID_EXPORT_L3)
 _GRID_IMPORT_KEYS = (CONF_GRID_IMPORT, CONF_GRID_IMPORT_L2, CONF_GRID_IMPORT_L3)
 # v2.2.0 — measured charging power. L1 is a NEW key (no single-phase predecessor),
 # so _entities_for returns [] in single-phase when CONF_CHARGING_POWER is unmapped.
@@ -371,7 +372,6 @@ class ChargingModel:
     amp_levels: list[int]
     charger_model: str
     _production_entities: list[str]
-    _consumption_entities: list[str]
     _grid_import_entities: list[str]
     # v2.1.0 (issue #29) — optional signed battery-power sensor. Single (never
     # phase-summed, unlike the readers above): battery power is one inverter-level
@@ -392,6 +392,8 @@ class ChargingModel:
     _meter_import_entities: list[str] = field(default_factory=list)
     _meter_export_entities: list[str | None] = field(default_factory=list)
     _meter_voltage_entities: list[str | None] = field(default_factory=list)
+    # v2.38.0: optional grid export sensors (net grid = import − export).
+    _grid_export_entities: list[str] = field(default_factory=list)
     _config: dict = field(default_factory=dict, repr=False)
 
     @classmethod
@@ -404,8 +406,8 @@ class ChargingModel:
             amp_levels=get_amp_levels(config),
             charger_model=get_charger_model(config),
             _production_entities=_entities_for(config, _PRODUCTION_KEYS),
-            _consumption_entities=_entities_for(config, _CONSUMPTION_KEYS),
             _grid_import_entities=_entities_for(config, _GRID_IMPORT_KEYS),
+            _grid_export_entities=_entities_for(config, _GRID_EXPORT_KEYS),
             _battery_power_entity=config.get(CONF_BATTERY_POWER),
             _charging_power_entities=_entities_for(config, _CHARGING_POWER_KEYS),
             _charger_status_entity=config.get(CONF_EV_CHARGER_STATUS),
@@ -441,13 +443,13 @@ class ChargingModel:
         """Return mapped production sensors ([L1] or [L1, L2, L3])."""
         return list(self._production_entities)
 
-    def consumption_entities(self) -> list[str]:
-        """Return mapped home-consumption sensors."""
-        return list(self._consumption_entities)
-
     def grid_import_entities(self) -> list[str]:
         """Return mapped grid-import sensors."""
         return list(self._grid_import_entities)
+
+    def grid_export_entities(self) -> list[str]:
+        """Return mapped grid-export sensors (v2.38.0)."""
+        return list(self._grid_export_entities)
 
     # ----- v2.18.0: what is derived instead of mapped -----
     @property
@@ -467,17 +469,13 @@ class ChargingModel:
 
     @property
     def consumption_derived(self) -> bool:
-        """Home consumption is computed from production, grid and charger."""
-        return (
-            not self._consumption_entities
-            and bool(self._grid_import_entities or self._meter_import_entities)
-            and bool(self._charging_power_entities or self.charging_power_derived)
-        )
+        """Home consumption is always computed (v2.38.0)."""
+        return True
 
     def grid_import_source_entities(self) -> list[str]:
         """Entities whose changes move the grid-import reading."""
         if self._grid_import_entities:
-            return list(self._grid_import_entities)
+            return list(self._grid_import_entities) + list(self._grid_export_entities)
         if self._meter_import_entities:
             return self._meter_import_entities + [
                 e for e in self._meter_export_entities if e
@@ -494,8 +492,8 @@ class ChargingModel:
         out: list[tuple[str, str]] = []
         groups = [
             ("Solar Production", self._production_entities),
-            ("Home Consumption", self._consumption_entities),
             ("Grid Import", self._grid_import_entities),
+            ("Grid Export", self._grid_export_entities if self._grid_import_entities else []),
         ]
         if self.grid_import_derived:
             groups.append(("Meter Import", self._meter_import_entities))
@@ -511,9 +509,9 @@ class ChargingModel:
     def validate_grid_import(self, hass: HomeAssistant) -> tuple[bool, str | None]:
         """Is grid import readable right now? (mapped or derived)."""
         if self._grid_import_entities:
-            for entity in self._grid_import_entities:
+            for entity in self._grid_import_entities + self._grid_export_entities:
                 if read_number(hass, entity) is None:
-                    return False, f"Grid Import ({entity}) unavailable"
+                    return False, f"Grid Import/Export ({entity}) unavailable"
             return True, None
         if self._meter_import_entities:
             if self._derived_grid_import(hass) is None:
@@ -527,9 +525,9 @@ class ChargingModel:
         Mapped sensors are checked through ``labelled_power_entities``; this
         covers what is derived from the charger current.
         """
-        if self.consumption_derived and self._ev_power_for_balance(hass) is None:
+        if self._ev_power_for_balance(hass) is None:
             return [
-                "Home Consumption (derived): charger current unavailable "
+                "Home Consumption (computed): charging power unavailable "
                 "while the car may be charging"
             ]
         return []
@@ -540,16 +538,13 @@ class ChargingModel:
         return sum(get_float(hass, e) for e in self._production_entities)
 
     def read_consumption(self, hass: HomeAssistant) -> float:
-        """Total home consumption (W), summed across phases.
+        """What the house itself uses (W), always computed (v2.38.0).
 
-        v2.18.0: when unmapped it is derived as
-        production + grid import − EV charging power − battery charging
-        (battery power signed: positive = charging), i.e. what the house
-        itself uses. Surplus = production − consumption then equals what the
-        EV draws now plus any export, minus any import.
+        production + net grid − EV charging power − battery charging (battery
+        power signed: positive = charging), clamped >= 0. Surplus =
+        production − consumption then equals what the EV draws now plus any
+        export, minus any import.
         """
-        if self._consumption_entities or not self.consumption_derived:
-            return sum(get_float(hass, e) for e in self._consumption_entities)
         ev = self._ev_power_for_balance(hass) or 0.0
         battery = (
             get_float(hass, self._battery_power_entity, default=0.0)
@@ -560,12 +555,16 @@ class ChargingModel:
         return max(0.0, house)
 
     def read_grid_import(self, hass: HomeAssistant) -> float:
-        """Total grid import (W, positive = importing), summed across phases.
+        """Net grid (W, positive = importing, negative = exporting).
 
-        v2.18.0: when unmapped, the meter's import − export power per phase.
+        Mapped import (summed across phases) minus the optional export
+        sensors (v2.38.0); a combined signed sensor needs no export sensor.
+        Without a mapped import: the meter's import − export power per phase.
         """
         if self._grid_import_entities or not self._meter_import_entities:
-            return sum(get_float(hass, e) for e in self._grid_import_entities)
+            imported = sum(get_float(hass, e) for e in self._grid_import_entities)
+            exported = sum(abs(get_float(hass, e)) for e in self._grid_export_entities)
+            return imported - exported
         value = self._derived_grid_import(hass)
         return 0.0 if value is None else value
 
@@ -617,6 +616,12 @@ class ChargingModel:
             or is_charge_complete_status(status)
         ):
             return 0.0
+        # v2.38.0: nothing measures the EV (an entry from before the
+        # charging-power requirement): estimate it from the current setpoint.
+        if not self._charging_power_entities and not self.charging_power_derived:
+            setpoint = read_number(hass, self._config.get(CONF_EV_CHARGER_CURRENT))
+            if setpoint is not None and setpoint > 0:
+                return setpoint * self.effective_voltage
         return None
 
     def read_battery_discharge(self, hass: HomeAssistant) -> float | None:

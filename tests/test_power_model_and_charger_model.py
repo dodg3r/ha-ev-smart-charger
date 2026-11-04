@@ -6,7 +6,7 @@ amperage-decrease behaviour in ChargerController.
 """
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -110,13 +110,12 @@ def test_charging_model_three_phase():
     assert model.effective_voltage == 690
     assert model.amp_levels == GENERIC_AMP_LEVELS
     assert model.production_entities() == ["sensor.pv1", "sensor.pv2", "sensor.pv3"]
-    assert model.consumption_entities() == ["sensor.cons1", "sensor.cons2", "sensor.cons3"]
     assert model.grid_import_entities() == ["sensor.grid1", "sensor.grid2", "sensor.grid3"]
     # 11040 W total / 690 → 16 A per phase
     assert model.watts_to_amps(11040) == pytest.approx(16.0)
-    # labelled list gains Ln suffixes (9 power sensors in three-phase)
+    # labelled list gains Ln suffixes (production + grid import per phase)
     labelled = model.labelled_power_entities()
-    assert len(labelled) == 9
+    assert len(labelled) == 6
     assert ("sensor.pv2", "Solar Production L2") in labelled
 
 
@@ -475,3 +474,42 @@ async def test_tuya_decrease_uses_sequence_regardless_of_measured_power(hass):
     services = [c.args[1] for c in controller._call_service.await_args_list]
     assert "turn_off" in services
     assert "turn_on" in services
+
+
+# ---------------------------------------------------------------------------
+# v2.38.0: net grid (import − export) and computed home consumption
+# ---------------------------------------------------------------------------
+
+
+def _single_hass(**states):
+    hass = MagicMock()
+    def _get(entity_id):
+        if entity_id not in states:
+            return None
+        st = MagicMock()
+        st.state = str(states[entity_id])
+        st.attributes = {}
+        return st
+    hass.states.get.side_effect = _get
+    return hass
+
+
+def test_net_grid_with_separate_export_sensor():
+    from custom_components.ev_smart_charger.const import CONF_GRID_EXPORT
+    config = dict(SINGLE_CONFIG, **{CONF_GRID_EXPORT: "sensor.export"})
+    model = ChargingModel.from_config(config)
+    hass = _single_hass(**{"sensor.grid": 0, "sensor.export": 1500})
+    assert model.read_grid_import(hass) == pytest.approx(-1500)
+    assert "sensor.export" in model.grid_import_source_entities()
+
+
+def test_consumption_is_computed_with_signed_grid():
+    from custom_components.ev_smart_charger.const import CONF_CHARGING_POWER
+    config = dict(SINGLE_CONFIG, **{CONF_CHARGING_POWER: "sensor.ev"})
+    model = ChargingModel.from_config(config)
+    hass = _single_hass(**{"sensor.pv": 5000, "sensor.grid": -800, "sensor.ev": 3000,
+                           "sensor.cons": 9999})
+    # house = 5000 − 800 − 3000; the old consumption sensor is ignored
+    assert model.read_consumption(hass) == pytest.approx(1200)
+    surplus = model.read_production(hass) - model.read_consumption(hass)
+    assert surplus == pytest.approx(3800)

@@ -32,6 +32,7 @@ from custom_components.ev_smart_charger.const import (
     CONF_GRID_IMPORT,
     CONF_HAS_HOME_BATTERY,
     CONF_HAS_SOLAR,
+    CONF_CHARGING_POWER,
     CONF_HOME_CONSUMPTION,
     CONF_LOAD_BALANCING,
     CONF_MAIN_FUSE_SIZE,
@@ -144,7 +145,7 @@ async def test_no_battery_with_load_balancing_flow(hass):
         result["flow_id"],
         {
             CONF_FV_PRODUCTION: "sensor.pv",
-            CONF_HOME_CONSUMPTION: "sensor.house",
+            CONF_CHARGING_POWER: "sensor.ev_power",
             CONF_GRID_IMPORT: "sensor.grid",
         },
     )
@@ -291,7 +292,7 @@ async def test_reconfigure_battery_off_clears_battery_sensor(hass):
         {
             CONF_SOC_CAR: "sensor.car_soc",
             CONF_FV_PRODUCTION: "sensor.pv",
-            CONF_HOME_CONSUMPTION: "sensor.house",
+            CONF_CHARGING_POWER: "sensor.ev_power",
             CONF_GRID_IMPORT: "sensor.grid",
         }
     )

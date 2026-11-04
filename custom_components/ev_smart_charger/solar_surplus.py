@@ -15,7 +15,6 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_EV_CHARGER_STATUS,
     CONF_FV_PRODUCTION,
-    CONF_HOME_CONSUMPTION,
     CONF_GRID_IMPORT,
     CONF_SOC_HOME,
     PRIORITY_EV,
@@ -112,7 +111,6 @@ class SolarSurplusAutomation:
         # User-configured entities
         self._charger_status = config.get(CONF_EV_CHARGER_STATUS)
         self._fv_production = config.get(CONF_FV_PRODUCTION)
-        self._home_consumption = config.get(CONF_HOME_CONSUMPTION)
         self._grid_import = config.get(CONF_GRID_IMPORT)
         self._soc_home = config.get(CONF_SOC_HOME)
         # v1.7.0: PV-only mode (no home battery configured)

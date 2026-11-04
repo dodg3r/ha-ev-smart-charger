@@ -17,7 +17,7 @@ from custom_components.ev_smart_charger.solar_surplus import SolarSurplusAutomat
 from custom_components.ev_smart_charger.const import (
     CONF_EV_CHARGER_STATUS,
     CONF_FV_PRODUCTION,
-    CONF_HOME_CONSUMPTION,
+    CONF_CHARGING_POWER,
     CONF_GRID_IMPORT,
     CONF_GRID_AVAILABLE,
     CONF_SOC_HOME,
@@ -31,7 +31,7 @@ def _build(hass, controller, balancer, *, map_grid_sensor=True):
     config = {
         CONF_EV_CHARGER_STATUS: "sensor.charger_status",
         CONF_FV_PRODUCTION: "sensor.solar",
-        CONF_HOME_CONSUMPTION: "sensor.consumption",
+        CONF_CHARGING_POWER: "sensor.ev_power",
         CONF_GRID_IMPORT: "sensor.grid",
         CONF_SOC_HOME: "sensor.home_soc",
     }
@@ -122,7 +122,7 @@ def _prepare_tick(hass, automation, *, current_amps):
     hass.states.async_set(GRID_AVAILABLE_ENTITY, "off")
     hass.states.async_set(OFFGRID_ENTITY, "10")
     hass.states.async_set("sensor.solar", "6000")
-    hass.states.async_set("sensor.consumption", "500")
+    hass.states.async_set("sensor.ev_power", "0")
     hass.states.async_set("sensor.grid", "0")
     hass.states.async_set("sensor.charger_status", "charger_charging")
     automation.charger_controller.is_charging = AsyncMock(return_value=True)

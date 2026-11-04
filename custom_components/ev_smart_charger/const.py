@@ -136,8 +136,15 @@ SOC_INPUT_DOMAINS = ["sensor", "number", "input_number"]
 CONF_SOC_CAR = "soc_car"
 CONF_SOC_HOME = "soc_home"
 CONF_FV_PRODUCTION = "fv_production"
+# v2.38.0: no longer asked for; home consumption is always computed as
+# production + net grid − EV power − battery power. Kept so the flow can clear
+# a sensor mapped by an older version.
 CONF_HOME_CONSUMPTION = "home_consumption"
+# Grid import (W): positive = importing. A combined sensor that goes negative
+# when exporting works on its own; otherwise map the export separately
+# (CONF_GRID_EXPORT, v2.38.0). Net grid = import − export.
 CONF_GRID_IMPORT = "grid_import"
+CONF_GRID_EXPORT = "grid_export"
 CONF_PV_FORECAST = "pv_forecast"
 # v2.6.0 (issue #36): optional binary_sensor reporting grid availability
 # (on = grid present, off = grid lost). On hybrid "Battery First"/UPS inverters
@@ -164,6 +171,8 @@ CONF_HOME_CONSUMPTION_L2 = "home_consumption_l2"
 CONF_HOME_CONSUMPTION_L3 = "home_consumption_l3"
 CONF_GRID_IMPORT_L2 = "grid_import_l2"
 CONF_GRID_IMPORT_L3 = "grid_import_l3"
+CONF_GRID_EXPORT_L2 = "grid_export_l2"
+CONF_GRID_EXPORT_L3 = "grid_export_l3"
 
 # v2.2.0 — Measured EV charging power (W) sensor(s). The SSOT for "is the car
 # drawing current right now" (drawing_now). Unlike production/consumption/grid,
@@ -909,6 +918,20 @@ def is_three_phase(config: dict) -> bool:
 def get_phase_count(config: dict) -> int:
     """Return the number of phases (1 single, 3 three-phase) (v2.0.0)."""
     return 3 if is_three_phase(config) else 1
+
+
+def has_charger_current(config: dict) -> bool:
+    """True when the charger current is mapped in the meter step (v2.38.0).
+
+    The integration can then compute the EV charging power itself, so no
+    charging-power sensor is needed.
+    """
+    if get_load_balancing(config) != LOAD_BALANCING_INTEGRATION:
+        return False
+    if config.get(CONF_FUSE_CHARGER_CURRENT):
+        return True
+    keys = FUSE_CHARGER_CURRENT_KEYS[: get_phase_count(config)]
+    return any(config.get(key) for key in keys)
 
 
 def has_meter_import_power(config: dict) -> bool:

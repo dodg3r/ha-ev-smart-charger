@@ -27,6 +27,7 @@ from custom_components.ev_smart_charger.const import (
     CONF_HAS_HOME_BATTERY,
     CONF_HAS_SOLAR,
     CONF_HOME_BATTERY_CONTROL,
+    CONF_CHARGING_POWER,
     CONF_HOME_CONSUMPTION,
     CONF_LOAD_BALANCING,
     CONF_NOTIFY_SERVICES,
@@ -142,7 +143,7 @@ async def test_reconfigure_to_display_only_keeps_the_soc_sensor(hass):
             CONF_SOC_CAR: "sensor.car_soc",
             CONF_SOC_HOME: "sensor.home_soc",
             CONF_FV_PRODUCTION: "sensor.pv",
-            CONF_HOME_CONSUMPTION: "sensor.house",
+            CONF_CHARGING_POWER: "sensor.ev_power",
             CONF_GRID_IMPORT: "sensor.grid",
         }
     )

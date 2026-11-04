@@ -31,20 +31,20 @@
       },
       "sensors": {
         "title": "Energiesensoren - Stap {step}/{total_steps}",
-        "description": "Koppel de sensoren die door Solar Surplus, Priority Balancer en Night Smart Charge worden gebruikt. In driefase koppel je drie sensoren per grootheid (één per fase).",
+        "description": "Koppel de sensoren die door Solar Surplus, Priority Balancer en Night Smart Charge worden gebruikt. In driefase koppel je drie sensoren per grootheid (één per fase). Het huisverbruik wordt door de integratie berekend, er is geen verbruikssensor nodig.",
         "data": {
           "soc_car": "EV-batterij-SOC",
           "ev_soc_limit": "EV-laadlimiet (optioneel)",
           "soc_home": "Thuisbatterij-SOC",
           "fv_production": "Zonneproductie",
-          "home_consumption": "Woningverbruik",
           "grid_import": "Netafname",
           "fv_production_l2": "Zonneproductie (L2)",
           "fv_production_l3": "Zonneproductie (L3)",
-          "home_consumption_l2": "Verbruik woning (L2)",
-          "home_consumption_l3": "Verbruik woning (L3)",
           "grid_import_l2": "Netafname (L2)",
           "grid_import_l3": "Netafname (L3)",
+          "grid_export": "Netteruglevering (optioneel)",
+          "grid_export_l2": "Netteruglevering (L2)",
+          "grid_export_l3": "Netteruglevering (L3)",
           "charging_power": "EV-laadvermogen",
           "charging_power_l2": "EV-laadvermogen (L2)",
           "charging_power_l3": "EV-laadvermogen (L3)",
@@ -56,24 +56,24 @@
           "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten (bijv. het doel-laadniveau van de auto-integratie). De waarde telt als vol: EV-doelen worden hierop begrensd en een auto op de limiet wordt niet gestart. Leeg laten voor 100 %.",
           "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Sensor met de actuele PV-productie in watt.",
-          "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: het huisverbruik wordt dan berekend als opwek + netafname − laadvermogen (− batterijladen als een batterijvermogensensor is gekoppeld).",
-          "grid_import": "Sensor met uit het net afgenomen vermogen in watt. Positieve waarden betekenen afname uit het net. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: de netafname wordt dan berekend als afname − teruglevering.",
+          "grid_import": "Netvermogen in watt, positief = afname. Een gecombineerde sensor die negatief wordt bij teruglevering volstaat. Zijn afname en teruglevering twee sensoren, koppel dan hieronder de teruglevering. Driefasig: fase L1 of het TOTAAL (laat L2 en L3 leeg). Laat leeg als je in de meterstap het afnamevermogen per fase hebt gekoppeld.",
           "fv_production_l2": "Zonneproductie op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "fv_production_l3": "Zonneproductie op fase L3, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
-          "home_consumption_l2": "Verbruik woning op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
-          "home_consumption_l3": "Verbruik woning op fase L3, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "grid_import_l2": "Netafname op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "grid_import_l3": "Netafname op fase L3, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
-          "charging_power": "Optioneel maar aanbevolen. Gemeten EV-laadvermogen in watt — het betrouwbaarste signaal of de auto daadwerkelijk stroom verbruikt. Indien toegewezen heeft het voorrang op de statussensor voor laaddetectie. In driefasemodus wijs je alle drie de fasesensoren toe of laat je ze alle drie leeg (ze worden opgeteld).",
-          "charging_power_l2": "EV-laadvermogen op fase L2, in watt. Wijs alle drie de fasen toe of geen.",
-          "charging_power_l3": "EV-laadvermogen op fase L3, in watt. Wijs alle drie de fasen toe of geen.",
+          "charging_power": "Gemeten EV-laadvermogen in watt. Verplicht met zonnepanelen (het huisverbruik wordt berekend als productie + netto net − EV-vermogen − batterijvermogen), tenzij de meterstap de laderstroom koppelt. Driefasig: fase L1 of het TOTAAL.",
+          "charging_power_l2": "Laadvermogen op fase L2, in watt. Optioneel.",
+          "charging_power_l3": "Laadvermogen op fase L3, in watt. Optioneel.",
           "grid_available": "Optioneel. Binaire sensor die de netbeschikbaarheid aangeeft (on = net aanwezig, off = net weg). Indien toegewezen en off stopt de grid-modus van Night Smart Charge, zodat de thuisbatterij tijdens een stroomstoring niet wordt leeggetrokken (handig bij hybride Battery First / UPS-omvormers). Laat leeg om het vorige gedrag te behouden.",
-          "battery_power": "Optioneel. Accuvermogen in watt met teken — NEGATIEF = ontladen, POSITIEF = laden. Gebruikt wanneer het huisverbruik door de integratie wordt berekend, door de dead-band-buffer van Solar Surplus en door de accubescherming van Night Smart Charge. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld."
+          "battery_power": "Optioneel. Accuvermogen in watt met teken — NEGATIEF = ontladen, POSITIEF = laden. Gebruikt wanneer het huisverbruik door de integratie wordt berekend, door de dead-band-buffer van Solar Surplus en door de accubescherming van Night Smart Charge. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld.",
+          "grid_export": "Alleen als teruglevering een aparte sensor is (positieve watt bij teruglevering). Laat leeg als de afnamesensor negatief wordt bij teruglevering. Netto net = afname − teruglevering.",
+          "grid_export_l2": "Teruglevering op fase L2, in watt. Optioneel.",
+          "grid_export_l3": "Teruglevering op fase L3, in watt. Optioneel."
         }
       },
       "main_fuse": {
         "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
-        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin). Boven de zekering plus een harde grens (standaard 10 A, EVSC Fuse Hard Trip) stopt het laden direct.\n\nMet afgenomen (en teruggeleverd) vermogen op elke fase berekent de integratie ook netafname, huisverbruik en laadvermogen, zodat je die sensoren in de volgende stap leeg kunt laten.",
+        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin). Boven de zekering plus een harde grens (standaard 10 A, EVSC Fuse Hard Trip) stopt het laden direct.\n\nMet afgenomen (en teruggeleverd) vermogen op elke fase berekent de integratie ook netafname en laadvermogen, zodat je die sensoren in de volgende stap leeg kunt laten.",
         "data": {
           "main_fuse_size": "Grootte hoofdzekering",
           "fuse_grid_current_l1": "Meterstroom L1 (A)",
@@ -163,7 +163,7 @@
       },
       "reconfigure": {
         "title": "Fasemodus opnieuw configureren - Stap {step}/{total_steps}",
-        "description": "Kies hoe je elektrische installatie is bekabeld.\n\n**Eénfase** — één fase (230 V, laden tot ~3,7 kW): je koppelt één sensor voor zonneproductie, één voor verbruik en één voor netafname, zoals nu. Dit is de meest voorkomende opstelling.\n\n**Driefase** — drie fasen (230 V elk, laden ~11–22 kW): je koppelt drie sensoren voor productie, drie voor verbruik en drie voor netafname (één per fase); de integratie telt ze op en verdeelt de laadsnelheid over de drie fasen. Bij driefase staat elke ampèrewaarde voor ongeveer 3× het vermogen van éénfase (bijv. 16 A ≈ 11 kW) en het minimum is ~4,1 kW — zorg dat je thuisbatterij-omvormer dat vermogen aankan.",
+        "description": "Kies hoe je elektrische installatie is bekabeld.\n\n**Eénfase** — één fase (230 V, laden tot ~3,7 kW): je koppelt één sensor voor zonneproductie en één voor netafname, zoals nu. Dit is de meest voorkomende opstelling.\n\n**Driefase** — drie fasen (230 V elk, laden ~11–22 kW): je koppelt drie sensoren voor productie en drie voor netafname (één per fase, of een totaal); de integratie telt ze op en verdeelt de laadsnelheid over de drie fasen. Bij driefase staat elke ampèrewaarde voor ongeveer 3× het vermogen van éénfase (bijv. 16 A ≈ 11 kW) en het minimum is ~4,1 kW — zorg dat je thuisbatterij-omvormer dat vermogen aankan.",
         "data": {
           "phase_mode": "Elektrische fasen"
         },
@@ -173,20 +173,20 @@
       },
       "reconfigure_sensors": {
         "title": "Energiesensoren opnieuw configureren - Stap {step}/{total_steps}",
-        "description": "Werk de energie- en SOC-sensoren bij die door de integratie worden gebruikt. In driefase koppel je drie sensoren per grootheid (één per fase).",
+        "description": "Werk de energie- en SOC-sensoren bij die door de integratie worden gebruikt. In driefase koppel je drie sensoren per grootheid (één per fase). Het huisverbruik wordt door de integratie berekend, er is geen verbruikssensor nodig.",
         "data": {
           "soc_car": "EV-batterij-SOC",
           "ev_soc_limit": "EV-laadlimiet (optioneel)",
           "soc_home": "Thuisbatterij-SOC",
           "fv_production": "Zonneproductie",
-          "home_consumption": "Woningverbruik",
           "grid_import": "Netafname",
           "fv_production_l2": "Zonneproductie (L2)",
           "fv_production_l3": "Zonneproductie (L3)",
-          "home_consumption_l2": "Verbruik woning (L2)",
-          "home_consumption_l3": "Verbruik woning (L3)",
           "grid_import_l2": "Netafname (L2)",
           "grid_import_l3": "Netafname (L3)",
+          "grid_export": "Netteruglevering (optioneel)",
+          "grid_export_l2": "Netteruglevering (L2)",
+          "grid_export_l3": "Netteruglevering (L3)",
           "charging_power": "EV-laadvermogen",
           "charging_power_l2": "EV-laadvermogen (L2)",
           "charging_power_l3": "EV-laadvermogen (L3)",
@@ -198,24 +198,24 @@
           "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten (bijv. het doel-laadniveau van de auto-integratie). De waarde telt als vol: EV-doelen worden hierop begrensd en een auto op de limiet wordt niet gestart. Leeg laten voor 100 %.",
           "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Sensor met de actuele PV-productie in watt.",
-          "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: het huisverbruik wordt dan berekend als opwek + netafname − laadvermogen (− batterijladen als een batterijvermogensensor is gekoppeld).",
-          "grid_import": "Sensor met uit het net afgenomen vermogen in watt. Positieve waarden betekenen afname uit het net. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: de netafname wordt dan berekend als afname − teruglevering.",
+          "grid_import": "Netvermogen in watt, positief = afname. Een gecombineerde sensor die negatief wordt bij teruglevering volstaat. Zijn afname en teruglevering twee sensoren, koppel dan hieronder de teruglevering. Driefasig: fase L1 of het TOTAAL (laat L2 en L3 leeg). Laat leeg als je in de meterstap het afnamevermogen per fase hebt gekoppeld.",
           "fv_production_l2": "Zonneproductie op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "fv_production_l3": "Zonneproductie op fase L3, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
-          "home_consumption_l2": "Verbruik woning op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
-          "home_consumption_l3": "Verbruik woning op fase L3, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "grid_import_l2": "Netafname op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "grid_import_l3": "Netafname op fase L3, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
-          "charging_power": "Optioneel maar aanbevolen. Gemeten EV-laadvermogen in watt — het betrouwbaarste signaal of de auto daadwerkelijk stroom verbruikt. Indien toegewezen heeft het voorrang op de statussensor voor laaddetectie. In driefasemodus wijs je alle drie de fasesensoren toe of laat je ze alle drie leeg (ze worden opgeteld).",
-          "charging_power_l2": "EV-laadvermogen op fase L2, in watt. Wijs alle drie de fasen toe of geen.",
-          "charging_power_l3": "EV-laadvermogen op fase L3, in watt. Wijs alle drie de fasen toe of geen.",
+          "charging_power": "Gemeten EV-laadvermogen in watt. Verplicht met zonnepanelen (het huisverbruik wordt berekend als productie + netto net − EV-vermogen − batterijvermogen), tenzij de meterstap de laderstroom koppelt. Driefasig: fase L1 of het TOTAAL.",
+          "charging_power_l2": "Laadvermogen op fase L2, in watt. Optioneel.",
+          "charging_power_l3": "Laadvermogen op fase L3, in watt. Optioneel.",
           "grid_available": "Optioneel. Binaire sensor die de netbeschikbaarheid aangeeft (on = net aanwezig, off = net weg). Indien toegewezen en off stopt de grid-modus van Night Smart Charge, zodat de thuisbatterij tijdens een stroomstoring niet wordt leeggetrokken (handig bij hybride Battery First / UPS-omvormers). Laat leeg om het vorige gedrag te behouden.",
-          "battery_power": "Optioneel. Accuvermogen in watt met teken — NEGATIEF = ontladen, POSITIEF = laden. Gebruikt wanneer het huisverbruik door de integratie wordt berekend, door de dead-band-buffer van Solar Surplus en door de accubescherming van Night Smart Charge. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld."
+          "battery_power": "Optioneel. Accuvermogen in watt met teken — NEGATIEF = ontladen, POSITIEF = laden. Gebruikt wanneer het huisverbruik door de integratie wordt berekend, door de dead-band-buffer van Solar Surplus en door de accubescherming van Night Smart Charge. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld.",
+          "grid_export": "Alleen als teruglevering een aparte sensor is (positieve watt bij teruglevering). Laat leeg als de afnamesensor negatief wordt bij teruglevering. Netto net = afname − teruglevering.",
+          "grid_export_l2": "Teruglevering op fase L2, in watt. Optioneel.",
+          "grid_export_l3": "Teruglevering op fase L3, in watt. Optioneel."
         }
       },
       "reconfigure_main_fuse": {
         "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
-        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin). Boven de zekering plus een harde grens (standaard 10 A, EVSC Fuse Hard Trip) stopt het laden direct.\n\nMet afgenomen (en teruggeleverd) vermogen op elke fase berekent de integratie ook netafname, huisverbruik en laadvermogen, zodat je die sensoren in de volgende stap leeg kunt laten.",
+        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin). Boven de zekering plus een harde grens (standaard 10 A, EVSC Fuse Hard Trip) stopt het laden direct.\n\nMet afgenomen (en teruggeleverd) vermogen op elke fase berekent de integratie ook netafname en laadvermogen, zodat je die sensoren in de volgende stap leeg kunt laten.",
         "data": {
           "main_fuse_size": "Grootte hoofdzekering",
           "fuse_grid_current_l1": "Meterstroom L1 (A)",
@@ -323,7 +323,7 @@
       },
       "phase_mode": {
         "title": "Fasemodus - Stap {step}/{total_steps}",
-        "description": "Kies hoe je elektrische installatie is bekabeld.\n\n**Eénfase** — één fase (230 V, laden tot ~3,7 kW): je koppelt één sensor voor zonneproductie, één voor verbruik en één voor netafname, zoals nu. Dit is de meest voorkomende opstelling.\n\n**Driefase** — drie fasen (230 V elk, laden ~11–22 kW): je koppelt drie sensoren voor productie, drie voor verbruik en drie voor netafname (één per fase); de integratie telt ze op en verdeelt de laadsnelheid over de drie fasen. Bij driefase staat elke ampèrewaarde voor ongeveer 3× het vermogen van éénfase (bijv. 16 A ≈ 11 kW) en het minimum is ~4,1 kW — zorg dat je thuisbatterij-omvormer dat vermogen aankan.",
+        "description": "Kies hoe je elektrische installatie is bekabeld.\n\n**Eénfase** — één fase (230 V, laden tot ~3,7 kW): je koppelt één sensor voor zonneproductie en één voor netafname, zoals nu. Dit is de meest voorkomende opstelling.\n\n**Driefase** — drie fasen (230 V elk, laden ~11–22 kW): je koppelt drie sensoren voor productie en drie voor netafname (één per fase, of een totaal); de integratie telt ze op en verdeelt de laadsnelheid over de drie fasen. Bij driefase staat elke ampèrewaarde voor ongeveer 3× het vermogen van éénfase (bijv. 16 A ≈ 11 kW) en het minimum is ~4,1 kW — zorg dat je thuisbatterij-omvormer dat vermogen aankan.",
         "data": {
           "phase_mode": "Elektrische fasen"
         },
@@ -458,7 +458,7 @@
     "step": {
       "init": {
         "title": "Fasemodus bijwerken - Stap {step}/{total_steps}",
-        "description": "Kies hoe je elektrische installatie is bekabeld.\n\n**Eénfase** — één fase (230 V, laden tot ~3,7 kW): je koppelt één sensor voor zonneproductie, één voor verbruik en één voor netafname, zoals nu. Dit is de meest voorkomende opstelling.\n\n**Driefase** — drie fasen (230 V elk, laden ~11–22 kW): je koppelt drie sensoren voor productie, drie voor verbruik en drie voor netafname (één per fase); de integratie telt ze op en verdeelt de laadsnelheid over de drie fasen. Bij driefase staat elke ampèrewaarde voor ongeveer 3× het vermogen van éénfase (bijv. 16 A ≈ 11 kW) en het minimum is ~4,1 kW — zorg dat je thuisbatterij-omvormer dat vermogen aankan.",
+        "description": "Kies hoe je elektrische installatie is bekabeld.\n\n**Eénfase** — één fase (230 V, laden tot ~3,7 kW): je koppelt één sensor voor zonneproductie en één voor netafname, zoals nu. Dit is de meest voorkomende opstelling.\n\n**Driefase** — drie fasen (230 V elk, laden ~11–22 kW): je koppelt drie sensoren voor productie en drie voor netafname (één per fase, of een totaal); de integratie telt ze op en verdeelt de laadsnelheid over de drie fasen. Bij driefase staat elke ampèrewaarde voor ongeveer 3× het vermogen van éénfase (bijv. 16 A ≈ 11 kW) en het minimum is ~4,1 kW — zorg dat je thuisbatterij-omvormer dat vermogen aankan.",
         "data": {
           "phase_mode": "Elektrische fasen"
         },
@@ -468,20 +468,20 @@
       },
       "sensors": {
         "title": "Energiesensoren bijwerken - Stap {step}/{total_steps}",
-        "description": "Werk de energie- en SOC-sensoren bij die door de integratie worden gebruikt. In driefase koppel je drie sensoren per grootheid (één per fase).",
+        "description": "Werk de energie- en SOC-sensoren bij die door de integratie worden gebruikt. In driefase koppel je drie sensoren per grootheid (één per fase). Het huisverbruik wordt door de integratie berekend, er is geen verbruikssensor nodig.",
         "data": {
           "soc_car": "EV-batterij-SOC",
           "ev_soc_limit": "EV-laadlimiet (optioneel)",
           "soc_home": "Thuisbatterij-SOC",
           "fv_production": "Zonneproductie",
-          "home_consumption": "Woningverbruik",
           "grid_import": "Netafname",
           "fv_production_l2": "Zonneproductie (L2)",
           "fv_production_l3": "Zonneproductie (L3)",
-          "home_consumption_l2": "Verbruik woning (L2)",
-          "home_consumption_l3": "Verbruik woning (L3)",
           "grid_import_l2": "Netafname (L2)",
           "grid_import_l3": "Netafname (L3)",
+          "grid_export": "Netteruglevering (optioneel)",
+          "grid_export_l2": "Netteruglevering (L2)",
+          "grid_export_l3": "Netteruglevering (L3)",
           "charging_power": "EV-laadvermogen",
           "charging_power_l2": "EV-laadvermogen (L2)",
           "charging_power_l3": "EV-laadvermogen (L3)",
@@ -493,24 +493,24 @@
           "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten (bijv. het doel-laadniveau van de auto-integratie). De waarde telt als vol: EV-doelen worden hierop begrensd en een auto op de limiet wordt niet gestart. Leeg laten voor 100 %.",
           "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Sensor met de actuele PV-productie in watt.",
-          "home_consumption": "Sensor met het actuele huishoudelijke verbruik in watt, indien mogelijk exclusief EV-laden. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: het huisverbruik wordt dan berekend als opwek + netafname − laadvermogen (− batterijladen als een batterijvermogensensor is gekoppeld).",
-          "grid_import": "Sensor met uit het net afgenomen vermogen in watt. Positieve waarden betekenen afname uit het net. Laat leeg als je in de meterstap het afgenomen vermogen per fase hebt gekoppeld: de netafname wordt dan berekend als afname − teruglevering.",
+          "grid_import": "Netvermogen in watt, positief = afname. Een gecombineerde sensor die negatief wordt bij teruglevering volstaat. Zijn afname en teruglevering twee sensoren, koppel dan hieronder de teruglevering. Driefasig: fase L1 of het TOTAAL (laat L2 en L3 leeg). Laat leeg als je in de meterstap het afnamevermogen per fase hebt gekoppeld.",
           "fv_production_l2": "Zonneproductie op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "fv_production_l3": "Zonneproductie op fase L3, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
-          "home_consumption_l2": "Verbruik woning op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
-          "home_consumption_l3": "Verbruik woning op fase L3, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "grid_import_l2": "Netafname op fase L2, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
           "grid_import_l3": "Netafname op fase L3, in watt. Optioneel: laat leeg als het L1-veld het totaal bevat.",
-          "charging_power": "Optioneel maar aanbevolen. Gemeten EV-laadvermogen in watt — het betrouwbaarste signaal of de auto daadwerkelijk stroom verbruikt. Indien toegewezen heeft het voorrang op de statussensor voor laaddetectie. In driefasemodus wijs je alle drie de fasesensoren toe of laat je ze alle drie leeg (ze worden opgeteld).",
-          "charging_power_l2": "EV-laadvermogen op fase L2, in watt. Wijs alle drie de fasen toe of geen.",
-          "charging_power_l3": "EV-laadvermogen op fase L3, in watt. Wijs alle drie de fasen toe of geen.",
+          "charging_power": "Gemeten EV-laadvermogen in watt. Verplicht met zonnepanelen (het huisverbruik wordt berekend als productie + netto net − EV-vermogen − batterijvermogen), tenzij de meterstap de laderstroom koppelt. Driefasig: fase L1 of het TOTAAL.",
+          "charging_power_l2": "Laadvermogen op fase L2, in watt. Optioneel.",
+          "charging_power_l3": "Laadvermogen op fase L3, in watt. Optioneel.",
           "grid_available": "Optioneel. Binaire sensor die de netbeschikbaarheid aangeeft (on = net aanwezig, off = net weg). Indien toegewezen en off stopt de grid-modus van Night Smart Charge, zodat de thuisbatterij tijdens een stroomstoring niet wordt leeggetrokken (handig bij hybride Battery First / UPS-omvormers). Laat leeg om het vorige gedrag te behouden.",
-          "battery_power": "Optioneel. Accuvermogen in watt met teken — NEGATIEF = ontladen, POSITIEF = laden. Gebruikt wanneer het huisverbruik door de integratie wordt berekend, door de dead-band-buffer van Solar Surplus en door de accubescherming van Night Smart Charge. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld."
+          "battery_power": "Optioneel. Accuvermogen in watt met teken — NEGATIEF = ontladen, POSITIEF = laden. Gebruikt wanneer het huisverbruik door de integratie wordt berekend, door de dead-band-buffer van Solar Surplus en door de accubescherming van Night Smart Charge. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld.",
+          "grid_export": "Alleen als teruglevering een aparte sensor is (positieve watt bij teruglevering). Laat leeg als de afnamesensor negatief wordt bij teruglevering. Netto net = afname − teruglevering.",
+          "grid_export_l2": "Teruglevering op fase L2, in watt. Optioneel.",
+          "grid_export_l3": "Teruglevering op fase L3, in watt. Optioneel."
         }
       },
       "main_fuse": {
         "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
-        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin). Boven de zekering plus een harde grens (standaard 10 A, EVSC Fuse Hard Trip) stopt het laden direct.\n\nMet afgenomen (en teruggeleverd) vermogen op elke fase berekent de integratie ook netafname, huisverbruik en laadvermogen, zodat je die sensoren in de volgende stap leeg kunt laten.",
+        "description": "Beschermt je hoofdzekering: de laadstroom wordt zo begrensd dat huisverbruik + auto op geen enkele fase de zekering overschrijdt. Geldt voor alle laadmodi, ook Laden forceren en Boost.\n\nKies de grootte van je hoofdzekering en koppel de sensoren per fase van je meter. Het best: stroom per fase (A) plus afgenomen en teruggeleverd vermogen per fase (W), zodat de richting van de stroom bekend is. Alleen stroom werkt ook (iets voorzichtiger bij teruglevering). Alleen vermogen werkt ook (stroom = vermogen / spanning).\n\nDe stroom van de lader zelf is nodig zodat die niet als huisverbruik telt: één sensor met L1/L2/L3-attributen (bijv. OCPP current_import) of één sensor per fase.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimumstroom en stopt het na 2 minuten. De veiligheidsmarge kun je later aanpassen (EVSC Fuse Margin). Boven de zekering plus een harde grens (standaard 10 A, EVSC Fuse Hard Trip) stopt het laden direct.\n\nMet afgenomen (en teruggeleverd) vermogen op elke fase berekent de integratie ook netafname en laadvermogen, zodat je die sensoren in de volgende stap leeg kunt laten.",
         "data": {
           "main_fuse_size": "Grootte hoofdzekering",
           "fuse_grid_current_l1": "Meterstroom L1 (A)",

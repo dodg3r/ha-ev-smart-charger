@@ -24,6 +24,7 @@ from custom_components.ev_smart_charger.const import (
     CONF_EV_CHARGER_SWITCH,
     CONF_FV_PRODUCTION,
     CONF_GRID_IMPORT,
+    CONF_CHARGING_POWER,
     CONF_HOME_CONSUMPTION,
     CONF_NOTIFY_SERVICES,
     CONF_PHASE_MODE,
@@ -49,7 +50,7 @@ def _base_flow_payloads() -> tuple[dict, dict, dict, dict, dict]:
         {
             CONF_SOC_HOME: "sensor.home_soc",
             CONF_FV_PRODUCTION: "sensor.solar",
-            CONF_HOME_CONSUMPTION: "sensor.home_use",
+            CONF_CHARGING_POWER: "sensor.ev_power",
             CONF_GRID_IMPORT: "sensor.grid",
         },
         {CONF_PV_FORECAST: "sensor.forecast"},
@@ -193,7 +194,7 @@ async def test_options_flow_updates_entry_data(hass) -> None:
             CONF_SOC_CAR: "sensor.new_car_soc",
             CONF_SOC_HOME: "sensor.new_home_soc",
             CONF_FV_PRODUCTION: "sensor.new_solar",
-            CONF_HOME_CONSUMPTION: "sensor.new_home_use",
+            CONF_CHARGING_POWER: "sensor.new_ev_power",
             CONF_GRID_IMPORT: "sensor.new_grid",
             CONF_BATTERY_POWER: "sensor.new_battery_power",
         }
@@ -232,6 +233,8 @@ async def test_options_flow_updates_entry_data(hass) -> None:
     assert updated_data[CONF_CAR_OWNER] == "person.new_owner"
     assert updated_data[CONF_ENERGY_FORECAST_TARGET] == "number.energy_target"
     assert updated_data[CONF_BATTERY_POWER] == "sensor.new_battery_power"
+    # v2.38.0: the old home-consumption mapping is cleared
+    assert updated_data[CONF_HOME_CONSUMPTION] is None
 
 
 async def test_options_flow_manager_can_open_init_step(hass) -> None:
@@ -356,7 +359,7 @@ async def test_reconfigure_flow_updates_entry_data(hass) -> None:
             CONF_SOC_CAR: "sensor.new_car_soc",
             CONF_SOC_HOME: "sensor.new_home_soc",
             CONF_FV_PRODUCTION: "sensor.new_solar",
-            CONF_HOME_CONSUMPTION: "sensor.new_home_use",
+            CONF_CHARGING_POWER: "sensor.new_ev_power",
             CONF_GRID_IMPORT: "sensor.new_grid",
             CONF_BATTERY_POWER: "sensor.new_battery_power",
         }

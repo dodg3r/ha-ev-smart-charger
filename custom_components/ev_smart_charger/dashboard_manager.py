@@ -71,9 +71,9 @@ from .const import (
     CONF_GRID_IMPORT,
     CONF_GRID_IMPORT_L2,
     CONF_GRID_IMPORT_L3,
-    CONF_HOME_CONSUMPTION,
-    CONF_HOME_CONSUMPTION_L2,
-    CONF_HOME_CONSUMPTION_L3,
+    CONF_GRID_EXPORT,
+    CONF_GRID_EXPORT_L2,
+    CONF_GRID_EXPORT_L3,
     CONF_PV_FORECAST,
     CONF_PV_FORECAST_TOMORROW,
     CONF_SOC_CAR,
@@ -234,7 +234,6 @@ def _build_card_config(entry: ConfigEntry) -> dict[str, Any]:
         "ev_soc_limit_entity": CONF_EV_SOC_LIMIT,
         "home_battery_soc_entity": CONF_SOC_HOME,
         "solar_power_entity": CONF_FV_PRODUCTION,
-        "home_consumption_entity": CONF_HOME_CONSUMPTION,
         "grid_import_entity": CONF_GRID_IMPORT,
         "charger_status_entity": CONF_EV_CHARGER_STATUS,
         "current_entity": CONF_EV_CHARGER_CURRENT,
@@ -288,7 +287,6 @@ def _build_card_config(entry: ConfigEntry) -> dict[str, Any]:
     if is_three_phase(data):
         for card_key, conf_keys in (
             ("solar_power_entities", (CONF_FV_PRODUCTION, CONF_FV_PRODUCTION_L2, CONF_FV_PRODUCTION_L3)),
-            ("home_consumption_entities", (CONF_HOME_CONSUMPTION, CONF_HOME_CONSUMPTION_L2, CONF_HOME_CONSUMPTION_L3)),
             ("grid_import_entities", (CONF_GRID_IMPORT, CONF_GRID_IMPORT_L2, CONF_GRID_IMPORT_L3)),
             # v2.2.0: per-phase charging power, summed by the card for drawing-now.
             ("charging_power_entities", (CONF_CHARGING_POWER, CONF_CHARGING_POWER_L2, CONF_CHARGING_POWER_L3)),
@@ -296,6 +294,15 @@ def _build_card_config(entry: ConfigEntry) -> dict[str, Any]:
             entities = [data[k] for k in conf_keys if data.get(k)]
             if entities:
                 config[card_key] = entities
+
+    # v2.38.0: a separate grid-export sensor → the card shows import − export.
+    phases = 3 if is_three_phase(data) else 1
+    export_keys = (CONF_GRID_EXPORT, CONF_GRID_EXPORT_L2, CONF_GRID_EXPORT_L3)[:phases]
+    import_keys = (CONF_GRID_IMPORT, CONF_GRID_IMPORT_L2, CONF_GRID_IMPORT_L3)[:phases]
+    mapped_exports = [data[k] for k in export_keys if data.get(k)]
+    if data.get(CONF_GRID_IMPORT) and mapped_exports:
+        config["grid_import_entities"] = [data[k] for k in import_keys if data.get(k)]
+        config["grid_export_entities"] = mapped_exports
 
     # v2.18.0: grid import derived from the main meter (import − export per
     # phase) when no grid-import sensor is mapped. The card subtracts the

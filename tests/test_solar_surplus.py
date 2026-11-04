@@ -6,7 +6,7 @@ from custom_components.ev_smart_charger.solar_surplus import SolarSurplusAutomat
 from custom_components.ev_smart_charger.const import (
     CONF_EV_CHARGER_STATUS,
     CONF_FV_PRODUCTION,
-    CONF_HOME_CONSUMPTION,
+    CONF_CHARGING_POWER,
     CONF_GRID_IMPORT,
     CONF_SOC_HOME,
     CHARGER_STATUS_CHARGING,
@@ -22,7 +22,7 @@ def automation(hass, mock_charger_controller, mock_priority_balancer):
     config = {
         CONF_EV_CHARGER_STATUS: "sensor.charger_status",
         CONF_FV_PRODUCTION: "sensor.solar",
-        CONF_HOME_CONSUMPTION: "sensor.consumption",
+        CONF_CHARGING_POWER: "sensor.ev_power",
         CONF_GRID_IMPORT: "sensor.grid",
         CONF_SOC_HOME: "sensor.home_soc",
     }
@@ -283,7 +283,7 @@ async def test_ev_free_does_not_stop_before_energy_checks(hass, automation):
 
     # Make energy sensors invalid: logic should still enforce target stop before validation
     hass.states.async_set("sensor.solar", "unavailable")
-    hass.states.async_set("sensor.consumption", "unavailable")
+    hass.states.async_set("sensor.ev_power", "unavailable")
     hass.states.async_set("sensor.grid", "unavailable")
 
     automation.priority_balancer.is_enabled.return_value = True
@@ -301,7 +301,7 @@ async def test_no_start_when_grid_import_is_above_threshold(hass, automation):
     hass.states.async_set("select.profile", "solar_surplus")
     hass.states.async_set("sensor.charger_status", CHARGER_STATUS_CHARGING)
     hass.states.async_set("sensor.solar", "4000")
-    hass.states.async_set("sensor.consumption", "1000")
+    hass.states.async_set("sensor.ev_power", "0")
     hass.states.async_set("sensor.grid", "200")
     hass.states.async_set("number.grid_threshold", "50")
     hass.states.async_set("number.grid_delay", "30")
@@ -377,7 +377,7 @@ async def test_periodic_check_does_not_enforce_daytime_target_hard_cap_before_en
     hass.states.async_set("select.profile", "solar_surplus")
     hass.states.async_set("sensor.charger_status", CHARGER_STATUS_CHARGING)
     hass.states.async_set("sensor.solar", "unavailable")
-    hass.states.async_set("sensor.consumption", "unavailable")
+    hass.states.async_set("sensor.ev_power", "unavailable")
     hass.states.async_set("sensor.grid", "unavailable")
 
     automation._astral_service.is_nighttime.return_value = False
@@ -398,7 +398,7 @@ async def test_periodic_check_starts_opportunistic_charging_when_both_targets_me
     hass.states.async_set("select.profile", "solar_surplus")
     hass.states.async_set("sensor.charger_status", CHARGER_STATUS_CHARGING)
     hass.states.async_set("sensor.solar", "4000")
-    hass.states.async_set("sensor.consumption", "1000")
+    hass.states.async_set("sensor.ev_power", "0")
     hass.states.async_set("sensor.grid", "0")
     hass.states.async_set("number.grid_threshold", "50")
     hass.states.async_set("number.grid_delay", "30")
@@ -426,7 +426,7 @@ async def test_periodic_check_keeps_opportunistic_charging_when_both_targets_met
     hass.states.async_set("select.profile", "solar_surplus")
     hass.states.async_set("sensor.charger_status", CHARGER_STATUS_CHARGING)
     hass.states.async_set("sensor.solar", "6000")
-    hass.states.async_set("sensor.consumption", "1000")
+    hass.states.async_set("sensor.ev_power", "0")
     hass.states.async_set("sensor.grid", "0")
     hass.states.async_set("number.grid_threshold", "50")
     hass.states.async_set("number.grid_delay", "30")
@@ -480,7 +480,7 @@ async def test_periodic_check_does_not_start_without_coordinator_ownership(hass,
     hass.states.async_set("select.profile", "solar_surplus")
     hass.states.async_set("sensor.charger_status", CHARGER_STATUS_CHARGING)
     hass.states.async_set("sensor.solar", "4000")
-    hass.states.async_set("sensor.consumption", "1000")
+    hass.states.async_set("sensor.ev_power", "0")
     hass.states.async_set("sensor.grid", "0")
     hass.states.async_set("number.grid_threshold", "50")
     hass.states.async_set("number.grid_delay", "30")
@@ -665,7 +665,7 @@ async def test_sensor_error_debounce_waiting_then_error(hass, automation):
     automation._astral_service.is_nighttime.return_value = False
     automation.priority_balancer.is_enabled.return_value = False
     hass.states.async_set("sensor.solar", "unavailable")
-    hass.states.async_set("sensor.consumption", "unavailable")
+    hass.states.async_set("sensor.ev_power", "unavailable")
     hass.states.async_set("sensor.grid", "unavailable")
 
     captured = []
@@ -692,7 +692,7 @@ async def test_sensor_error_counter_resets_on_recovery(hass, automation):
     automation._astral_service.is_nighttime.return_value = False
     automation.priority_balancer.is_enabled.return_value = False
     hass.states.async_set("sensor.solar", "3000")
-    hass.states.async_set("sensor.consumption", "1000")
+    hass.states.async_set("sensor.ev_power", "0")
     hass.states.async_set("sensor.grid", "0")
     hass.states.async_set("number.grid_threshold", "50")
     hass.states.async_set("number.grid_delay", "30")

@@ -17,7 +17,7 @@ from custom_components.ev_smart_charger.const import (
     CONF_FV_PRODUCTION,
     CONF_GRID_AVAILABLE,
     CONF_GRID_IMPORT,
-    CONF_HOME_CONSUMPTION,
+    CONF_CHARGING_POWER,
 )
 from custom_components.ev_smart_charger.power_model import ChargingModel
 from custom_components.ev_smart_charger.utils.astral_time_service import (
@@ -29,7 +29,7 @@ import homeassistant.util.dt as dt_util
 
 _BASE_CONFIG = {
     CONF_FV_PRODUCTION: "sensor.pv",
-    CONF_HOME_CONSUMPTION: "sensor.cons",
+    CONF_CHARGING_POWER: "sensor.ev_power",
     CONF_GRID_IMPORT: "sensor.grid",
 }
 

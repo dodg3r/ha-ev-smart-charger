@@ -13,7 +13,7 @@ from custom_components.ev_smart_charger.solar_surplus import SolarSurplusAutomat
 from custom_components.ev_smart_charger.const import (
     CONF_EV_CHARGER_STATUS,
     CONF_FV_PRODUCTION,
-    CONF_HOME_CONSUMPTION,
+    CONF_CHARGING_POWER,
     CONF_GRID_IMPORT,
     CONF_SOC_HOME,
 )
@@ -25,7 +25,7 @@ def automation(hass, mock_charger_controller, mock_priority_balancer):
     config = {
         CONF_EV_CHARGER_STATUS: "sensor.charger_status",
         CONF_FV_PRODUCTION: "sensor.solar",
-        CONF_HOME_CONSUMPTION: "sensor.consumption",
+        CONF_CHARGING_POWER: "sensor.ev_power",
         CONF_GRID_IMPORT: "sensor.grid",
         CONF_SOC_HOME: "sensor.home_soc",
     }

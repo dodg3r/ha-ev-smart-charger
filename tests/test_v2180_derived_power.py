@@ -252,22 +252,24 @@ def test_consumption_unknown_when_car_may_be_charging():
     assert model.derived_power_errors(hass)
 
 
-def test_mapped_consumption_still_wins():
+def test_mapped_consumption_is_ignored():
+    """v2.38.0: an old home-consumption mapping no longer counts."""
     hass = _hass()
+    _meter_states(hass, imports=(100, 100, 100), exports=(0, 0, 0))
+    hass.states.set("sensor.pv", 1000)
+    hass.states.set("sensor.charger_current", 0)
     hass.states.set("sensor.house", 777)
     model = ChargingModel.from_config(
         dict(THREE_METER, **{CONF_HOME_CONSUMPTION: "sensor.house"})
     )
-    assert model.consumption_derived is False
-    assert model.read_consumption(hass) == 777
-    assert model.derived_power_errors(hass) == []
+    assert model.consumption_derived is True
+    assert model.read_consumption(hass) == pytest.approx(1300)
 
 
 def test_nothing_derived_without_meter_step():
     model = ChargingModel.from_config({CONF_FV_PRODUCTION: "sensor.pv"})
     assert model.grid_import_derived is False
     assert model.charging_power_derived is False
-    assert model.consumption_derived is False
 
 
 # ---------------------------------------------------------------------------
@@ -281,12 +283,12 @@ def _required(schema):
 
 def test_sensor_schema_optional_when_derivable():
     plain = _required(_sensor_schema({}, three_phase=True, home_battery=False))
-    assert CONF_GRID_IMPORT in plain and CONF_HOME_CONSUMPTION in plain
+    assert CONF_GRID_IMPORT in plain
+    assert CONF_HOME_CONSUMPTION not in plain
     derived = _required(
         _sensor_schema({}, three_phase=True, home_battery=False, derivable=True)
     )
     assert CONF_GRID_IMPORT not in derived
-    assert CONF_HOME_CONSUMPTION not in derived
     assert CONF_FV_PRODUCTION in derived
 
 
