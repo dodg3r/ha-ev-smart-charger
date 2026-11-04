@@ -165,7 +165,7 @@ Type: Integration
 → Done — the EV Smart Charger dashboard appears in your sidebar
 ```
 
-The wizard asks for your wallbox switch, current entity, status entity, SOC sensors (EV + optional home battery), solar production, grid import, home consumption, and a PV-forecast sensor. Everything else (~60 helper entities, the dashboard, the priority engine) is generated automatically.
+The wizard asks for your wallbox switch, current entity, status entity, SOC sensors (EV + optional home battery), solar production, grid import (and export), EV charging power, and a PV-forecast sensor. Everything else (~60 helper entities, the dashboard, the priority engine) is generated automatically.
 
 [📖 Full installation guide →](#installation) · [⚙️ Configuration wizard →](#configuration) · [🧠 How it works →](#how-it-works)
 
@@ -332,8 +332,8 @@ flowchart TD
 
 - EV battery SOC (`%`)
 - Solar production (`W`)
-- Home consumption (`W`)
-- Grid import (`W`, positive = importing, negative = exporting)
+- Grid import (`W`, positive = importing, negative = exporting) — or import plus a separate grid export sensor
+- EV charging power (`W`) — unless the meter step maps the charger current
 
 **Optional energy sensors:**
 
@@ -368,7 +368,7 @@ If your home battery has its own control (for example an AI optimiser) but you s
 Two opt-in choices appear in the first config-flow steps (and in Reconfigure / Options, so existing users can switch). Both default to the previous behaviour — **single-phase + Tuya** — so if you do nothing, nothing changes.
 
 **Phase mode**
-- **Single-phase** (default): one sensor each for solar production, home consumption and grid import; charging speed computed at 230 V. Identical to all previous versions.
+- **Single-phase** (default): one sensor each for solar production and grid import; charging speed computed at 230 V. Identical to all previous versions.
 - **Three-phase**: you map **three sensors each** (one per phase L1/L2/L3) for production, consumption and grid import. The integration sums them and balances the charging speed across the three phases (conversion at 3 × 230 = 690 V). SOC sensors stay single.
 
 ⚠️ **Power on three-phase**: every amperage setting is **per phase**, so it draws ~3× the power of single-phase. `16 A` ≈ **11 kW**, and the minimum a three-phase charger can draw is ~**4.1 kW** (6 A/phase). This matters for `evsc_battery_support_amperage` and `evsc_night_charge_amperage` — make sure your home-battery inverter can sustain the chosen power, otherwise the deficit is pulled from the grid and grid-import protection will throttle the session.
@@ -441,9 +441,9 @@ The charger switch entity (or the start button, in button mode) is used as the u
 | EV charge limit (v2.30.0) | No | `%` |
 | Home battery SOC | Yes | `%` |
 | Solar production | Yes | `W` |
-| Home consumption | Yes | `W` |
 | Grid import | Yes | `W` |
-| EV charging power (v2.2.0) | No | `W` |
+| Grid export (v2.38.0) | No | `W` |
+| EV charging power (v2.2.0) | Yes, with solar (v2.38.0) | `W` |
 | Grid available (v2.6.0) | No | `binary_sensor` |
 
 **Car profiles (v2.31.0, guest profile v2.32.0):** several cars can share the charger. The car's own sensors are not asked in the sensors step: the last step before the dashboard, **Car profiles** (also under *Configure* / *Reconfigure*), adds, edits and removes cars. Each car has a free name (e.g. its registration number), its own battery SOC sensor, an optional charge limit sensor and the battery capacity. A **Guest** profile always exists: it has no sensors, so Night Smart Charge charges it in the 5 cheapest night hours and Solar Surplus on surplus. Finishing the step without a car leaves only the guest; the first car you create becomes the active one. After that the active car only changes when you choose another one in the dropdown at the top of the dashboard (or with `select.…_evsc_active_car`); switching reloads the integration with that car's sensors. Daily targets and car-ready times are shared by all cars.
@@ -452,12 +452,17 @@ The charger switch entity (or the start button, in button mode) is used as the u
 
 **EV battery SOC (v2.13.0 — [issue #58](https://github.com/antbald/ha-ev-smart-charger/issues/58)):** the two SOC fields accept a `sensor`, a `number` **or an `input_number`**. EV SOC is architecturally required — the Priority Balancer's daily targets, Night Smart Charge's stop conditions and Boost's target all key off it — but many EVs expose no SOC at all over any Home Assistant integration. Those owners can create an `input_number` helper, map it directly here, and keep it up to date manually or from their own automation. Before v2.13.0 the field was a sensor-only selector, forcing a template-sensor wrapper around the helper.
 
-**Home consumption — what to include:** map a sensor that reports the **household load only**. Solar Surplus computes `surplus = solar production − home consumption` and sizes the EV amperage from it, so:
+**Home consumption (v2.38.0) — computed, not mapped:** there is no consumption sensor any more. Solar Surplus needs what the house itself uses, and the integration computes it:
 
-- **Exclude EV charging.** If the wallbox load is part of the reading, every amp the car draws is subtracted from the surplus that sized it, and the charger ramps itself down.
-- **Exclude home-battery charging (and discharging).** If battery charging counts as consumption, all PV flowing into the battery reads as "used", surplus sits near zero while the battery charges, and the EV only ever gets what the battery leaves over — the battery wins by accident, regardless of your settings. Which of the two should come first is decided explicitly by the **Priority Balancer** (daily EV and home SOC targets); battery discharge toward the EV is governed by battery support and `evsc_max_battery_discharge_for_ev` (with the optional battery-power sensor).
+`house = production + net grid − EV charging power − home-battery power` (battery power signed, positive = charging), so `surplus = production − house = EV draw + export − import`.
 
-Most inverter integrations expose a "load" / "house consumption" sensor that already has this shape. If yours only reports a total, build a template sensor that subtracts the EV and battery-charging terms.
+That needs three things to be right:
+
+- **Grid import** with a direction: either one sensor that goes **negative when exporting**, or an import sensor plus the optional **grid export** sensor (positive watts when exporting; net grid = import − export). An import-only sensor that stays at 0 while exporting hides every surplus.
+- **EV charging power**, required with solar panels unless the meter step maps the charger current (the integration then computes it from current × voltage). An entry from before v2.38.0 without either falls back to the current setpoint × voltage while the car charges.
+- **Battery power** (optional) when there is a home battery, so its charging is not counted as house load.
+
+A consumption sensor mapped by an older version is cleared at the next reconfigure and ignored until then.
 
 **EV charging power (v2.2.0):** the most reliable signal for whether the car is actually drawing current — when mapped it becomes the single source of truth for charging detection (and the dashboard's green "EV charging" banner), overriding the status string. In three-phase mode map all three per-phase sensors (they are summed) or leave all blank. The sensor must report positive watts while charging; if yours reports negative, wrap it in a template sensor (`{{ states('sensor.your_power') | float(0) | abs }}`) — the diagnostic sensor's `charging_power_w` will read a flat 0 W if the sign is reversed.
 
@@ -727,7 +732,7 @@ current applied as soon as the entity appears.
 
 ### Solar Surplus
 
-Solar Surplus runs every `evsc_check_interval` minutes during **daytime hours only** (sunrise → sunset). It computes the instantaneous surplus (`solar production − home consumption`) and converts it to the nearest supported amperage level from `[6, 8, 10, 13, 16, 20, 24, 32] A` using 230 V as the conversion voltage.
+Solar Surplus runs every `evsc_check_interval` minutes during **daytime hours only** (sunrise → sunset). It computes the instantaneous surplus (`solar production − house consumption`, the house consumption computed from production, net grid, EV and battery power) and converts it to the nearest supported amperage level from `[6, 8, 10, 13, 16, 20, 24, 32] A` using 230 V as the conversion voltage.
 
 **Hysteresis and stability protection:**
 
@@ -1104,7 +1109,7 @@ What the integration does for you under the hood:
 2. Creates a storage-mode dashboard with `url_path: ev-smart-charger`, `mdi:ev-station` icon, and shows it in the sidebar.
 3. Writes a single panel-mode view containing the EV Smart Charger custom card pre-filled with:
    - `entity_prefix` derived from this entry's `entry_id` (lowercased, as required since v1.6.23)
-   - every user-mapped sensor from Steps 2–4 (`ev_soc_entity`, `home_battery_soc_entity`, `solar_power_entity`, `grid_import_entity`, `home_consumption_entity`, `charger_status_entity`, `current_entity`, `charger_switch_entity`, `pv_forecast_entity`)
+   - every user-mapped sensor from Steps 2–4 (`ev_soc_entity`, `home_battery_soc_entity`, `solar_power_entity`, `grid_import_entity`, `charger_status_entity`, `current_entity`, `charger_switch_entity`, `pv_forecast_entity`)
 
 Toggling Step 7 off (initial wizard or via **Reconfigure**) removes the dashboard from the sidebar; toggling it back on recreates it with the current mapping. Multi-entry installs are handled safely: the dashboard is preserved as long as at least one active entry still has the toggle enabled.
 
@@ -1189,7 +1194,6 @@ profile), `settings` (all settings).
 | `home_battery_soc_entity` | No | Sensor for current home battery level — drives the inner SOC ring. |
 | `solar_power_entity` | No | Sensor for solar production. |
 | `grid_import_entity` | No | Sensor for grid import/export. |
-| `home_consumption_entity` | No | Sensor for instantaneous home consumption. |
 | `charger_status_entity` | No | Wallbox status sensor (`charger_charging`, `charger_free`, …). |
 | `current_entity` | No | Number entity for current wallbox amperage. |
 | `charger_switch_entity` | No | Switch entity that starts/stops the charger. |
@@ -1442,7 +1446,7 @@ Data is stored in a private sheet accessible only to the maintainer. Aggregated 
 1. Confirm the mapped charger switch can be toggled manually in **Developer Tools → Services** (in button mode: that pressing the start and stop buttons really starts and stops the charger).
    - Button mode only: if the integration thinks the charger is on when it is not (or vice versa), map the charging-power or charger-status sensor — after 60 s from each press the state is read from those sensors.
 2. Confirm the charger status sensor returns one of the four accepted values (`charger_charging`, `charger_free`, `charger_end`, `charger_wait`). Custom or localised values will not be recognised.
-3. Confirm solar production, home consumption, and grid import sensors report values in Watts (`W`). kW-scale sensors will result in wrong surplus calculations.
+3. Confirm solar production, grid import / export and EV charging power sensors report values in Watts (`W`). kW-scale sensors will result in wrong surplus calculations.
 4. If EV SOC comes from a cloud integration, check `sensor.evsc_cached_ev_soc` — the source may be intermittently unavailable.
 5. Check the diagnostic sensors and, if needed, enable file logging for a full session trace.
 

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.37.1
+**Current Version:** 2.38.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,40 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.38.0 (2026-11-04) — fork dodg3r
+**Home consumption is always computed; grid import/export is the requirement**
+
+Requested by the maintainer: drop sensors the integration can work out, and
+require a grid sensor with a direction instead.
+- `ChargingModel.read_consumption()` always computes production + net grid −
+  EV power − battery power (clamped >= 0); `consumption_derived` is always
+  True, `consumption_entities()` and the mapped-consumption path are gone.
+  A `CONF_HOME_CONSUMPTION` mapping from an older version is ignored and is
+  cleared (with L2/L3) by the sensors step (`_OPTIONAL_PHASE_POWER_KEYS`).
+- NEW optional `CONF_GRID_EXPORT` (+ `_L2` / `_L3`): net grid =
+  Σ import − Σ |export|; `read_grid_import()` now returns the net value. A
+  combined signed import sensor needs no export sensor. Export entities are
+  part of `grid_import_source_entities()` (spike listener), the validation
+  and `validate_grid_import()`.
+- Sensors step: home consumption removed; grid export fields added; EV
+  charging power Required with solar panels unless the meter step maps the
+  charger current (`const.has_charger_current()`, `ev_power_known` in
+  `_sensor_schema`, `_StepNavigator._ev_power_known()`). Cleared charging
+  power is now written as None too. Texts EN/IT/NL (sensors, phase mode,
+  meter step).
+- `_ev_power_for_balance()`: with no charging-power source at all (entry
+  from before this release) the EV power while charging is the current
+  setpoint × effective voltage.
+- Dashboard: `home_consumption_entity(ies)` no longer passed; a mapped grid
+  export is passed as `grid_import_entities` / `grid_export_entities` and the
+  Grid tile shows import − |export|.
+- Solar Surplus: unused `_home_consumption` removed.
+- README: sensor list and the consumption section rewritten.
+- Tests: consumption tests rewritten, flow walkthroughs map EV charging
+  power instead of consumption, new net-grid / computed-consumption tests.
+
+---
 
 ### v2.37.1 (2026-11-04) — fork dodg3r
 **Status line says how much surplus a start needs, also when there is none**
