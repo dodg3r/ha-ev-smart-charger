@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.40.0
+**Current Version:** 2.41.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,41 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.41.0 (2026-11-04) — fork dodg3r
+**Setup asks the sensors per part: meter, charger, solar, battery; load balancing none / display / adjust**
+
+Agreed with the maintainer (overview document "EV Smart Charger – sensorer vid
+installation").
+- Config flow: logical steps `meter` (always, after `features`), `entities`
+  (charger), `solar` (with solar), `battery` (with a home battery) replace
+  `sensors` and `fuse`. Step ids: initial / options `meter` / `solar` /
+  `battery`, reconfigure `reconfigure_meter` / `_solar` / `_battery`.
+- Meter step (`_meter_schema`, `_normalize_meter_input`), all required: main
+  fuse size, net grid (`CONF_GRID_IMPORT`), import / export / current /
+  voltage L1–L3; grid available optional. The old split grid keys
+  (`_LEGACY_GRID_KEYS`: import L2/L3, export, home consumption) are written
+  as None.
+- Solar step: production (L2/L3 optional). Battery step: SOC and battery
+  power, both required (also for a display-only battery: it is part of the
+  computed house consumption).
+- Load balancing: `LOAD_BALANCING_DISPLAY` ("display") replaces "charger";
+  a saved "charger" reads as none (`get_load_balancing`, `_apply_features`
+  writes it). `is_fuse_protection_enabled()` = fuse size > 0 and display or
+  integration; new `fuse_protection_adjusts()` = integration. `_apply_features`
+  no longer clears the meter.
+- `FuseGuard.adjusts`: in display mode the limit is computed and published
+  (`display_only` attribute) but `max_allowed_amps()` returns None and
+  nothing is enforced or restored; transitions log at DEBUG.
+- Dashboard: in display mode, while charging, the status line says
+  "load balancing should lower to X A (L3)" / "should pause charging"
+  (`status.lb_should_lower` / `status.lb_should_pause`, EN/SV/IT/NL).
+- Texts EN/IT/NL for the new steps and the load-balancing choices.
+- Tests: `METER_INPUT` / `SOLAR_INPUT` / `BATTERY_INPUT` in
+  test_config_flow.py, `_advance_mode_steps` submits the meter step; NEW
+  `tests/test_v2410_load_balancing_modes.py`.
+
+---
 
 ### v2.40.0 (2026-11-04) — fork dodg3r
 **Solar Surplus waits for the charger's readings; start blocks; SuspendedEVSE hold**

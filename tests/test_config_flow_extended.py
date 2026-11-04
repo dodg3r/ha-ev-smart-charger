@@ -36,7 +36,14 @@ from custom_components.ev_smart_charger.const import (
     DOMAIN,
 )
 
-from .test_config_flow import CHARGER_INPUT, EXTERNAL_INPUT, FORECAST_INPUT, SOLAR_SENSORS
+from .test_config_flow import (
+    BATTERY_INPUT,
+    CHARGER_INPUT,
+    EXTERNAL_INPUT,
+    FORECAST_INPUT,
+    METER_INPUT,
+    SOLAR_INPUT,
+)
 
 
 def _base_flow_payloads() -> tuple[dict, dict, dict, dict, dict]:
@@ -44,7 +51,7 @@ def _base_flow_payloads() -> tuple[dict, dict, dict, dict, dict]:
     return (
         {"name": "Test Charger"},
         dict(CHARGER_INPUT),
-        {CONF_SOC_HOME: "sensor.home_soc", **SOLAR_SENSORS},
+        {**SOLAR_INPUT, **BATTERY_INPUT},
         dict(FORECAST_INPUT),
         {
             CONF_NOTIFY_SERVICES: ["mobile_app_phone"],
@@ -73,8 +80,10 @@ async def _init_flow_to_external_connectors(hass) -> str:
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_HAS_SOLAR: True, CONF_HAS_HOME_BATTERY: True, CONF_LOAD_BALANCING: LOAD_BALANCING_NONE}
     )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], METER_INPUT)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], entities_payload)
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], sensors_payload)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], SOLAR_INPUT)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], BATTERY_INPUT)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], pv_payload)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], notifications_payload)
 
@@ -165,19 +174,18 @@ async def test_options_flow_updates_entry_data(hass) -> None:
     result = await flow.async_step_init({CONF_CHARGER_MODEL: CHARGER_MODEL_TUYA})
     assert result["step_id"] == "features"
     result = await flow.async_step_features({CONF_HAS_SOLAR: True, CONF_HAS_HOME_BATTERY: True, CONF_LOAD_BALANCING: LOAD_BALANCING_NONE})
+    assert result["step_id"] == "meter"
+    result = await flow.async_step_meter(dict(METER_INPUT))
     assert result["step_id"] == "entities"
 
     result = await flow.async_step_entities(
         {**CHARGER_INPUT, CONF_EV_CHARGER_SWITCH: "switch.new"}
     )
-    assert result["step_id"] == "sensors"
-
-    result = await flow.async_step_sensors(
-        {
-            **SOLAR_SENSORS,
-            CONF_SOC_HOME: "sensor.new_home_soc",
-            CONF_BATTERY_POWER: "sensor.new_battery_power",
-        }
+    assert result["step_id"] == "solar"
+    result = await flow.async_step_solar(dict(SOLAR_INPUT))
+    assert result["step_id"] == "battery"
+    result = await flow.async_step_battery(
+        {CONF_SOC_HOME: "sensor.new_home_soc", CONF_BATTERY_POWER: "sensor.new_battery_power"}
     )
     assert result["step_id"] == "pv_forecast"
 
@@ -319,19 +327,18 @@ async def test_reconfigure_flow_updates_entry_data(hass) -> None:
     result = await flow.async_step_reconfigure({CONF_CHARGER_MODEL: CHARGER_MODEL_TUYA})
     assert result["step_id"] == "reconfigure_features"
     result = await flow.async_step_reconfigure_features({CONF_HAS_SOLAR: True, CONF_HAS_HOME_BATTERY: True, CONF_LOAD_BALANCING: LOAD_BALANCING_NONE})
+    assert result["step_id"] == "reconfigure_meter"
+    result = await flow.async_step_reconfigure_meter(dict(METER_INPUT))
     assert result["step_id"] == "reconfigure_entities"
 
     result = await flow.async_step_reconfigure_entities(
         {**CHARGER_INPUT, CONF_EV_CHARGER_SWITCH: "switch.new"}
     )
-    assert result["step_id"] == "reconfigure_sensors"
-
-    result = await flow.async_step_reconfigure_sensors(
-        {
-            **SOLAR_SENSORS,
-            CONF_SOC_HOME: "sensor.new_home_soc",
-            CONF_BATTERY_POWER: "sensor.new_battery_power",
-        }
+    assert result["step_id"] == "reconfigure_solar"
+    result = await flow.async_step_reconfigure_solar(dict(SOLAR_INPUT))
+    assert result["step_id"] == "reconfigure_battery"
+    result = await flow.async_step_reconfigure_battery(
+        {CONF_SOC_HOME: "sensor.new_home_soc", CONF_BATTERY_POWER: "sensor.new_battery_power"}
     )
     assert result["step_id"] == "reconfigure_pv_forecast"
 

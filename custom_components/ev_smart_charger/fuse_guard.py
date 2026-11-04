@@ -59,7 +59,9 @@ from .const import (
     HELPER_FUSE_HEADROOM_SENSOR_SUFFIX,
     HELPER_FUSE_MARGIN_SUFFIX,
     get_amp_levels,
+    fuse_protection_adjusts,
     get_main_fuse_size,
+    is_fuse_protection_enabled,
     get_phase_count,
     uses_charger_buttons,
 )
@@ -97,7 +99,10 @@ class FuseGuard:
         self.logger = EVSCLogger("MAIN FUSE GUARD")
 
         self.fuse_a = get_main_fuse_size(config)
-        self.enabled = self.fuse_a > 0
+        # v2.41.0: "display" load balancing computes and publishes, but never
+        # caps or stops the charger (``adjusts`` False).
+        self.enabled = is_fuse_protection_enabled(config)
+        self.adjusts = fuse_protection_adjusts(config)
         self.phase_count = get_phase_count(config)
         self._levels = get_amp_levels(config)
         self._limiter = FuseLimiter(
@@ -148,7 +153,8 @@ class FuseGuard:
             )
         )
         self.logger.info(
-            "Main fuse protection active: %sA fuse, %s phase(s), %s tracked entities",
+            "Main fuse %s: %sA fuse, %s phase(s), %s tracked entities",
+            "protection active" if self.adjusts else "display only (no adjustment)",
             self.fuse_a,
             self.phase_count,
             len(tracked),
@@ -173,7 +179,7 @@ class FuseGuard:
         ``None`` means protection is not configured. Re-evaluates from live
         state so a command never relies on a stale ceiling.
         """
-        if not self.enabled:
+        if not self.enabled or not self.adjusts:
             return None
         decision = self._evaluate(enforce=False)
         return decision.allowed_a
@@ -327,7 +333,7 @@ class FuseGuard:
         self._log_transition(decision, limit, charger_on)
         self._publish(decision, limit, margin, readings)
 
-        if enforce:
+        if enforce and self.adjusts:
             if charger_on and self._needs_enforcement(decision, setpoint, readings):
                 if self._settled_enough(decision, settling):
                     self._start_enforcement(decision, setpoint, now)
@@ -424,6 +430,15 @@ class FuseGuard:
         invalid = decision.state in (
             FuseLimiter.STATE_INVALID, FuseLimiter.STATE_INVALID_STOP
         )
+        if not self.adjusts:
+            # v2.41.0: display only - nothing is done, so nothing to report.
+            if decision.state != self._last_state:
+                self.logger.debug(
+                    "Fuse display %s -> %s: suggested ceiling %sA (%s)",
+                    self._last_state, decision.state, decision.allowed_a, limit.reason,
+                )
+                self._last_state = decision.state
+            return
         if decision.state == self._last_state:
             # v2.34.1: missing meter data first reported while idle (debug)
             # is warned about once the charger actually charges.
@@ -524,6 +539,9 @@ class FuseGuard:
             "charger_paused": bool(
                 getattr(self._controller, "is_fuse_paused", lambda: False)()
             ),
+            # v2.41.0: True when the integration only shows what load
+            # balancing should do and never changes the charger.
+            "display_only": not self.adjusts,
         }
         for result in limit.phases:
             suffix = f"l{result.phase}"

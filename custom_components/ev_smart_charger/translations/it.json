@@ -41,74 +41,30 @@
           "fuse_charger_current_l3": "Mappa L2 e L3 per vedere su quante fasi carica l'auto."
         }
       },
-      "sensors": {
-        "title": "Sensori Energia - Passo {step}/{total_steps}",
-        "description": "Mappa i sensori di energia. Con i pannelli solari ogni campo è obbligatorio, salvo quelli indicati come facoltativi. Il consumo della casa è calcolato dall'integrazione (produzione + rete netta − potenza di ricarica − potenza batteria), non serve un sensore di consumo.",
+      "solar": {
+        "title": "Pannelli solari - Passo {step}/{total_steps}",
+        "description": "Collega la produzione solare in W o kW: il totale, oppure la fase L1 con L2 e L3 nei campi facoltativi (vengono sommati).",
         "data": {
-          "soc_car": "SOC batteria EV",
-          "ev_soc_limit": "Limite di carica EV (opzionale)",
-          "soc_home": "SOC batteria casa",
-          "fv_production": "Produzione solare",
-          "grid_import": "Potenza netta di rete",
+          "fv_production": "Produzione solare (totale o L1)",
           "fv_production_l2": "Produzione solare L2 (facoltativo)",
-          "fv_production_l3": "Produzione solare L3 (facoltativo)",
-          "grid_import_l2": "Prelievo dalla rete L2 (facoltativo)",
-          "grid_import_l3": "Prelievo dalla rete L3 (facoltativo)",
-          "grid_export": "Immissione in rete (facoltativo)",
-          "grid_export_l2": "Immissione in rete L2 (facoltativo)",
-          "grid_export_l3": "Immissione in rete L3 (facoltativo)",
-          "grid_available": "Rete disponibile (binary sensor)",
-          "battery_power": "Sensore potenza batteria (W, con segno)",
-          "fuse_grid_import_l1": "Prelievo dalla rete L1 (W)",
-          "fuse_grid_export_l1": "Immissione in rete L1 (W)",
-          "fuse_grid_import_l2": "Prelievo dalla rete L2 (W)",
-          "fuse_grid_export_l2": "Immissione in rete L2 (W)",
-          "fuse_grid_import_l3": "Prelievo dalla rete L3 (W)",
-          "fuse_grid_export_l3": "Immissione in rete L3 (W)"
+          "fv_production_l3": "Produzione solare L3 (facoltativo)"
         },
         "data_description": {
-          "soc_car": "Sensore con lo stato di carica EV in percentuale.",
-          "ev_soc_limit": "Sensore con il limite di carica dell'auto in percentuale (ad es. il livello di carica obiettivo dall'integrazione dell'auto). Il suo valore conta come carica completa: gli obiettivi EV vengono limitati a questo valore e un'auto al limite non viene avviata. Lascia vuoto per 100 %.",
-          "soc_home": "Sensore con lo stato di carica della batteria domestica in percentuale. Mostrato perché hai indicato di avere una batteria domestica; rispondi no nel primo passo per rimuoverla.",
-          "fv_production": "Produzione solare in W o kW: il totale, o la fase L1 quando L2 e L3 sono mappate sotto.",
-          "grid_import": "Un sensore in W o kW: positivo quando si compra dalla rete, negativo quando si vende (ad es. il sensore netto creato per la dashboard Energia). Usato direttamente per il surplus.",
-          "fv_production_l2": "Solo quando il campo della produzione contiene L1.",
-          "fv_production_l3": "Solo quando il campo della produzione contiene L1.",
-          "grid_import_l2": "Solo senza pannelli solari, quando il campo sopra contiene L1.",
-          "grid_import_l3": "Solo senza pannelli solari, quando il campo sopra contiene L1.",
-          "grid_available": "Opzionale. Binary sensor che indica la disponibilità della rete (on = rete presente, off = rete assente). Se mappato e off, la modalità grid di Night Smart Charge si ferma per non scaricare la batteria di casa durante un blackout (utile su inverter ibridi Battery First / UPS). Lascia vuoto per mantenere il comportamento precedente.",
-          "battery_power": "Opzionale. Potenza della batteria in watt con segno — NEGATIVO = in scarica, POSITIVO = in carica. Usata quando il consumo di casa è calcolato dall'integrazione, dal buffer della dead band di Solar Surplus e dalla protezione batteria di Night Smart Charge. Se il sensore usa il segno opposto, invertilo con un template sensor che nega il valore — vedi il README per un esempio.",
-          "grid_export": "Solo senza pannelli solari, quando prelievo e immissione sono due sensori.",
-          "grid_export_l2": "Solo senza pannelli solari, quando prelievo e immissione sono due sensori.",
-          "grid_export_l3": "Solo senza pannelli solari, quando prelievo e immissione sono due sensori.",
-          "fuse_grid_import_l1": "Potenza comprata dalla rete su questa fase (0 durante l'immissione).",
-          "fuse_grid_export_l1": "Potenza venduta alla rete su questa fase (0 durante il prelievo).",
-          "fuse_grid_import_l2": "Potenza comprata dalla rete su questa fase (0 durante l'immissione).",
-          "fuse_grid_export_l2": "Potenza venduta alla rete su questa fase (0 durante il prelievo).",
-          "fuse_grid_import_l3": "Potenza comprata dalla rete su questa fase (0 durante l'immissione).",
-          "fuse_grid_export_l3": "Potenza venduta alla rete su questa fase (0 durante il prelievo)."
+          "fv_production": "Produzione solare in W o kW: il totale, o la fase L1 quando L2 e L3 sono collegate sotto.",
+          "fv_production_l2": "Solo quando il campo sopra contiene L1.",
+          "fv_production_l3": "Solo quando il campo sopra contiene L1."
         }
       },
-      "main_fuse": {
-        "title": "Protezione interruttore generale - Passo {step}/{total_steps}",
-        "description": "Protegge l'interruttore generale: la corrente del caricatore è limitata in modo che carico della casa + auto non superi mai il limite su nessuna fase. Vale per ogni modalità, comprese Forza Ricarica e Boost.\n\nScegli la taglia dell'interruttore e mappa la corrente del contatore per fase (A). La potenza di prelievo e immissione per fase dal passo dei sensori indica la direzione della corrente; senza sensore di corrente, la corrente si calcola da quella potenza (e dalla tensione, se mappata). La corrente del caricatore dal passo del caricatore viene sottratta, così il suo carico non conta come carico della casa.\n\nSe un sensore del contatore diventa non disponibile, la ricarica scende alla corrente minima e si ferma dopo 2 minuti. Il margine di sicurezza si può cambiare dopo (EVSC Fuse Margin). Oltre il limite più una soglia rigida (predefinita 10 A, EVSC Fuse Hard Trip) la ricarica si ferma subito.",
+      "battery": {
+        "title": "Batteria di casa - Passo {step}/{total_steps}",
+        "description": "Collega la batteria di casa. Entrambi i campi sono obbligatori: la potenza della batteria entra nel consumo della casa calcolato, anche quando la batteria è solo visualizzata.",
         "data": {
-          "main_fuse_size": "Taglia interruttore generale",
-          "fuse_grid_current_l1": "Corrente contatore L1 (A)",
-          "fuse_grid_current_l2": "Corrente contatore L2 (A)",
-          "fuse_grid_current_l3": "Corrente contatore L3 (A)",
-          "fuse_grid_voltage_l1": "Tensione L1 (V)",
-          "fuse_grid_voltage_l2": "Tensione L2 (V)",
-          "fuse_grid_voltage_l3": "Tensione L3 (V)"
+          "soc_home": "SOC batteria di casa",
+          "battery_power": "Potenza batteria (W, con segno)"
         },
         "data_description": {
-          "main_fuse_size": "Taglia del generale per fase.",
-          "fuse_grid_current_l1": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
-          "fuse_grid_current_l2": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
-          "fuse_grid_current_l3": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
-          "fuse_grid_voltage_l1": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
-          "fuse_grid_voltage_l2": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
-          "fuse_grid_voltage_l3": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione)."
+          "soc_home": "Stato di carica della batteria di casa in percentuale.",
+          "battery_power": "Potenza della batteria con segno in W — NEGATIVA = scarica, POSITIVA = carica. Se il sensore ha il segno opposto, invertilo con un sensore template (vedi il README)."
         }
       },
       "pv_forecast": {
@@ -167,76 +123,6 @@
         },
         "data_description": {
           "charger_model": "Tuya = scatti fissi (default). Generica = scatti da 1 A per wallbox non-Tuya che espongono la corrente come entità number."
-        }
-      },
-      "reconfigure_sensors": {
-        "title": "Riconfigura Sensori Energia - Passo {step}/{total_steps}",
-        "description": "Mappa i sensori di energia. Con i pannelli solari ogni campo è obbligatorio, salvo quelli indicati come facoltativi. Il consumo della casa è calcolato dall'integrazione (produzione + rete netta − potenza di ricarica − potenza batteria), non serve un sensore di consumo.",
-        "data": {
-          "soc_car": "SOC batteria EV",
-          "ev_soc_limit": "Limite di carica EV (opzionale)",
-          "soc_home": "SOC batteria casa",
-          "fv_production": "Produzione solare",
-          "grid_import": "Potenza netta di rete",
-          "fv_production_l2": "Produzione solare L2 (facoltativo)",
-          "fv_production_l3": "Produzione solare L3 (facoltativo)",
-          "grid_import_l2": "Prelievo dalla rete L2 (facoltativo)",
-          "grid_import_l3": "Prelievo dalla rete L3 (facoltativo)",
-          "grid_export": "Immissione in rete (facoltativo)",
-          "grid_export_l2": "Immissione in rete L2 (facoltativo)",
-          "grid_export_l3": "Immissione in rete L3 (facoltativo)",
-          "grid_available": "Rete disponibile (binary sensor)",
-          "battery_power": "Sensore potenza batteria (W, con segno)",
-          "fuse_grid_import_l1": "Prelievo dalla rete L1 (W)",
-          "fuse_grid_export_l1": "Immissione in rete L1 (W)",
-          "fuse_grid_import_l2": "Prelievo dalla rete L2 (W)",
-          "fuse_grid_export_l2": "Immissione in rete L2 (W)",
-          "fuse_grid_import_l3": "Prelievo dalla rete L3 (W)",
-          "fuse_grid_export_l3": "Immissione in rete L3 (W)"
-        },
-        "data_description": {
-          "soc_car": "Sensore con lo stato di carica EV in percentuale.",
-          "ev_soc_limit": "Sensore con il limite di carica dell'auto in percentuale (ad es. il livello di carica obiettivo dall'integrazione dell'auto). Il suo valore conta come carica completa: gli obiettivi EV vengono limitati a questo valore e un'auto al limite non viene avviata. Lascia vuoto per 100 %.",
-          "soc_home": "Sensore con lo stato di carica della batteria domestica in percentuale. Mostrato perché hai indicato di avere una batteria domestica; rispondi no nel primo passo per rimuoverla.",
-          "fv_production": "Produzione solare in W o kW: il totale, o la fase L1 quando L2 e L3 sono mappate sotto.",
-          "grid_import": "Un sensore in W o kW: positivo quando si compra dalla rete, negativo quando si vende (ad es. il sensore netto creato per la dashboard Energia). Usato direttamente per il surplus.",
-          "fv_production_l2": "Solo quando il campo della produzione contiene L1.",
-          "fv_production_l3": "Solo quando il campo della produzione contiene L1.",
-          "grid_import_l2": "Solo senza pannelli solari, quando il campo sopra contiene L1.",
-          "grid_import_l3": "Solo senza pannelli solari, quando il campo sopra contiene L1.",
-          "grid_available": "Opzionale. Binary sensor che indica la disponibilità della rete (on = rete presente, off = rete assente). Se mappato e off, la modalità grid di Night Smart Charge si ferma per non scaricare la batteria di casa durante un blackout (utile su inverter ibridi Battery First / UPS). Lascia vuoto per mantenere il comportamento precedente.",
-          "battery_power": "Opzionale. Potenza della batteria in watt con segno — NEGATIVO = in scarica, POSITIVO = in carica. Usata quando il consumo di casa è calcolato dall'integrazione, dal buffer della dead band di Solar Surplus e dalla protezione batteria di Night Smart Charge. Se il sensore usa il segno opposto, invertilo con un template sensor che nega il valore — vedi il README per un esempio.",
-          "grid_export": "Solo senza pannelli solari, quando prelievo e immissione sono due sensori.",
-          "grid_export_l2": "Solo senza pannelli solari, quando prelievo e immissione sono due sensori.",
-          "grid_export_l3": "Solo senza pannelli solari, quando prelievo e immissione sono due sensori.",
-          "fuse_grid_import_l1": "Potenza comprata dalla rete su questa fase (0 durante l'immissione).",
-          "fuse_grid_export_l1": "Potenza venduta alla rete su questa fase (0 durante il prelievo).",
-          "fuse_grid_import_l2": "Potenza comprata dalla rete su questa fase (0 durante l'immissione).",
-          "fuse_grid_export_l2": "Potenza venduta alla rete su questa fase (0 durante il prelievo).",
-          "fuse_grid_import_l3": "Potenza comprata dalla rete su questa fase (0 durante l'immissione).",
-          "fuse_grid_export_l3": "Potenza venduta alla rete su questa fase (0 durante il prelievo)."
-        }
-      },
-      "reconfigure_main_fuse": {
-        "title": "Protezione interruttore generale - Passo {step}/{total_steps}",
-        "description": "Protegge l'interruttore generale: la corrente del caricatore è limitata in modo che carico della casa + auto non superi mai il limite su nessuna fase. Vale per ogni modalità, comprese Forza Ricarica e Boost.\n\nScegli la taglia dell'interruttore e mappa la corrente del contatore per fase (A). La potenza di prelievo e immissione per fase dal passo dei sensori indica la direzione della corrente; senza sensore di corrente, la corrente si calcola da quella potenza (e dalla tensione, se mappata). La corrente del caricatore dal passo del caricatore viene sottratta, così il suo carico non conta come carico della casa.\n\nSe un sensore del contatore diventa non disponibile, la ricarica scende alla corrente minima e si ferma dopo 2 minuti. Il margine di sicurezza si può cambiare dopo (EVSC Fuse Margin). Oltre il limite più una soglia rigida (predefinita 10 A, EVSC Fuse Hard Trip) la ricarica si ferma subito.",
-        "data": {
-          "main_fuse_size": "Taglia interruttore generale",
-          "fuse_grid_current_l1": "Corrente contatore L1 (A)",
-          "fuse_grid_current_l2": "Corrente contatore L2 (A)",
-          "fuse_grid_current_l3": "Corrente contatore L3 (A)",
-          "fuse_grid_voltage_l1": "Tensione L1 (V)",
-          "fuse_grid_voltage_l2": "Tensione L2 (V)",
-          "fuse_grid_voltage_l3": "Tensione L3 (V)"
-        },
-        "data_description": {
-          "main_fuse_size": "Taglia del generale per fase.",
-          "fuse_grid_current_l1": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
-          "fuse_grid_current_l2": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
-          "fuse_grid_current_l3": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
-          "fuse_grid_voltage_l1": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
-          "fuse_grid_voltage_l2": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
-          "fuse_grid_voltage_l3": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione)."
         }
       },
       "reconfigure_pv_forecast": {
@@ -317,6 +203,32 @@
           "fuse_charger_current_l3": "Mappa L2 e L3 per vedere su quante fasi carica l'auto."
         }
       },
+      "reconfigure_solar": {
+        "title": "Pannelli solari - Passo {step}/{total_steps}",
+        "description": "Collega la produzione solare in W o kW: il totale, oppure la fase L1 con L2 e L3 nei campi facoltativi (vengono sommati).",
+        "data": {
+          "fv_production": "Produzione solare (totale o L1)",
+          "fv_production_l2": "Produzione solare L2 (facoltativo)",
+          "fv_production_l3": "Produzione solare L3 (facoltativo)"
+        },
+        "data_description": {
+          "fv_production": "Produzione solare in W o kW: il totale, o la fase L1 quando L2 e L3 sono collegate sotto.",
+          "fv_production_l2": "Solo quando il campo sopra contiene L1.",
+          "fv_production_l3": "Solo quando il campo sopra contiene L1."
+        }
+      },
+      "reconfigure_battery": {
+        "title": "Batteria di casa - Passo {step}/{total_steps}",
+        "description": "Collega la batteria di casa. Entrambi i campi sono obbligatori: la potenza della batteria entra nel consumo della casa calcolato, anche quando la batteria è solo visualizzata.",
+        "data": {
+          "soc_home": "SOC batteria di casa",
+          "battery_power": "Potenza batteria (W, con segno)"
+        },
+        "data_description": {
+          "soc_home": "Stato di carica della batteria di casa in percentuale.",
+          "battery_power": "Potenza della batteria con segno in W — NEGATIVA = scarica, POSITIVA = carica. Se il sensore ha il segno opposto, invertilo con un sensore template (vedi il README)."
+        }
+      },
       "charger_model": {
         "title": "Modello wallbox - Passo {step}/{total_steps}",
         "description": "Scegli come la tua wallbox regola la corrente di ricarica.\n\n**Tuya** — la corrente si imposta solo su valori fissi (6, 8, 10, 13, 16, 20, 24, 32 A); per abbassarla la wallbox viene spenta e riaccesa (qualche secondo di pausa). È il default e funziona con i wallbox più diffusi: scegli questa se non sai.\n\n**Generica** — accetta qualsiasi valore intero di corrente (6, 7, 8, … 32 A) tramite un'entità `number`: regolazione più fine e, in diminuzione, la corrente cala al volo senza interrompere la ricarica.",
@@ -329,7 +241,7 @@
       },
       "features": {
         "title": "Cosa hai? - Passo {step}/{total_steps}",
-        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare e il passo della previsione FV.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — scegli *questa integrazione* per proteggere il contatore da qui (servono i sensori per fase del contatore). Scegli *lo gestisce il caricatore* se la wallbox bilancia già con un proprio misuratore, così i due non si ostacolano.",
+        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare e il passo della previsione FV.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — mantiene la casa sotto il fusibile principale durante la ricarica. *Solo visualizzazione*: l'integrazione calcola cosa dovrebbe fare il bilanciamento e lo mostra sulla dashboard, ma non cambia mai il caricatore (per esempio con un bilanciatore esterno). *Visualizza e regola*: l'integrazione abbassa, sospende e rialza anche la corrente di ricarica.",
         "data": {
           "has_solar": "Pannelli solari",
           "has_home_battery": "Batteria domestica",
@@ -340,12 +252,50 @@
           "has_solar": "Disattiva se la casa non ha pannelli solari.",
           "has_home_battery": "Attiva se la casa ha una batteria domestica da considerare.",
           "home_battery_control": "Disattiva se la batteria ha un proprio controllo (ad esempio un ottimizzatore AI). Viene solo mostrata nella dashboard: la ricarica non la attende, non la scarica e le impostazioni della batteria sono nascoste.",
-          "load_balancing": "Chi mantiene il carico della casa sotto il limite del contatore durante la ricarica."
+          "load_balancing": "Nessuno, solo visualizzazione, o visualizza e regola."
+        }
+      },
+      "meter": {
+        "title": "Contatore - Passo {step}/{total_steps}",
+        "description": "Collega il contatore elettrico. Tutti i campi sono obbligatori tranne rete disponibile. Questi sensori servono in ogni configurazione: surplus, consumo della casa calcolato e bilanciamento del carico.\n\nLa corrente per fase prende la direzione dalla potenza importata ed esportata: una fase che vende alla rete lascia più spazio per la ricarica.",
+        "data": {
+          "main_fuse_size": "Taglia fusibile principale",
+          "grid_import": "Potenza netta di rete",
+          "fuse_grid_import_l1": "Import rete L1 (W)",
+          "fuse_grid_import_l2": "Import rete L2 (W)",
+          "fuse_grid_import_l3": "Import rete L3 (W)",
+          "fuse_grid_export_l1": "Export rete L1 (W)",
+          "fuse_grid_export_l2": "Export rete L2 (W)",
+          "fuse_grid_export_l3": "Export rete L3 (W)",
+          "fuse_grid_current_l1": "Corrente rete L1 (A)",
+          "fuse_grid_current_l2": "Corrente rete L2 (A)",
+          "fuse_grid_current_l3": "Corrente rete L3 (A)",
+          "fuse_grid_voltage_l1": "Tensione rete L1 (V)",
+          "fuse_grid_voltage_l2": "Tensione rete L2 (V)",
+          "fuse_grid_voltage_l3": "Tensione rete L3 (V)",
+          "grid_available": "Rete disponibile (facoltativo)"
+        },
+        "data_description": {
+          "main_fuse_size": "Taglia del fusibile principale per fase. Usata dal bilanciamento del carico (solo visualizzazione, o visualizza e regola).",
+          "grid_import": "Un sensore in W o kW: positivo quando si compra dalla rete, negativo quando si vende.",
+          "fuse_grid_import_l1": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
+          "fuse_grid_import_l2": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
+          "fuse_grid_import_l3": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
+          "fuse_grid_export_l1": "Potenza venduta alla rete su questa fase (0 quando si compra).",
+          "fuse_grid_export_l2": "Potenza venduta alla rete su questa fase (0 quando si compra).",
+          "fuse_grid_export_l3": "Potenza venduta alla rete su questa fase (0 quando si compra).",
+          "fuse_grid_current_l1": "Corrente nel fusibile principale su questa fase, in A. Può essere senza segno.",
+          "fuse_grid_current_l2": "Corrente nel fusibile principale su questa fase, in A. Può essere senza segno.",
+          "fuse_grid_current_l3": "Corrente nel fusibile principale su questa fase, in A. Può essere senza segno.",
+          "fuse_grid_voltage_l1": "Tensione su questa fase, in V.",
+          "fuse_grid_voltage_l2": "Tensione su questa fase, in V.",
+          "fuse_grid_voltage_l3": "Tensione su questa fase, in V.",
+          "grid_available": "Facoltativo. Sensore binario di disponibilità della rete (on = rete presente, off = rete assente). Quando è off, la ricarica notturna dalla rete si ferma per non scaricare la batteria di casa."
         }
       },
       "reconfigure_features": {
         "title": "Cosa hai? - Passo {step}/{total_steps}",
-        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare e il passo della previsione FV.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — scegli *questa integrazione* per proteggere il contatore da qui (servono i sensori per fase del contatore). Scegli *lo gestisce il caricatore* se la wallbox bilancia già con un proprio misuratore, così i due non si ostacolano.",
+        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare e il passo della previsione FV.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — mantiene la casa sotto il fusibile principale durante la ricarica. *Solo visualizzazione*: l'integrazione calcola cosa dovrebbe fare il bilanciamento e lo mostra sulla dashboard, ma non cambia mai il caricatore (per esempio con un bilanciatore esterno). *Visualizza e regola*: l'integrazione abbassa, sospende e rialza anche la corrente di ricarica.",
         "data": {
           "has_solar": "Pannelli solari",
           "has_home_battery": "Batteria domestica",
@@ -356,7 +306,45 @@
           "has_solar": "Disattiva se la casa non ha pannelli solari.",
           "has_home_battery": "Attiva se la casa ha una batteria domestica da considerare.",
           "home_battery_control": "Disattiva se la batteria ha un proprio controllo (ad esempio un ottimizzatore AI). Viene solo mostrata nella dashboard: la ricarica non la attende, non la scarica e le impostazioni della batteria sono nascoste.",
-          "load_balancing": "Chi mantiene il carico della casa sotto il limite del contatore durante la ricarica."
+          "load_balancing": "Nessuno, solo visualizzazione, o visualizza e regola."
+        }
+      },
+      "reconfigure_meter": {
+        "title": "Contatore - Passo {step}/{total_steps}",
+        "description": "Collega il contatore elettrico. Tutti i campi sono obbligatori tranne rete disponibile. Questi sensori servono in ogni configurazione: surplus, consumo della casa calcolato e bilanciamento del carico.\n\nLa corrente per fase prende la direzione dalla potenza importata ed esportata: una fase che vende alla rete lascia più spazio per la ricarica.",
+        "data": {
+          "main_fuse_size": "Taglia fusibile principale",
+          "grid_import": "Potenza netta di rete",
+          "fuse_grid_import_l1": "Import rete L1 (W)",
+          "fuse_grid_import_l2": "Import rete L2 (W)",
+          "fuse_grid_import_l3": "Import rete L3 (W)",
+          "fuse_grid_export_l1": "Export rete L1 (W)",
+          "fuse_grid_export_l2": "Export rete L2 (W)",
+          "fuse_grid_export_l3": "Export rete L3 (W)",
+          "fuse_grid_current_l1": "Corrente rete L1 (A)",
+          "fuse_grid_current_l2": "Corrente rete L2 (A)",
+          "fuse_grid_current_l3": "Corrente rete L3 (A)",
+          "fuse_grid_voltage_l1": "Tensione rete L1 (V)",
+          "fuse_grid_voltage_l2": "Tensione rete L2 (V)",
+          "fuse_grid_voltage_l3": "Tensione rete L3 (V)",
+          "grid_available": "Rete disponibile (facoltativo)"
+        },
+        "data_description": {
+          "main_fuse_size": "Taglia del fusibile principale per fase. Usata dal bilanciamento del carico (solo visualizzazione, o visualizza e regola).",
+          "grid_import": "Un sensore in W o kW: positivo quando si compra dalla rete, negativo quando si vende.",
+          "fuse_grid_import_l1": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
+          "fuse_grid_import_l2": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
+          "fuse_grid_import_l3": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
+          "fuse_grid_export_l1": "Potenza venduta alla rete su questa fase (0 quando si compra).",
+          "fuse_grid_export_l2": "Potenza venduta alla rete su questa fase (0 quando si compra).",
+          "fuse_grid_export_l3": "Potenza venduta alla rete su questa fase (0 quando si compra).",
+          "fuse_grid_current_l1": "Corrente nel fusibile principale su questa fase, in A. Può essere senza segno.",
+          "fuse_grid_current_l2": "Corrente nel fusibile principale su questa fase, in A. Può essere senza segno.",
+          "fuse_grid_current_l3": "Corrente nel fusibile principale su questa fase, in A. Può essere senza segno.",
+          "fuse_grid_voltage_l1": "Tensione su questa fase, in V.",
+          "fuse_grid_voltage_l2": "Tensione su questa fase, in V.",
+          "fuse_grid_voltage_l3": "Tensione su questa fase, in V.",
+          "grid_available": "Facoltativo. Sensore binario di disponibilità della rete (on = rete presente, off = rete assente). Quando è off, la ricarica notturna dalla rete si ferma per non scaricare la batteria di casa."
         }
       },
       "reconfigure_cars": {
@@ -444,76 +432,6 @@
           "charger_model": "Tuya = scatti fissi (default). Generica = scatti da 1 A per wallbox non-Tuya che espongono la corrente come entità number."
         }
       },
-      "sensors": {
-        "title": "Aggiorna Sensori Energia - Passo {step}/{total_steps}",
-        "description": "Mappa i sensori di energia. Con i pannelli solari ogni campo è obbligatorio, salvo quelli indicati come facoltativi. Il consumo della casa è calcolato dall'integrazione (produzione + rete netta − potenza di ricarica − potenza batteria), non serve un sensore di consumo.",
-        "data": {
-          "soc_car": "SOC batteria EV",
-          "ev_soc_limit": "Limite di carica EV (opzionale)",
-          "soc_home": "SOC batteria casa",
-          "fv_production": "Produzione solare",
-          "grid_import": "Potenza netta di rete",
-          "fv_production_l2": "Produzione solare L2 (facoltativo)",
-          "fv_production_l3": "Produzione solare L3 (facoltativo)",
-          "grid_import_l2": "Prelievo dalla rete L2 (facoltativo)",
-          "grid_import_l3": "Prelievo dalla rete L3 (facoltativo)",
-          "grid_export": "Immissione in rete (facoltativo)",
-          "grid_export_l2": "Immissione in rete L2 (facoltativo)",
-          "grid_export_l3": "Immissione in rete L3 (facoltativo)",
-          "grid_available": "Rete disponibile (binary sensor)",
-          "battery_power": "Sensore potenza batteria (W, con segno)",
-          "fuse_grid_import_l1": "Prelievo dalla rete L1 (W)",
-          "fuse_grid_export_l1": "Immissione in rete L1 (W)",
-          "fuse_grid_import_l2": "Prelievo dalla rete L2 (W)",
-          "fuse_grid_export_l2": "Immissione in rete L2 (W)",
-          "fuse_grid_import_l3": "Prelievo dalla rete L3 (W)",
-          "fuse_grid_export_l3": "Immissione in rete L3 (W)"
-        },
-        "data_description": {
-          "soc_car": "Sensore con lo stato di carica EV in percentuale.",
-          "ev_soc_limit": "Sensore con il limite di carica dell'auto in percentuale (ad es. il livello di carica obiettivo dall'integrazione dell'auto). Il suo valore conta come carica completa: gli obiettivi EV vengono limitati a questo valore e un'auto al limite non viene avviata. Lascia vuoto per 100 %.",
-          "soc_home": "Sensore con lo stato di carica della batteria domestica in percentuale. Mostrato perché hai indicato di avere una batteria domestica; rispondi no nel primo passo per rimuoverla.",
-          "fv_production": "Produzione solare in W o kW: il totale, o la fase L1 quando L2 e L3 sono mappate sotto.",
-          "grid_import": "Un sensore in W o kW: positivo quando si compra dalla rete, negativo quando si vende (ad es. il sensore netto creato per la dashboard Energia). Usato direttamente per il surplus.",
-          "fv_production_l2": "Solo quando il campo della produzione contiene L1.",
-          "fv_production_l3": "Solo quando il campo della produzione contiene L1.",
-          "grid_import_l2": "Solo senza pannelli solari, quando il campo sopra contiene L1.",
-          "grid_import_l3": "Solo senza pannelli solari, quando il campo sopra contiene L1.",
-          "grid_available": "Opzionale. Binary sensor che indica la disponibilità della rete (on = rete presente, off = rete assente). Se mappato e off, la modalità grid di Night Smart Charge si ferma per non scaricare la batteria di casa durante un blackout (utile su inverter ibridi Battery First / UPS). Lascia vuoto per mantenere il comportamento precedente.",
-          "battery_power": "Opzionale. Potenza della batteria in watt con segno — NEGATIVO = in scarica, POSITIVO = in carica. Usata quando il consumo di casa è calcolato dall'integrazione, dal buffer della dead band di Solar Surplus e dalla protezione batteria di Night Smart Charge. Se il sensore usa il segno opposto, invertilo con un template sensor che nega il valore — vedi il README per un esempio.",
-          "grid_export": "Solo senza pannelli solari, quando prelievo e immissione sono due sensori.",
-          "grid_export_l2": "Solo senza pannelli solari, quando prelievo e immissione sono due sensori.",
-          "grid_export_l3": "Solo senza pannelli solari, quando prelievo e immissione sono due sensori.",
-          "fuse_grid_import_l1": "Potenza comprata dalla rete su questa fase (0 durante l'immissione).",
-          "fuse_grid_export_l1": "Potenza venduta alla rete su questa fase (0 durante il prelievo).",
-          "fuse_grid_import_l2": "Potenza comprata dalla rete su questa fase (0 durante l'immissione).",
-          "fuse_grid_export_l2": "Potenza venduta alla rete su questa fase (0 durante il prelievo).",
-          "fuse_grid_import_l3": "Potenza comprata dalla rete su questa fase (0 durante l'immissione).",
-          "fuse_grid_export_l3": "Potenza venduta alla rete su questa fase (0 durante il prelievo)."
-        }
-      },
-      "main_fuse": {
-        "title": "Protezione interruttore generale - Passo {step}/{total_steps}",
-        "description": "Protegge l'interruttore generale: la corrente del caricatore è limitata in modo che carico della casa + auto non superi mai il limite su nessuna fase. Vale per ogni modalità, comprese Forza Ricarica e Boost.\n\nScegli la taglia dell'interruttore e mappa la corrente del contatore per fase (A). La potenza di prelievo e immissione per fase dal passo dei sensori indica la direzione della corrente; senza sensore di corrente, la corrente si calcola da quella potenza (e dalla tensione, se mappata). La corrente del caricatore dal passo del caricatore viene sottratta, così il suo carico non conta come carico della casa.\n\nSe un sensore del contatore diventa non disponibile, la ricarica scende alla corrente minima e si ferma dopo 2 minuti. Il margine di sicurezza si può cambiare dopo (EVSC Fuse Margin). Oltre il limite più una soglia rigida (predefinita 10 A, EVSC Fuse Hard Trip) la ricarica si ferma subito.",
-        "data": {
-          "main_fuse_size": "Taglia interruttore generale",
-          "fuse_grid_current_l1": "Corrente contatore L1 (A)",
-          "fuse_grid_current_l2": "Corrente contatore L2 (A)",
-          "fuse_grid_current_l3": "Corrente contatore L3 (A)",
-          "fuse_grid_voltage_l1": "Tensione L1 (V)",
-          "fuse_grid_voltage_l2": "Tensione L2 (V)",
-          "fuse_grid_voltage_l3": "Tensione L3 (V)"
-        },
-        "data_description": {
-          "main_fuse_size": "Taglia del generale per fase.",
-          "fuse_grid_current_l1": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
-          "fuse_grid_current_l2": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
-          "fuse_grid_current_l3": "Corrente attraverso il generale su questa fase. Può essere senza segno.",
-          "fuse_grid_voltage_l1": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
-          "fuse_grid_voltage_l2": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione).",
-          "fuse_grid_voltage_l3": "Opzionale. Usata solo senza sensore di corrente (corrente = potenza / tensione)."
-        }
-      },
       "pv_forecast": {
         "title": "Aggiorna Forecast Solare - Passo {step}/{total_steps}",
         "description": "Previsione solare per oggi e domani, in kWh. Entrambe obbligatorie; sono mostrate nella dashboard e conservate per pianificazioni future.",
@@ -592,9 +510,35 @@
           "fuse_charger_current_l3": "Mappa L2 e L3 per vedere su quante fasi carica l'auto."
         }
       },
+      "solar": {
+        "title": "Pannelli solari - Passo {step}/{total_steps}",
+        "description": "Collega la produzione solare in W o kW: il totale, oppure la fase L1 con L2 e L3 nei campi facoltativi (vengono sommati).",
+        "data": {
+          "fv_production": "Produzione solare (totale o L1)",
+          "fv_production_l2": "Produzione solare L2 (facoltativo)",
+          "fv_production_l3": "Produzione solare L3 (facoltativo)"
+        },
+        "data_description": {
+          "fv_production": "Produzione solare in W o kW: il totale, o la fase L1 quando L2 e L3 sono collegate sotto.",
+          "fv_production_l2": "Solo quando il campo sopra contiene L1.",
+          "fv_production_l3": "Solo quando il campo sopra contiene L1."
+        }
+      },
+      "battery": {
+        "title": "Batteria di casa - Passo {step}/{total_steps}",
+        "description": "Collega la batteria di casa. Entrambi i campi sono obbligatori: la potenza della batteria entra nel consumo della casa calcolato, anche quando la batteria è solo visualizzata.",
+        "data": {
+          "soc_home": "SOC batteria di casa",
+          "battery_power": "Potenza batteria (W, con segno)"
+        },
+        "data_description": {
+          "soc_home": "Stato di carica della batteria di casa in percentuale.",
+          "battery_power": "Potenza della batteria con segno in W — NEGATIVA = scarica, POSITIVA = carica. Se il sensore ha il segno opposto, invertilo con un sensore template (vedi il README)."
+        }
+      },
       "features": {
         "title": "Cosa hai? - Passo {step}/{total_steps}",
-        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare e il passo della previsione FV.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — scegli *questa integrazione* per proteggere il contatore da qui (servono i sensori per fase del contatore). Scegli *lo gestisce il caricatore* se la wallbox bilancia già con un proprio misuratore, così i due non si ostacolano.",
+        "description": "Indica com'è fatto il tuo impianto. Dopo verranno mostrati solo i passi e i campi pertinenti; puoi cambiare queste risposte in seguito dalle opzioni dell'integrazione.\n\n**Pannelli solari** — abilita la ricarica da surplus solare e il passo della previsione FV.\n\n**Batteria domestica** — chiede i sensori della batteria e crea le relative impostazioni (SOC minimo, supporto batteria, obiettivi giornalieri).\n\n**Bilanciamento del carico** — mantiene la casa sotto il fusibile principale durante la ricarica. *Solo visualizzazione*: l'integrazione calcola cosa dovrebbe fare il bilanciamento e lo mostra sulla dashboard, ma non cambia mai il caricatore (per esempio con un bilanciatore esterno). *Visualizza e regola*: l'integrazione abbassa, sospende e rialza anche la corrente di ricarica.",
         "data": {
           "has_solar": "Pannelli solari",
           "has_home_battery": "Batteria domestica",
@@ -605,7 +549,45 @@
           "has_solar": "Disattiva se la casa non ha pannelli solari.",
           "has_home_battery": "Attiva se la casa ha una batteria domestica da considerare.",
           "home_battery_control": "Disattiva se la batteria ha un proprio controllo (ad esempio un ottimizzatore AI). Viene solo mostrata nella dashboard: la ricarica non la attende, non la scarica e le impostazioni della batteria sono nascoste.",
-          "load_balancing": "Chi mantiene il carico della casa sotto il limite del contatore durante la ricarica."
+          "load_balancing": "Nessuno, solo visualizzazione, o visualizza e regola."
+        }
+      },
+      "meter": {
+        "title": "Contatore - Passo {step}/{total_steps}",
+        "description": "Collega il contatore elettrico. Tutti i campi sono obbligatori tranne rete disponibile. Questi sensori servono in ogni configurazione: surplus, consumo della casa calcolato e bilanciamento del carico.\n\nLa corrente per fase prende la direzione dalla potenza importata ed esportata: una fase che vende alla rete lascia più spazio per la ricarica.",
+        "data": {
+          "main_fuse_size": "Taglia fusibile principale",
+          "grid_import": "Potenza netta di rete",
+          "fuse_grid_import_l1": "Import rete L1 (W)",
+          "fuse_grid_import_l2": "Import rete L2 (W)",
+          "fuse_grid_import_l3": "Import rete L3 (W)",
+          "fuse_grid_export_l1": "Export rete L1 (W)",
+          "fuse_grid_export_l2": "Export rete L2 (W)",
+          "fuse_grid_export_l3": "Export rete L3 (W)",
+          "fuse_grid_current_l1": "Corrente rete L1 (A)",
+          "fuse_grid_current_l2": "Corrente rete L2 (A)",
+          "fuse_grid_current_l3": "Corrente rete L3 (A)",
+          "fuse_grid_voltage_l1": "Tensione rete L1 (V)",
+          "fuse_grid_voltage_l2": "Tensione rete L2 (V)",
+          "fuse_grid_voltage_l3": "Tensione rete L3 (V)",
+          "grid_available": "Rete disponibile (facoltativo)"
+        },
+        "data_description": {
+          "main_fuse_size": "Taglia del fusibile principale per fase. Usata dal bilanciamento del carico (solo visualizzazione, o visualizza e regola).",
+          "grid_import": "Un sensore in W o kW: positivo quando si compra dalla rete, negativo quando si vende.",
+          "fuse_grid_import_l1": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
+          "fuse_grid_import_l2": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
+          "fuse_grid_import_l3": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
+          "fuse_grid_export_l1": "Potenza venduta alla rete su questa fase (0 quando si compra).",
+          "fuse_grid_export_l2": "Potenza venduta alla rete su questa fase (0 quando si compra).",
+          "fuse_grid_export_l3": "Potenza venduta alla rete su questa fase (0 quando si compra).",
+          "fuse_grid_current_l1": "Corrente nel fusibile principale su questa fase, in A. Può essere senza segno.",
+          "fuse_grid_current_l2": "Corrente nel fusibile principale su questa fase, in A. Può essere senza segno.",
+          "fuse_grid_current_l3": "Corrente nel fusibile principale su questa fase, in A. Può essere senza segno.",
+          "fuse_grid_voltage_l1": "Tensione su questa fase, in V.",
+          "fuse_grid_voltage_l2": "Tensione su questa fase, in V.",
+          "fuse_grid_voltage_l3": "Tensione su questa fase, in V.",
+          "grid_available": "Facoltativo. Sensore binario di disponibilità della rete (on = rete presente, off = rete assente). Quando è off, la ricarica notturna dalla rete si ferma per non scaricare la batteria di casa."
         }
       },
       "cars": {

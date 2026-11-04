@@ -323,19 +323,26 @@ flowchart TD
 - The charging power (`W`/`kW`): one total sensor, or L1 with optional L2/L3
 - The charger current (`A`): one phase (all phases carry the same current), or L1 with optional L2/L3 — with current per phase the integration sees how many phases the car charges on
 
-**Mandatory — with solar panels (v2.39.0):**
+**Mandatory — Electricity meter (v2.41.0, every setup):**
+
+- Main fuse size
+- **Net grid power**: one sensor, positive when buying, negative when selling (for example the net sensor made for the Energy dashboard)
+- Grid import power, grid export power, grid current and grid voltage, each per phase L1, L2, L3
+- Grid available (`binary_sensor`) is optional
+
+**Mandatory — with solar panels:**
 
 - Solar production (`W`/`kW`): total, or L1 with optional L2/L3
-- **Net grid power**: one sensor, positive when buying, negative when selling (for example the net sensor made for the Energy dashboard). Used directly for the surplus.
-- Grid import power L1, L2, L3 and grid export power L1, L2, L3 (the meter's per-phase values)
 - Solar forecast today and tomorrow (`kWh`)
-- An electricity price sensor (Nord Pool or any sensor with `raw_today`/`raw_tomorrow`)
+
+**Mandatory — with a home battery (v2.41.0):** home battery SOC (`%`) and signed battery power (`W`), also when the battery is only shown.
+
+**Mandatory — every setup:** an electricity price sensor (Nord Pool or any sensor with `raw_today`/`raw_tomorrow`).
 
 **Car sensors:** set per car in the car profiles (EV SOC, optional charge limit, capacity, optional location / connection).
 
 **Optional:**
 
-- Home battery SOC (`%`) — leave empty if you do not have a home battery. The integration will run in **PV-only mode** (see below).
 - One or more `notify.mobile_app_*` services for push notifications
 - A `person` entity for presence-aware notification filtering
 - A `number` or `input_number` helper to receive the calculated nightly energy target
@@ -398,7 +405,7 @@ The charger model is the first step of **Reconfigure** (or Configure / Options).
 
 ## Configuration
 
-Add the integration from **Settings → Devices & Services → Add Integration** and search for `EV Smart Charger`. The setup wizard has **7 steps**.
+Add the integration from **Settings → Devices & Services → Add Integration** and search for `EV Smart Charger`. The setup wizard shows only the steps that apply to your answers in "What do you have?".
 
 ### Step 1 — Name
 
@@ -429,22 +436,37 @@ The charger switch entity (or the start button, in button mode) is used as the u
 
 **Charger current (v2.39.0):** one sensor is read as the current of one phase, and the same value is used for every phase. With L2 and L3 mapped each phase is read on its own, so a car charging on one or two phases shows 0 A on the others. A single sensor with `L1`/`L2`/`L3` attributes (e.g. OCPP `current_import`) is read per phase.
 
-### Step 3 — Energy Sensors
+### Step 3 — Sensors per part (v2.41.0)
 
-With solar panels (v2.39.0):
+The sensors are asked in separate steps: **Electricity meter** (always, right after "What do you have?"), **Charger** (step 2 above), **Solar panels** (with solar) and **Home battery** (with a home battery).
+
+Electricity meter:
 
 | Field | Required | Unit |
 |---|:---:|---|
-| Home battery SOC | Yes, with a home battery | `%` |
-| Battery power | No | `W` (signed) |
-| Solar production — total or L1 | Yes | `W`/`kW` |
-| Solar production L2 / L3 | No | `W`/`kW` |
+| Main fuse size | Yes | `A` |
 | Net grid power (negative = selling) | Yes | `W`/`kW` |
 | Grid import L1, L2, L3 | Yes | `W` |
 | Grid export L1, L2, L3 | Yes | `W` |
+| Grid current L1, L2, L3 | Yes | `A` |
+| Grid voltage L1, L2, L3 | Yes | `V` |
 | Grid available (v2.6.0) | No | `binary_sensor` |
 
-Without solar panels the step asks grid import (L2/L3 and a separate export optional), as before.
+Solar panels:
+
+| Field | Required | Unit |
+|---|:---:|---|
+| Solar production — total or L1 | Yes | `W`/`kW` |
+| Solar production L2 / L3 | No | `W`/`kW` |
+
+Home battery:
+
+| Field | Required | Unit |
+|---|:---:|---|
+| Home battery SOC | Yes | `%` |
+| Battery power | Yes | `W` (signed) |
+
+**Load balancing (v2.41.0):** *None*, *Display only* (the integration works out what load balancing should do and shows it on the dashboard, e.g. "load balancing should lower to 10 A (L3)", but never changes the charger — for an external load balancer) or *Display and adjust* (the main fuse protection below). An entry saved with "the charger handles it" is read as *None*.
 
 **Car profiles (v2.31.0, guest profile v2.32.0):** several cars can share the charger. The car's own sensors are not asked in the sensors step: the last step before the dashboard, **Car profiles** (also under *Configure* / *Reconfigure*), adds, edits and removes cars. Each car has a free name (e.g. its registration number), its own battery SOC sensor, an optional charge limit sensor and the battery capacity. A **Guest** profile always exists: it has no sensors, so Night Smart Charge charges it in the 5 cheapest night hours and Solar Surplus on surplus. Finishing the step without a car leaves only the guest; the first car you create becomes the active one. After that the active car only changes when you choose another one in the dropdown at the top of the dashboard (or with `select.…_evsc_active_car`); switching reloads the integration with that car's sensors. Daily targets and car-ready times are shared by all cars.
 
@@ -460,13 +482,13 @@ That needs three things to be right:
 
 - **Net grid power** with a direction: one sensor that goes **negative when selling** (v2.39.0). Older entries without solar may still use an import sensor plus a separate export sensor.
 - **EV charging power**, required in the charger step (v2.39.0). An entry from before v2.38.0 without it falls back to the current setpoint × voltage while the car charges.
-- **Battery power** (optional) when there is a home battery, so its charging is not counted as house load.
+- **Battery power** (required with a home battery since v2.41.0), so its charging is not counted as house load.
 
 A consumption sensor mapped by an older version is cleared at the next reconfigure and ignored until then.
 
 **EV charging power (v2.2.0):** the most reliable signal for whether the car is actually drawing current — it is the single source of truth for charging detection (and the dashboard's green "EV charging" banner), overriding the status string. Map a total sensor, or L1 with L2/L3 (they are summed). The sensor must report positive watts while charging; if yours reports negative, wrap it in a template sensor (`{{ states('sensor.your_power') | float(0) | abs }}`) — the diagnostic sensor's `charging_power_w` will read a flat 0 W if the sign is reversed.
 
-**Battery power (v2.1.0):** optional signed power sensor for the home battery, mapped in the sensors step (v2.36.0) and used by the derived home consumption, the Solar Surplus dead-band buffer and Night Smart Charge grid mode to tell when the home battery silently covers the EV. **Sign convention: NEGATIVE = discharging, POSITIVE = charging.** If your sensor reports the opposite sign, invert it with a template sensor that negates the value, e.g. `{{ states('sensor.your_battery_power') | float(0) * -1 }}`.
+**Battery power (v2.1.0):** signed power sensor for the home battery, required in the home battery step (v2.41.0) and used by the derived home consumption, the Solar Surplus dead-band buffer and Night Smart Charge grid mode to tell when the home battery silently covers the EV. **Sign convention: NEGATIVE = discharging, POSITIVE = charging.** If your sensor reports the opposite sign, invert it with a template sensor that negates the value, e.g. `{{ states('sensor.your_battery_power') | float(0) * -1 }}`.
 
 **Grid available (v2.6.0 — [issue #36](https://github.com/antbald/ha-ev-smart-charger/issues/36)):** optional `binary_sensor` (on = grid present, off = grid lost), typically exposed by hybrid inverter integrations (e.g. `binary_sensor.inverter_grid`). On hybrid "Battery First"/UPS inverters a grid outage is invisible to the integration (every power sensor keeps reporting), so Night Smart Charge **grid mode** would keep drawing — now from the home battery — during the outage. When mapped and OFF (sustained for the grid-import delay, default 30 s), the grid-mode session stops. **Fail-safe:** an `unavailable`/`unknown` state (e.g. at HA boot or an inverter-integration restart) is treated as "unknown" and never triggers a stop. Leave empty to keep the previous behaviour.
 
@@ -690,15 +712,7 @@ Optional load balancing against your **house main fuse**. When enabled, the
 charger current is limited so that house load + EV never exceeds the fuse on
 any phase — in every charging mode, including Force Charge and Boost.
 
-**Setup** — the *Main fuse protection* step in the config / reconfigure flow:
-
-| Field | What to map |
-|---|---|
-| Main fuse size | Your main fuse rating per phase (16–80 A). *Off* disables the feature. |
-| Meter current L1–L3 (A) | Current through the main fuse per phase. May be unsigned. |
-| Meter import / export power L1–L3 (W) | Gives the direction of the current (recommended). |
-| Meter voltage L1–L3 (V) | Optional; only used when no current sensor is mapped. |
-| Charger current | One sensor with `L1`/`L2`/`L3` attributes (e.g. OCPP `current_import`) **or** one sensor per phase. |
+**Setup** (v2.41.0) — answer *Display and adjust* (or *Display only*) for load balancing in "What do you have?". The fuse size and the meter's current, import / export power and voltage per phase come from the electricity meter step; the charger current from the charger step. With *Display only* the same limit is computed and shown, but the charger is never changed.
 
 **How the limit is computed** (per phase, the weakest phase wins):
 

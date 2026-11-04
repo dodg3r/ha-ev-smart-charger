@@ -252,7 +252,7 @@ async def test_config_flow_accepts_buttons_only(hass):
         },
     )
     assert result["type"] == data_entry_flow.FlowResultType.FORM
-    assert result["step_id"] == "sensors"
+    assert result["step_id"] == "solar"
 
 
 async def test_config_flow_requires_a_control(hass):

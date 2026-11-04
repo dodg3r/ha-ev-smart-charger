@@ -65,9 +65,9 @@ CHARGER_INPUT = {
     CONF_FUSE_CHARGER_CURRENT: "sensor.ev_current",
 }
 
-# v2.39.0: the sensors step with solar panels (no home battery fields).
-SOLAR_SENSORS = {
-    CONF_FV_PRODUCTION: "sensor.solar",
+# v2.41.0: the electricity meter, asked in every setup.
+METER_INPUT = {
+    CONF_MAIN_FUSE_SIZE: "20",
     CONF_GRID_IMPORT: "sensor.grid_net",
     CONF_FUSE_GRID_IMPORT_L1: "sensor.import_l1",
     CONF_FUSE_GRID_IMPORT_L2: "sensor.import_l2",
@@ -75,6 +75,19 @@ SOLAR_SENSORS = {
     CONF_FUSE_GRID_EXPORT_L1: "sensor.export_l1",
     CONF_FUSE_GRID_EXPORT_L2: "sensor.export_l2",
     CONF_FUSE_GRID_EXPORT_L3: "sensor.export_l3",
+    "fuse_grid_current_l1": "sensor.current_l1",
+    "fuse_grid_current_l2": "sensor.current_l2",
+    "fuse_grid_current_l3": "sensor.current_l3",
+    "fuse_grid_voltage_l1": "sensor.voltage_l1",
+    "fuse_grid_voltage_l2": "sensor.voltage_l2",
+    "fuse_grid_voltage_l3": "sensor.voltage_l3",
+}
+
+# v2.41.0: the solar panels step and the home battery step.
+SOLAR_INPUT = {CONF_FV_PRODUCTION: "sensor.solar"}
+BATTERY_INPUT = {
+    CONF_SOC_HOME: "sensor.home_soc",
+    CONF_BATTERY_POWER: "sensor.battery_power",
 }
 
 FORECAST_INPUT = {
@@ -89,16 +102,20 @@ def charger_input(**overrides):
     return {**CHARGER_INPUT, **overrides}
 
 
-async def _advance_mode_steps(hass: HomeAssistant, flow_id: str):
-    """Submit the charger_model step (tuya) and the features step.
+async def _advance_mode_steps(hass: HomeAssistant, flow_id: str, **features):
+    """Submit the charger_model step (tuya), the features step and the meter
+    step, ending on the charger step.
 
     v2.39.0: the phase-mode step is gone; charger_model follows the name step.
+    v2.41.0: the electricity meter comes right after the features.
     """
     result = await hass.config_entries.flow.async_configure(
         flow_id, {CONF_CHARGER_MODEL: CHARGER_MODEL_TUYA}
     )
     assert result["step_id"] == "features"
-    return await _submit_features(hass, result["flow_id"])
+    result = await _submit_features(hass, result["flow_id"], **features)
+    assert result["step_id"] == "meter"
+    return await hass.config_entries.flow.async_configure(result["flow_id"], METER_INPUT)
 
 
 async def _submit_features(
@@ -121,7 +138,7 @@ async def _submit_features(
 
 
 async def test_form(hass: HomeAssistant):
-    """Test we get the form and can walk the full 9-step flow."""
+    """Test we get the form and can walk the full flow."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -141,21 +158,18 @@ async def test_form(hass: HomeAssistant):
     assert result3["type"] == data_entry_flow.FlowResultType.FORM
     assert result3["step_id"] == "entities"
 
-    # Step 4: Charger Entities → sensors
+    # Charger → solar → battery → pv_forecast (v2.41.0)
     result4 = await hass.config_entries.flow.async_configure(
         result3["flow_id"], CHARGER_INPUT
     )
     assert result4["type"] == data_entry_flow.FlowResultType.FORM
-    assert result4["step_id"] == "sensors"
-
-    # Step 5: Sensors → pv_forecast (v2.36.0: battery power is mapped here)
+    assert result4["step_id"] == "solar"
+    result4 = await hass.config_entries.flow.async_configure(
+        result4["flow_id"], SOLAR_INPUT
+    )
+    assert result4["step_id"] == "battery"
     result5b = await hass.config_entries.flow.async_configure(
-        result4["flow_id"],
-        {
-            CONF_SOC_HOME: "sensor.home_soc",
-            CONF_BATTERY_POWER: "sensor.battery_power",
-            **SOLAR_SENSORS,
-        },
+        result4["flow_id"], BATTERY_INPUT
     )
     assert result5b["type"] == data_entry_flow.FlowResultType.FORM
     assert result5b["step_id"] == "pv_forecast"
@@ -217,6 +231,8 @@ async def test_form(hass: HomeAssistant):
         assert result9["data"][CONF_CHARGING_POWER] == "sensor.ev_power"
         assert result9["data"][CONF_FUSE_CHARGER_CURRENT] == "sensor.ev_current"
         assert result9["data"][CONF_FUSE_GRID_EXPORT_L3] == "sensor.export_l3"
+        assert result9["data"]["fuse_grid_voltage_l2"] == "sensor.voltage_l2"
+        assert result9["data"][CONF_MAIN_FUSE_SIZE] == 20
         assert result9["data"][CONF_PRICE_SENSOR] == "sensor.nordpool"
         assert result9["data"][CONF_CHARGER_MODEL] == CHARGER_MODEL_TUYA
         # v2.36.0: the battery-power sensor round-trips from the sensors step
@@ -271,10 +287,8 @@ async def test_external_connectors_validates_energy_target_entity_exists(hass: H
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], charger_input(**{CONF_EV_CHARGER_SWITCH: "switch.charger_2"})
     )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {CONF_SOC_HOME: "sensor.home_soc", **SOLAR_SENSORS},
-    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], SOLAR_INPUT)
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], BATTERY_INPUT)
     assert result["step_id"] == "pv_forecast"
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], FORECAST_INPUT
@@ -321,6 +335,8 @@ async def test_solar_sensor_form_and_optional_phases(hass: HomeAssistant):
         result["flow_id"], {CONF_CHARGER_MODEL: CHARGER_MODEL_GENERIC}
     )
     result = await _submit_features(hass, result["flow_id"], battery=False)
+    assert result["step_id"] == "meter"
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], METER_INPUT)
     assert result["step_id"] == "entities"
 
     keys = _schema_keys(result)
@@ -350,18 +366,16 @@ async def test_solar_sensor_form_and_optional_phases(hass: HomeAssistant):
             }
         ),
     )
-    assert result["step_id"] == "sensors"
+    assert result["step_id"] == "solar"
 
     keys = _schema_keys(result)
-    assert CONF_CHARGING_POWER not in keys
-    assert CONF_GRID_IMPORT_L2 not in keys
-    assert CONF_GRID_EXPORT not in keys
-    assert _required(result) == set(SOLAR_SENSORS)
+    assert _required(result) == {CONF_FV_PRODUCTION}
     assert {CONF_FV_PRODUCTION_L2, CONF_FV_PRODUCTION_L3} <= keys
+    assert CONF_GRID_IMPORT not in keys
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {**SOLAR_SENSORS, CONF_FV_PRODUCTION_L2: "sensor.pv2", CONF_FV_PRODUCTION_L3: "sensor.pv3"},
+        {**SOLAR_INPUT, CONF_FV_PRODUCTION_L2: "sensor.pv2", CONF_FV_PRODUCTION_L3: "sensor.pv3"},
     )
     assert result["step_id"] == "pv_forecast"
     assert _required(result) == {CONF_PV_FORECAST, CONF_PV_FORECAST_TOMORROW}
@@ -407,8 +421,8 @@ async def test_solar_sensor_form_and_optional_phases(hass: HomeAssistant):
     assert data[CONF_FUSE_GRID_IMPORT_L1] == "sensor.import_l1"
     assert data[CONF_FUSE_CHARGER_CURRENT_L2] == "sensor.ev_current_l2"
     assert data[CONF_CHARGING_POWER_L2] is None
-    # external load balancing off: the moved meter keys are kept
-    assert data[CONF_MAIN_FUSE_SIZE] == 0
+    # v2.41.0: the fuse size is asked in every setup
+    assert data[CONF_MAIN_FUSE_SIZE] == 20
 
 
 def _required(result) -> set[str]:

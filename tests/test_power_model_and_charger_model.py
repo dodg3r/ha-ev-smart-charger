@@ -183,17 +183,14 @@ async def test_read_production_three_phase_total_only(hass):
     assert model.watts_to_amps(4200) == pytest.approx(4200 / 690)
 
 
-def test_normalize_sensor_input_clears_missing_phases():
+def test_normalize_solar_input_clears_missing_phases():
     """Cleared optional L2/L3 fields are written as None (reconfigure)."""
-    from custom_components.ev_smart_charger.config_flow import _normalize_sensor_input
+    from custom_components.ev_smart_charger.config_flow import _normalize_solar_input
 
-    data = _normalize_sensor_input(
-        {CONF_FV_PRODUCTION: "sensor.pv_total", CONF_GRID_IMPORT_L2: "sensor.g2"}
-    )
+    data = _normalize_solar_input({CONF_FV_PRODUCTION: "sensor.pv_total"})
     assert data[CONF_FV_PRODUCTION] == "sensor.pv_total"
     assert data[CONF_FV_PRODUCTION_L2] is None
     assert data[CONF_FV_PRODUCTION_L3] is None
-    assert data[CONF_GRID_IMPORT_L2] == "sensor.g2"
 
 
 def test_read_battery_discharge_none_when_unconfigured():

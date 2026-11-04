@@ -11,7 +11,7 @@ from custom_components.ev_smart_charger import sensor as sensor_platform
 from custom_components.ev_smart_charger.charger_controller import ChargerController
 from custom_components.ev_smart_charger.config_flow import (
     EVSCConfigFlow,
-    _normalize_main_fuse_input,
+    _normalize_meter_input,
 )
 from custom_components.ev_smart_charger.const import (
     CHARGER_MODEL_GENERIC,
@@ -532,77 +532,32 @@ async def test_guard_power_fallback(hass):
 # ----------------------------------------------------------------------------
 
 
-async def test_main_fuse_step_requires_readings_when_enabled(hass):
+async def test_meter_step_stores_normalized_data(hass):
+    """v2.41.0: the meter step (every setup) stores the fuse size as int."""
+    from .test_config_flow import METER_INPUT
+
     flow = EVSCConfigFlow()
     flow.hass = hass
     flow.mode_info = {CONF_PHASE_MODE: PHASE_MODE_THREE}
 
-    result = await flow.async_step_main_fuse({CONF_MAIN_FUSE_SIZE: "25"})
+    result = await flow.async_step_meter(dict(METER_INPUT, **{CONF_MAIN_FUSE_SIZE: "25"}))
 
-    assert result["step_id"] == "main_fuse"
-    assert result["errors"] == {
-        CONF_FUSE_GRID_CURRENT_L1: "fuse_phase_reading_required",
-        CONF_FUSE_GRID_CURRENT_L2: "fuse_phase_reading_required",
-        CONF_FUSE_GRID_CURRENT_L3: "fuse_phase_reading_required",
-    }
-
-
-async def test_main_fuse_step_accepts_import_power_from_sensors_step(hass):
-    """v2.39.0: the per-phase import power mapped in the sensors step counts
-    as the reading of that phase."""
-    flow = EVSCConfigFlow()
-    flow.hass = hass
-    flow.sensor_info = {
-        CONF_FUSE_GRID_IMPORT_L1: "sensor.p_in1",
-        CONF_FUSE_GRID_IMPORT_L2: "sensor.p_in2",
-        CONF_FUSE_GRID_IMPORT_L3: "sensor.p_in3",
-    }
-
-    result = await flow.async_step_main_fuse({CONF_MAIN_FUSE_SIZE: "25"})
-
-    assert result["step_id"] == "pv_forecast"
+    assert result["step_id"] == "entities"
     assert flow.fuse_info[CONF_MAIN_FUSE_SIZE] == 25
-
-
-async def test_main_fuse_step_stores_normalized_data(hass):
-    flow = EVSCConfigFlow()
-    flow.hass = hass
-    flow.mode_info = {CONF_PHASE_MODE: PHASE_MODE_THREE}
-    flow.sensor_info = {CONF_FUSE_GRID_IMPORT_L3: "sensor.p_in3"}
-    payload = {
-        CONF_MAIN_FUSE_SIZE: "25",
-        CONF_FUSE_GRID_CURRENT_L1: "sensor.i1",
-        CONF_FUSE_GRID_CURRENT_L2: "sensor.i2",
-    }
-
-    result = await flow.async_step_main_fuse(payload)
-
-    # v2.39.0: the meter step comes after the sensors step.
-    assert result["step_id"] == "pv_forecast"
-    assert flow.fuse_info[CONF_MAIN_FUSE_SIZE] == 25
-    assert flow.fuse_info[CONF_FUSE_GRID_CURRENT_L1] == "sensor.i1"
-    assert flow.fuse_info[CONF_FUSE_GRID_CURRENT_L3] is None
-    # the meter step does not touch the keys of the other steps
-    assert CONF_FUSE_GRID_IMPORT_L3 not in flow.fuse_info
+    assert flow.fuse_info[CONF_FUSE_GRID_CURRENT_L1] == "sensor.current_l1"
+    assert flow.fuse_info[CONF_FUSE_GRID_IMPORT_L3] == "sensor.import_l3"
+    # the meter step does not touch the charger's keys
     assert CONF_FUSE_CHARGER_CURRENT not in flow.fuse_info
 
 
-async def test_main_fuse_off_skips_validation(hass):
-    flow = EVSCConfigFlow()
-    flow.hass = hass
-    flow.mode_info = {CONF_PHASE_MODE: PHASE_MODE_THREE}
-
-    result = await flow.async_step_main_fuse({CONF_MAIN_FUSE_SIZE: "0"})
-
-    assert result["step_id"] == "pv_forecast"
-    assert flow.fuse_info[CONF_MAIN_FUSE_SIZE] == 0
-
-
-def test_normalize_clears_removed_mapping():
-    """Leaving a field empty must remove the old mapping on reconfigure."""
-    data = _normalize_main_fuse_input({CONF_MAIN_FUSE_SIZE: "25"})
-    assert data[CONF_FUSE_GRID_CURRENT_L2] is None
-    assert data[CONF_FUSE_GRID_VOLTAGE_L1] is None
+def test_normalize_clears_legacy_grid_mapping():
+    """The net grid sensor replaces the old split import/export sensors."""
+    data = _normalize_meter_input({CONF_MAIN_FUSE_SIZE: "25"})
+    assert data[CONF_MAIN_FUSE_SIZE] == 25
+    assert data["grid_export"] is None
+    assert data["grid_import_l2"] is None
+    assert data["home_consumption"] is None
+    assert data["grid_available"] is None
     assert CONF_FUSE_CHARGER_CURRENT not in data
 
 

@@ -208,13 +208,14 @@ async def _initial_flow_to_cars(hass):
     result = await _to_features(hass)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {"has_solar": False, "has_home_battery": False, "load_balancing": "charger"},
+        {"has_solar": False, "has_home_battery": False, "load_balancing": "none"},
     )
+    from .test_config_flow import METER_INPUT
+
+    assert result["step_id"] == "meter"
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], METER_INPUT)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], ENTITIES)
-    assert result["step_id"] == "sensors"
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {"grid_import": "sensor.grid"}
-    )
+    assert result["step_id"] == "notifications"
     hass.services.async_register("notify", "mobile_app_phone", lambda call: None)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"notify_services": [], "car_owner": "person.test"}

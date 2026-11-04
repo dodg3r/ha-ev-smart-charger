@@ -48,7 +48,13 @@ from custom_components.ev_smart_charger.const import (
 from custom_components.ev_smart_charger.dashboard_manager import _build_card_config
 from custom_components.ev_smart_charger.priority_balancer import PriorityBalancer
 
-from .test_config_flow import CHARGER_INPUT, EXTERNAL_INPUT, FORECAST_INPUT, SOLAR_SENSORS
+from .test_config_flow import (
+    CHARGER_INPUT,
+    EXTERNAL_INPUT,
+    FORECAST_INPUT,
+    METER_INPUT,
+    SOLAR_INPUT,
+)
 
 DISPLAY_ONLY = {
     CONF_SOC_CAR: "sensor.car_soc",
@@ -130,10 +136,13 @@ async def test_reconfigure_to_display_only_keeps_the_soc_sensor(hass):
             CONF_LOAD_BALANCING: LOAD_BALANCING_NONE,
         }
     )
+    await flow.async_step_reconfigure_meter(dict(METER_INPUT))
     await flow.async_step_reconfigure_entities(dict(CHARGER_INPUT))
-    await flow.async_step_reconfigure_sensors(
-        {CONF_SOC_HOME: "sensor.home_soc", **SOLAR_SENSORS}
+    await flow.async_step_reconfigure_solar(dict(SOLAR_INPUT))
+    result = await flow.async_step_reconfigure_battery(
+        {CONF_SOC_HOME: "sensor.home_soc", CONF_BATTERY_POWER: "sensor.batt"}
     )
+    assert result["step_id"] == "reconfigure_pv_forecast"
     await flow.async_step_reconfigure_pv_forecast(dict(FORECAST_INPUT))
     hass.services.async_register("notify", "mobile_app_phone", lambda call: None)
     await flow.async_step_reconfigure_notifications(

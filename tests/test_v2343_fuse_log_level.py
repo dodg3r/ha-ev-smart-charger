@@ -16,6 +16,7 @@ def _guard(hass, last_state):
     guard.logger = EVSCLogger("MAIN FUSE GUARD")
     guard._last_state = last_state
     guard._invalid_unwarned = False
+    guard.adjusts = True
     return guard
 
 

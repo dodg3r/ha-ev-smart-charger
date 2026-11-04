@@ -656,6 +656,8 @@ const FRONTEND_LOCALES = {
     "reason.sensor": "A sensor has no value · check the mapped sensors",
     "reason.boost": "Boost in control",
     "status.capped_by_fuse": "capped by main fuse ({phase})",
+    "status.lb_should_lower": "load balancing should lower to {amps} A ({phase})",
+    "status.lb_should_pause": "load balancing should pause charging ({phase} at {grid} A of {fuse} A)",
     "status.no_car": "No car connected",
     "status.charger_offline": "Charger not responding · status unavailable",
     "status.manual_stop": "Stopped manually · Stop Charging is on",
@@ -880,6 +882,8 @@ const FRONTEND_LOCALES = {
     "reason.sensor": "En sensor saknar värde · kontrollera de mappade sensorerna",
     "reason.boost": "Boost styr",
     "status.capped_by_fuse": "begränsad av huvudsäkringen ({phase})",
+    "status.lb_should_lower": "lastbalanseringen borde sänka till {amps} A ({phase})",
+    "status.lb_should_pause": "lastbalanseringen borde pausa laddningen ({phase} på {grid} A av {fuse} A)",
     "status.no_car": "Ingen bil ansluten",
     "status.charger_offline": "Laddaren svarar inte · status otillgänglig",
     "status.manual_stop": "Stoppad manuellt · Stoppa laddning är på",
@@ -1104,6 +1108,8 @@ const FRONTEND_LOCALES = {
     "reason.sensor": "Un sensore non ha valore · controlla i sensori",
     "reason.boost": "Boost attivo",
     "status.capped_by_fuse": "limitata dal fusibile principale ({phase})",
+    "status.lb_should_lower": "il bilanciamento dovrebbe ridurre a {amps} A ({phase})",
+    "status.lb_should_pause": "il bilanciamento dovrebbe sospendere la ricarica ({phase} a {grid} A su {fuse} A)",
     "status.no_car": "Nessuna auto collegata",
     "status.charger_offline": "Il caricatore non risponde · stato non disponibile",
     "status.manual_stop": "Fermata manualmente · Blocca ricarica attivo",
@@ -1328,6 +1334,8 @@ const FRONTEND_LOCALES = {
     "reason.sensor": "Een sensor heeft geen waarde · controleer de sensoren",
     "reason.boost": "Boost actief",
     "status.capped_by_fuse": "begrensd door hoofdzekering ({phase})",
+    "status.lb_should_lower": "de balancering zou moeten verlagen naar {amps} A ({phase})",
+    "status.lb_should_pause": "de balancering zou het laden moeten pauzeren ({phase} op {grid} A van {fuse} A)",
     "status.no_car": "Geen auto aangesloten",
     "status.charger_offline": "Lader reageert niet · status niet beschikbaar",
     "status.manual_stop": "Handmatig gestopt · Laden stoppen staat aan",
@@ -2392,6 +2400,30 @@ class EvSmartChargerDashboard extends HTMLElement {
     const fuse = this._stateObj(this._entityId("fuseHeadroom"));
     const fuseState = fuse?.attributes?.state;
     const phase = fuse?.attributes?.bottleneck_phase || "";
+    // v2.41.0: display-only load balancing never pauses or caps the charger;
+    // while charging it says what load balancing should do.
+    if (fuse?.attributes?.display_only) {
+      if (!this._isDrawingNow()) return null;
+      const allowedNow = Number(fuse?.state);
+      const setpointNow = this._numericState(this._config.current_entity);
+      if (["stopped", "hold", "hard_trip"].includes(fuseState)) {
+        const gkey = phase ? `grid_current_${phase.toLowerCase()}` : null;
+        const g = gkey != null ? Number(fuse?.attributes?.[gkey]) : NaN;
+        return {
+          kind: "capped",
+          text: this._tf("status.lb_should_pause", {
+            phase,
+            grid: Number.isFinite(g) ? Math.abs(g).toFixed(1) : "?",
+            fuse: fuse?.attributes?.main_fuse_a ?? "?",
+          }),
+        };
+      }
+      if (Number.isFinite(allowedNow) && allowedNow > 0 && setpointNow != null
+          && setpointNow > allowedNow) {
+        return { kind: "capped", text: this._tf("status.lb_should_lower", { amps: allowedNow, phase }) };
+      }
+      return null;
+    }
     // v2.24.1: "stopped"/"hold" also mean "no room to start" while nothing
     // charges. Only call it a pause when the guard really paused the charger.
     const pausedByGuard = fuse?.attributes?.charger_paused;

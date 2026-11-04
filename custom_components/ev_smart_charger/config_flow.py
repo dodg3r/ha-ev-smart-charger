@@ -75,7 +75,7 @@ from .const import (
     CONF_HAS_SOLAR,
     CONF_LOAD_BALANCING,
     DEFAULT_LOAD_BALANCING_FUSE_SIZE,
-    LOAD_BALANCING_CHARGER,
+    LOAD_BALANCING_DISPLAY,
     LOAD_BALANCING_INTEGRATION,
     LOAD_BALANCING_NONE,
     LOAD_BALANCING_OPTIONS,
@@ -178,38 +178,56 @@ def _normalize_charger_input(
     return data, {"base": "charger_control_required"}
 
 
-_OPTIONAL_PHASE_POWER_KEYS = (
-    CONF_FV_PRODUCTION_L2,
-    CONF_FV_PRODUCTION_L3,
+# v2.41.0: sensors from earlier versions that the meter step replaces (the
+# net grid sensor is the single CONF_GRID_IMPORT; house consumption is
+# computed). Written as None so a reconfigure really drops them.
+_LEGACY_GRID_KEYS = (
     CONF_GRID_IMPORT_L2,
     CONF_GRID_IMPORT_L3,
-    # v2.38.0 / v2.39.0: with solar panels the net grid sensor is the single
-    # CONF_GRID_IMPORT and the old separate export sensors are cleared;
-    # home consumption is always computed, so an old mapping is cleared.
     CONF_GRID_EXPORT,
     CONF_GRID_EXPORT_L2,
     CONF_GRID_EXPORT_L3,
     CONF_HOME_CONSUMPTION,
     CONF_HOME_CONSUMPTION_L2,
     CONF_HOME_CONSUMPTION_L3,
-    # v2.30.0: optional car charge limit.
-    CONF_EV_SOC_LIMIT,
-    # v2.36.0: optional battery-power sensor (now in the sensors step).
-    CONF_BATTERY_POWER,
-    CONF_GRID_AVAILABLE,
+)
+
+# v2.41.0: the electricity meter, asked in every setup (all required except
+# grid available).
+_METER_KEYS = (
+    CONF_GRID_IMPORT,
+    *FUSE_GRID_IMPORT_KEYS,
+    *FUSE_GRID_EXPORT_KEYS,
+    *FUSE_GRID_CURRENT_KEYS,
+    *FUSE_GRID_VOLTAGE_KEYS,
 )
 
 
-def _normalize_sensor_input(user_input: dict[str, Any]) -> dict[str, Any]:
-    """Write cleared optional L2/L3 power sensors as None (v2.16.1).
-
-    An empty optional field is absent from ``user_input``; without this the
-    reconfigure merge would keep the previously mapped phase sensor.
-    """
-    data = dict(user_input)
-    for key in _OPTIONAL_PHASE_POWER_KEYS:
-        data[key] = data.get(key) or None
+def _normalize_meter_input(user_input: dict[str, Any]) -> dict[str, Any]:
+    """Turn the meter form into entry data (v2.41.0)."""
+    data = {key: user_input.get(key) or None for key in _METER_KEYS}
+    data[CONF_MAIN_FUSE_SIZE] = get_main_fuse_size(user_input) or DEFAULT_LOAD_BALANCING_FUSE_SIZE
+    data[CONF_GRID_AVAILABLE] = user_input.get(CONF_GRID_AVAILABLE) or None
+    for key in _LEGACY_GRID_KEYS:
+        data[key] = None
     return data
+
+
+def _normalize_solar_input(user_input: dict[str, Any]) -> dict[str, Any]:
+    """Solar production; cleared L2/L3 written as None (v2.41.0)."""
+    return {
+        CONF_FV_PRODUCTION: user_input.get(CONF_FV_PRODUCTION),
+        CONF_FV_PRODUCTION_L2: user_input.get(CONF_FV_PRODUCTION_L2) or None,
+        CONF_FV_PRODUCTION_L3: user_input.get(CONF_FV_PRODUCTION_L3) or None,
+    }
+
+
+def _normalize_battery_input(user_input: dict[str, Any]) -> dict[str, Any]:
+    """Home battery SOC and power (v2.41.0)."""
+    return {
+        CONF_SOC_HOME: user_input.get(CONF_SOC_HOME),
+        CONF_BATTERY_POWER: user_input.get(CONF_BATTERY_POWER),
+    }
 
 
 def _merge_entry_data(base_data: dict[str, Any], *sections: dict[str, Any]) -> dict[str, Any]:
@@ -341,85 +359,14 @@ def _charger_model_schema(hass, current_data: dict[str, Any] | None = None) -> v
     )
 
 
-def _sensor_schema(
-    current_data: dict[str, Any] | None = None,
-    *,
-    solar: bool = True,
-    home_battery: bool = True,
-) -> vol.Schema:
-    """Build the sensor mapping schema.
+def _meter_schema(current_data: dict[str, Any] | None = None) -> vol.Schema:
+    """The electricity meter (v2.41.0): asked in every setup.
 
-    v2.39.0 with solar panels, all required unless noted:
-      * solar production: total or L1, L2/L3 optional;
-      * net grid power (CONF_GRID_IMPORT): one sensor, positive when buying,
-        negative when selling - used directly for the surplus;
-      * grid import power L1, L2, L3 and grid export power L1, L2, L3 (the
-        meter's per-phase values, also read by the main-fuse protection).
-    Without solar panels: grid import (L2/L3 and a separate export optional),
-    as before. The charger's power and current are in the charger step.
+    Main fuse size, net grid power (positive when buying, negative when
+    selling), and import power, export power, current and voltage per phase.
+    Grid available is optional.
     """
     current_data = current_data or {}
-
-    # v2.32.0: the car's own sensors (SOC, charge limit) live in the car
-    # profiles at the end of the flow, not here.
-    fields: dict[Any, Any] = {}
-    if home_battery:
-        fields[
-            vol.Required(CONF_SOC_HOME, **_field_config(current_data.get(CONF_SOC_HOME)))
-        ] = _entity_selector(SOC_INPUT_DOMAINS)
-        # v2.36.0: the signed battery-power sensor moved here from the removed
-        # Hybrid Inverter Mode step.
-        fields[
-            vol.Optional(CONF_BATTERY_POWER, **_field_config(current_data.get(CONF_BATTERY_POWER)))
-        ] = _entity_selector("sensor")
-
-    def required(key: str) -> None:
-        fields[vol.Required(key, **_field_config(current_data.get(key)))] = _entity_selector("sensor")
-
-    def optional(key: str) -> None:
-        fields[vol.Optional(key, **_suggested(current_data, key))] = _entity_selector("sensor")
-
-    if solar:
-        required(CONF_FV_PRODUCTION)
-        optional(CONF_FV_PRODUCTION_L2)
-        optional(CONF_FV_PRODUCTION_L3)
-        required(CONF_GRID_IMPORT)
-        for key in (*FUSE_GRID_IMPORT_KEYS, *FUSE_GRID_EXPORT_KEYS):
-            required(key)
-    else:
-        required(CONF_GRID_IMPORT)
-        for key in (
-            CONF_GRID_IMPORT_L2,
-            CONF_GRID_IMPORT_L3,
-            CONF_GRID_EXPORT,
-            CONF_GRID_EXPORT_L2,
-            CONF_GRID_EXPORT_L3,
-        ):
-            optional(key)
-
-    # v2.6.0 (issue #36): optional grid-availability binary_sensor.
-    fields[
-        vol.Optional(CONF_GRID_AVAILABLE, **_suggested(current_data, CONF_GRID_AVAILABLE))
-    ] = _entity_selector("binary_sensor")
-
-    return vol.Schema(fields)
-
-
-# v2.39.0: the per-phase import / export power and the charger current moved
-# to the sensors / charger steps; the meter step keeps these.
-_FUSE_STEP_KEYS = (*FUSE_GRID_CURRENT_KEYS, *FUSE_GRID_VOLTAGE_KEYS)
-
-
-def _main_fuse_schema(hass, current_data: dict[str, Any] | None = None) -> vol.Schema:
-    """Build the main-fuse protection step schema (v2.14.0).
-
-    Fuse size plus the meter's current and voltage per phase (optional at
-    schema level; ``_validate_main_fuse`` checks that every phase has a
-    current or an import power reading).
-    """
-    current_data = current_data or {}
-    # v2.17.0: the step is only shown when the user chose load balancing by
-    # the integration, so "off" is not offered here.
     sizes = [size for size in MAIN_FUSE_SIZES if size > 0]
     current_size = get_main_fuse_size(current_data) or DEFAULT_LOAD_BALANCING_FUSE_SIZE
     if current_size not in sizes:
@@ -428,47 +375,50 @@ def _main_fuse_schema(hass, current_data: dict[str, Any] | None = None) -> vol.S
     fields: dict[Any, Any] = {
         vol.Required(CONF_MAIN_FUSE_SIZE, default=str(current_size)): selector.SelectSelector(
             selector.SelectSelectorConfig(
-                options=[
-                    {"value": str(size), "label": f"{size} A"}
-                    for size in sizes
-                ],
+                options=[{"value": str(size), "label": f"{size} A"} for size in sizes],
                 mode=selector.SelectSelectorMode.DROPDOWN,
             )
         )
     }
-    for key in _FUSE_STEP_KEYS:
-        fields[vol.Optional(key, **_suggested(current_data, key))] = _entity_selector("sensor")
+    for key in _METER_KEYS:
+        fields[vol.Required(key, **_field_config(current_data.get(key)))] = _entity_selector("sensor")
+    fields[
+        vol.Optional(CONF_GRID_AVAILABLE, **_suggested(current_data, CONF_GRID_AVAILABLE))
+    ] = _entity_selector("binary_sensor")
     return vol.Schema(fields)
 
 
-def _normalize_main_fuse_input(user_input: dict[str, Any]) -> dict[str, Any]:
-    """Turn the form values into entry data.
+def _solar_schema(current_data: dict[str, Any] | None = None) -> vol.Schema:
+    """Solar production: total or L1, L2/L3 optional (v2.41.0)."""
+    current_data = current_data or {}
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_FV_PRODUCTION, **_field_config(current_data.get(CONF_FV_PRODUCTION))
+            ): _entity_selector("sensor"),
+            vol.Optional(
+                CONF_FV_PRODUCTION_L2, **_suggested(current_data, CONF_FV_PRODUCTION_L2)
+            ): _entity_selector("sensor"),
+            vol.Optional(
+                CONF_FV_PRODUCTION_L3, **_suggested(current_data, CONF_FV_PRODUCTION_L3)
+            ): _entity_selector("sensor"),
+        }
+    )
 
-    The fuse size becomes an int and every meter-step key is written
-    explicitly (None when left empty), so clearing a field during reconfigure
-    really removes the old mapping.
-    """
-    data: dict[str, Any] = {CONF_MAIN_FUSE_SIZE: get_main_fuse_size(user_input)}
-    for key in _FUSE_STEP_KEYS:
-        data[key] = user_input.get(key) or None
-    return data
 
-
-def _validate_main_fuse(data: dict[str, Any]) -> dict[str, str]:
-    """Every phase needs a meter current or an import power reading.
-
-    ``data`` is the merged entry data, so the import power mapped in the
-    sensors step counts.
-    """
-    if not get_main_fuse_size(data):
-        return {}
-    errors: dict[str, str] = {}
-    for index in range(3):
-        if not data.get(FUSE_GRID_CURRENT_KEYS[index]) and not data.get(
-            FUSE_GRID_IMPORT_KEYS[index]
-        ):
-            errors[FUSE_GRID_CURRENT_KEYS[index]] = "fuse_phase_reading_required"
-    return errors
+def _battery_schema(current_data: dict[str, Any] | None = None) -> vol.Schema:
+    """Home battery SOC and signed power, both required (v2.41.0)."""
+    current_data = current_data or {}
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_SOC_HOME, **_field_config(current_data.get(CONF_SOC_HOME))
+            ): _entity_selector(SOC_INPUT_DOMAINS),
+            vol.Required(
+                CONF_BATTERY_POWER, **_field_config(current_data.get(CONF_BATTERY_POWER))
+            ): _entity_selector("sensor"),
+        }
+    )
 
 
 def _pv_forecast_schema(current_data: dict[str, Any] | None = None) -> vol.Schema:
@@ -566,18 +516,18 @@ def _dashboard_schema(current_data: dict[str, Any] | None = None) -> vol.Schema:
 _LOAD_BALANCING_LABELS: dict[str, dict[str, str]] = {
     "en": {
         LOAD_BALANCING_NONE: "None",
-        LOAD_BALANCING_INTEGRATION: "Yes, this integration protects the main fuse",
-        LOAD_BALANCING_CHARGER: "Yes, the charger handles it itself",
+        LOAD_BALANCING_DISPLAY: "Display only (show what load balancing should do)",
+        LOAD_BALANCING_INTEGRATION: "Display and adjust (this integration protects the main fuse)",
     },
     "it": {
         LOAD_BALANCING_NONE: "Nessuno",
-        LOAD_BALANCING_INTEGRATION: "Sì, questa integrazione protegge il contatore",
-        LOAD_BALANCING_CHARGER: "Sì, lo gestisce il caricatore",
+        LOAD_BALANCING_DISPLAY: "Solo visualizzazione (mostra cosa dovrebbe fare il bilanciamento)",
+        LOAD_BALANCING_INTEGRATION: "Visualizza e regola (questa integrazione protegge il contatore)",
     },
     "nl": {
         LOAD_BALANCING_NONE: "Geen",
-        LOAD_BALANCING_INTEGRATION: "Ja, deze integratie bewaakt de hoofdzekering",
-        LOAD_BALANCING_CHARGER: "Ja, de lader regelt het zelf",
+        LOAD_BALANCING_DISPLAY: "Alleen tonen (laat zien wat de balancering zou moeten doen)",
+        LOAD_BALANCING_INTEGRATION: "Tonen en regelen (deze integratie bewaakt de hoofdzekering)",
     },
 }
 
@@ -666,10 +616,8 @@ def _apply_features(data: dict[str, Any]) -> dict[str, Any]:
     if not has_solar(data):
         for key in _SOLAR_KEYS:
             data[key] = None
-    if get_load_balancing(data) != LOAD_BALANCING_INTEGRATION:
-        data[CONF_MAIN_FUSE_SIZE] = 0
-        for key in _FUSE_STEP_KEYS:
-            data[key] = None
+    # v2.41.0: a saved "the charger handles it" becomes "none".
+    data[CONF_LOAD_BALANCING] = get_load_balancing(data)
     # v2.39.0: single-phase installs were removed.
     data[CONF_PHASE_MODE] = PHASE_MODE_THREE
     return data
@@ -680,11 +628,11 @@ _STEP_ORDER = (
     "name",
     "model",
     "features",
+    # v2.41.0: the sensors are asked per part: meter, charger, solar, battery.
+    "meter",
     "entities",
-    # v2.39.0: the sensors step comes first again; the meter step's check
-    # uses the import power mapped there.
-    "sensors",
-    "fuse",
+    "solar",
+    "battery",
     "forecast",
     "notifications",
     "external",
@@ -699,9 +647,10 @@ _STEP_IDS: dict[str, dict[str, str]] = {
         "name": "user",
         "model": "charger_model",
         "features": "features",
+        "meter": "meter",
         "entities": "entities",
-        "sensors": "sensors",
-        "fuse": "main_fuse",
+        "solar": "solar",
+        "battery": "battery",
         "forecast": "pv_forecast",
         "notifications": "notifications",
         "external": "external_connectors",
@@ -713,9 +662,10 @@ _STEP_IDS: dict[str, dict[str, str]] = {
         # entry point of reconfigure and options.
         "model": "reconfigure",
         "features": "reconfigure_features",
+        "meter": "reconfigure_meter",
         "entities": "reconfigure_entities",
-        "sensors": "reconfigure_sensors",
-        "fuse": "reconfigure_main_fuse",
+        "solar": "reconfigure_solar",
+        "battery": "reconfigure_battery",
         "forecast": "reconfigure_pv_forecast",
         "notifications": "reconfigure_notifications",
         "external": "reconfigure_external_connectors",
@@ -725,9 +675,10 @@ _STEP_IDS: dict[str, dict[str, str]] = {
     "options": {
         "model": "init",
         "features": "features",
+        "meter": "meter",
         "entities": "entities",
-        "sensors": "sensors",
-        "fuse": "main_fuse",
+        "solar": "solar",
+        "battery": "battery",
         "forecast": "pv_forecast",
         "notifications": "notifications",
         "external": "external_connectors",
@@ -743,9 +694,9 @@ def _active_steps(kind: str, features: dict[str, Any]) -> list[str]:
     for step in _STEP_ORDER:
         if step not in _STEP_IDS[kind]:
             continue
-        if step == "forecast" and not has_solar(features):
+        if step in ("solar", "forecast") and not has_solar(features):
             continue
-        if step == "fuse" and get_load_balancing(features) != LOAD_BALANCING_INTEGRATION:
+        if step == "battery" and not wants_home_battery(features):
             continue
         steps.append(step)
     return steps
@@ -838,27 +789,40 @@ class _StepNavigator:
         index = steps.index(logical) + 1 if logical in steps else len(steps)
         return {"step": str(index), "total_steps": str(len(steps))}
 
-    async def _fuse_step(
-        self, step_id: str, user_input: dict[str, Any] | None, current: dict[str, Any]
-    ):
-        """Shared main-fuse step for the three flows."""
-        errors: dict[str, str] = {}
+    async def _meter_step(self, step_id: str, user_input: dict[str, Any] | None):
+        """Electricity meter, every setup (v2.41.0)."""
         if user_input is not None:
-            data = _normalize_main_fuse_input(user_input)
-            merged = _merge_entry_data(
-                self._base_data(), self.charger_info, self.sensor_info, data
-            )
-            errors = _validate_main_fuse(merged)
-            if not errors:
-                self.fuse_info = data
-                return await self._go_next("fuse")
-            current = data
-
+            self.fuse_info = _normalize_meter_input(user_input)
+            return await self._go_next("meter")
         return self.async_show_form(
             step_id=step_id,
-            data_schema=_main_fuse_schema(self.hass, current),
-            errors=errors,
-            description_placeholders=self._placeholders("fuse"),
+            data_schema=_meter_schema(self._base_data()),
+            errors={},
+            description_placeholders=self._placeholders("meter"),
+        )
+
+    async def _solar_step(self, step_id: str, user_input: dict[str, Any] | None):
+        """Solar production (v2.41.0)."""
+        if user_input is not None:
+            self.sensor_info.update(_normalize_solar_input(user_input))
+            return await self._go_next("solar")
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=_solar_schema(self._base_data()),
+            errors={},
+            description_placeholders=self._placeholders("solar"),
+        )
+
+    async def _battery_step(self, step_id: str, user_input: dict[str, Any] | None):
+        """Home battery (v2.41.0)."""
+        if user_input is not None:
+            self.sensor_info.update(_normalize_battery_input(user_input))
+            return await self._go_next("battery")
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=_battery_schema(self._base_data()),
+            errors={},
+            description_placeholders=self._placeholders("battery"),
         )
 
     async def _go_next(self, logical: str):
@@ -1061,27 +1025,14 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders=self._placeholders("entities"),
         )
 
-    async def async_step_sensors(self, user_input: dict[str, Any] | None = None):
-        """Handle sensor entity selection step."""
-        if user_input is not None:
-            self.sensor_info = _normalize_sensor_input(user_input)
-            return await self._go_next("sensors")
+    async def async_step_meter(self, user_input: dict[str, Any] | None = None):
+        return await self._meter_step("meter", user_input)
 
-        features = self._features()
-        return self.async_show_form(
-            step_id="sensors",
-            data_schema=_sensor_schema(
-                solar=has_solar(features),
-                home_battery=wants_home_battery(features),
-            ),
-            errors={},
-            description_placeholders=self._placeholders("sensors"),
-        )
+    async def async_step_solar(self, user_input: dict[str, Any] | None = None):
+        return await self._solar_step("solar", user_input)
 
-
-    async def async_step_main_fuse(self, user_input: dict[str, Any] | None = None):
-        """Main fuse protection: fuse size + meter current / voltage (v2.14.0)."""
-        return await self._fuse_step("main_fuse", user_input, {})
+    async def async_step_battery(self, user_input: dict[str, Any] | None = None):
+        return await self._battery_step("battery", user_input)
 
     async def async_step_pv_forecast(self, user_input: dict[str, Any] | None = None):
         """Handle PV forecast entity selection step."""
@@ -1221,30 +1172,14 @@ class EVSCConfigFlow(_StepNavigator, config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders=self._placeholders("entities"),
         )
 
-    async def async_step_reconfigure_sensors(self, user_input: dict[str, Any] | None = None):
-        """Handle sensor remapping during reconfigure."""
-        if user_input is not None:
-            self.sensor_info = _normalize_sensor_input(user_input)
-            return await self._go_next("sensors")
+    async def async_step_reconfigure_meter(self, user_input: dict[str, Any] | None = None):
+        return await self._meter_step("reconfigure_meter", user_input)
 
-        features = self._features()
-        return self.async_show_form(
-            step_id="reconfigure_sensors",
-            data_schema=_sensor_schema(
-                self._reconfigure_entry.data,
-                solar=has_solar(features),
-                home_battery=wants_home_battery(features),
-            ),
-            errors={},
-            description_placeholders=self._placeholders("sensors"),
-        )
+    async def async_step_reconfigure_solar(self, user_input: dict[str, Any] | None = None):
+        return await self._solar_step("reconfigure_solar", user_input)
 
-
-    async def async_step_reconfigure_main_fuse(self, user_input: dict[str, Any] | None = None):
-        """Main fuse protection: fuse size + meter current / voltage (v2.14.0)."""
-        return await self._fuse_step(
-            "reconfigure_main_fuse", user_input, dict(self._reconfigure_entry.data)
-        )
+    async def async_step_reconfigure_battery(self, user_input: dict[str, Any] | None = None):
+        return await self._battery_step("reconfigure_battery", user_input)
 
     async def async_step_reconfigure_pv_forecast(self, user_input: dict[str, Any] | None = None):
         """Handle PV forecast remapping during reconfigure."""
@@ -1412,27 +1347,14 @@ class EVSCOptionsFlow(_StepNavigator, config_entries.OptionsFlowWithConfigEntry)
             description_placeholders=self._placeholders("entities"),
         )
 
-    async def async_step_sensors(self, user_input: dict[str, Any] | None = None):
-        """Manage sensor entities options."""
-        if user_input is not None:
-            self.sensor_info = _normalize_sensor_input(user_input)
-            return await self._go_next("sensors")
+    async def async_step_meter(self, user_input: dict[str, Any] | None = None):
+        return await self._meter_step("meter", user_input)
 
-        features = self._features()
-        return self.async_show_form(
-            step_id="sensors",
-            data_schema=_sensor_schema(
-                self.config_entry.data,
-                solar=has_solar(features),
-                home_battery=wants_home_battery(features),
-            ),
-            description_placeholders=self._placeholders("sensors"),
-        )
+    async def async_step_solar(self, user_input: dict[str, Any] | None = None):
+        return await self._solar_step("solar", user_input)
 
-
-    async def async_step_main_fuse(self, user_input: dict[str, Any] | None = None):
-        """Main fuse protection: fuse size + meter current / voltage (v2.14.0)."""
-        return await self._fuse_step("main_fuse", user_input, dict(self.config_entry.data))
+    async def async_step_battery(self, user_input: dict[str, Any] | None = None):
+        return await self._battery_step("battery", user_input)
 
     async def async_step_pv_forecast(self, user_input: dict[str, Any] | None = None):
         """Manage PV forecast entity options."""

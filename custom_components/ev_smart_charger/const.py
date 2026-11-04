@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.40.0"
+VERSION = "2.41.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -273,12 +273,16 @@ CONF_HAS_HOME_BATTERY = "has_home_battery"
 CONF_HOME_BATTERY_CONTROL = "home_battery_control"
 CONF_LOAD_BALANCING = "load_balancing"
 LOAD_BALANCING_NONE = "none"
+# v2.41.0: "display" computes and shows what load balancing should do but
+# never changes the charger; "integration" shows and adjusts.
+LOAD_BALANCING_DISPLAY = "display"
 LOAD_BALANCING_INTEGRATION = "integration"
+# Before v2.41.0: "the charger handles it". Read as "none".
 LOAD_BALANCING_CHARGER = "charger"
 LOAD_BALANCING_OPTIONS = [
     LOAD_BALANCING_NONE,
+    LOAD_BALANCING_DISPLAY,
     LOAD_BALANCING_INTEGRATION,
-    LOAD_BALANCING_CHARGER,
 ]
 # Fuse size preselected when load balancing is first switched on.
 DEFAULT_LOAD_BALANCING_FUSE_SIZE = 20
@@ -839,8 +843,22 @@ def get_main_fuse_size(config: dict) -> int:
 
 
 def is_fuse_protection_enabled(config: dict) -> bool:
-    """Return True when main-fuse protection is configured (v2.14.0)."""
-    return get_main_fuse_size(config) > 0
+    """Return True when the main-fuse calculation runs (v2.14.0).
+
+    v2.41.0: the fuse size is asked in every setup, so it is the load
+    balancing choice that decides: "display" or "integration".
+    """
+    return get_main_fuse_size(config) > 0 and get_load_balancing(config) in (
+        LOAD_BALANCING_DISPLAY,
+        LOAD_BALANCING_INTEGRATION,
+    )
+
+
+def fuse_protection_adjusts(config: dict) -> bool:
+    """True when the integration may change the charger for the fuse (v2.41.0)."""
+    return is_fuse_protection_enabled(config) and (
+        get_load_balancing(config) == LOAD_BALANCING_INTEGRATION
+    )
 
 
 def get_expected_entity_count(config: dict) -> int:
@@ -909,7 +927,12 @@ def get_load_balancing(config: dict) -> str:
     value = config.get(CONF_LOAD_BALANCING)
     if value in LOAD_BALANCING_OPTIONS:
         return value
-    return LOAD_BALANCING_INTEGRATION if is_fuse_protection_enabled(config) else LOAD_BALANCING_NONE
+    if value == LOAD_BALANCING_CHARGER:
+        # v2.41.0: "the charger handles it" was replaced by "display".
+        return LOAD_BALANCING_NONE
+    if value is None and get_main_fuse_size(config) > 0:
+        return LOAD_BALANCING_INTEGRATION
+    return LOAD_BALANCING_NONE
 
 
 def is_three_phase(config: dict) -> bool:

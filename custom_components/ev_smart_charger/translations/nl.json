@@ -41,74 +41,30 @@
           "fuse_charger_current_l3": "Koppel L2 en L3 om te zien op hoeveel fasen de auto laadt."
         }
       },
-      "sensors": {
-        "title": "Energiesensoren - Stap {step}/{total_steps}",
-        "description": "Koppel de energiesensoren. Met zonnepanelen is elk veld verplicht, behalve de velden die als optioneel zijn aangegeven. Het huisverbruik wordt door de integratie berekend (productie + netto net − laadvermogen − batterijvermogen), er is geen verbruikssensor nodig.",
+      "solar": {
+        "title": "Zonnepanelen - Stap {step}/{total_steps}",
+        "description": "Koppel de zonneproductie in W of kW: het totaal, of fase L1 met L2 en L3 in de optionele velden (die worden opgeteld).",
         "data": {
-          "soc_car": "EV-batterij-SOC",
-          "ev_soc_limit": "EV-laadlimiet (optioneel)",
-          "soc_home": "Thuisbatterij-SOC",
-          "fv_production": "Zonneproductie",
-          "grid_import": "Netto netvermogen",
+          "fv_production": "Zonneproductie (totaal of L1)",
           "fv_production_l2": "Zonneproductie L2 (optioneel)",
-          "fv_production_l3": "Zonneproductie L3 (optioneel)",
-          "grid_import_l2": "Netafname L2 (optioneel)",
-          "grid_import_l3": "Netafname L3 (optioneel)",
-          "grid_export": "Teruglevering (optioneel)",
-          "grid_export_l2": "Teruglevering L2 (optioneel)",
-          "grid_export_l3": "Teruglevering L3 (optioneel)",
-          "grid_available": "Net beschikbaar (binaire sensor)",
-          "battery_power": "Batterijvermogenssensor (W, met teken)",
-          "fuse_grid_import_l1": "Netafname L1 (W)",
-          "fuse_grid_export_l1": "Teruglevering L1 (W)",
-          "fuse_grid_import_l2": "Netafname L2 (W)",
-          "fuse_grid_export_l2": "Teruglevering L2 (W)",
-          "fuse_grid_import_l3": "Netafname L3 (W)",
-          "fuse_grid_export_l3": "Teruglevering L3 (W)"
+          "fv_production_l3": "Zonneproductie L3 (optioneel)"
         },
         "data_description": {
-          "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
-          "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten (bijv. het doel-laadniveau van de auto-integratie). De waarde telt als vol: EV-doelen worden hierop begrensd en een auto op de limiet wordt niet gestart. Leeg laten voor 100 %.",
-          "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
           "fv_production": "Zonneproductie in W of kW: het totaal, of fase L1 wanneer L2 en L3 hieronder gekoppeld zijn.",
-          "grid_import": "Eén sensor in W of kW: positief bij afname van het net, negatief bij teruglevering (bijvoorbeeld de netto sensor gemaakt voor het Energie-dashboard). Direct gebruikt voor het overschot.",
-          "fv_production_l2": "Alleen wanneer het productieveld L1 bevat.",
-          "fv_production_l3": "Alleen wanneer het productieveld L1 bevat.",
-          "grid_import_l2": "Alleen zonder zonnepanelen, wanneer het veld hierboven L1 bevat.",
-          "grid_import_l3": "Alleen zonder zonnepanelen, wanneer het veld hierboven L1 bevat.",
-          "grid_available": "Optioneel. Binaire sensor die de netbeschikbaarheid aangeeft (on = net aanwezig, off = net weg). Indien toegewezen en off stopt de grid-modus van Night Smart Charge, zodat de thuisbatterij tijdens een stroomstoring niet wordt leeggetrokken (handig bij hybride Battery First / UPS-omvormers). Laat leeg om het vorige gedrag te behouden.",
-          "battery_power": "Optioneel. Accuvermogen in watt met teken — NEGATIEF = ontladen, POSITIEF = laden. Gebruikt wanneer het huisverbruik door de integratie wordt berekend, door de dead-band-buffer van Solar Surplus en door de accubescherming van Night Smart Charge. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld.",
-          "grid_export": "Alleen zonder zonnepanelen, wanneer afname en teruglevering twee sensoren zijn.",
-          "grid_export_l2": "Alleen zonder zonnepanelen, wanneer afname en teruglevering twee sensoren zijn.",
-          "grid_export_l3": "Alleen zonder zonnepanelen, wanneer afname en teruglevering twee sensoren zijn.",
-          "fuse_grid_import_l1": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
-          "fuse_grid_export_l1": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
-          "fuse_grid_import_l2": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
-          "fuse_grid_export_l2": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
-          "fuse_grid_import_l3": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
-          "fuse_grid_export_l3": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname)."
+          "fv_production_l2": "Alleen wanneer het veld hierboven L1 bevat.",
+          "fv_production_l3": "Alleen wanneer het veld hierboven L1 bevat."
         }
       },
-      "main_fuse": {
-        "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
-        "description": "Beschermt de hoofdzekering: de laadstroom wordt begrensd zodat huislast + auto de zekering op geen enkele fase overschrijdt. Geldt voor elke laadmodus, ook Laden forceren en Boost.\n\nKies de zekeringgrootte en koppel de stroom van de meter per fase (A). Het afname- en terugleververmogen per fase uit de sensorstap geeft de richting van de stroom; zonder stroomsensor wordt de stroom uit dat vermogen berekend (en de spanning, indien gekoppeld). De laadstroom uit de laderstap wordt afgetrokken, zodat de last van de lader niet als huislast telt.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimale stroom en stopt na 2 minuten. De veiligheidsmarge kan later worden aangepast (EVSC Fuse Margin). Boven de zekering plus een harde grens (standaard 10 A, EVSC Fuse Hard Trip) stopt het laden meteen.",
+      "battery": {
+        "title": "Thuisbatterij - Stap {step}/{total_steps}",
+        "description": "Koppel de thuisbatterij. Beide velden zijn verplicht: het batterijvermogen hoort bij het berekende huisverbruik, ook als de batterij alleen wordt getoond.",
         "data": {
-          "main_fuse_size": "Grootte hoofdzekering",
-          "fuse_grid_current_l1": "Meterstroom L1 (A)",
-          "fuse_grid_current_l2": "Meterstroom L2 (A)",
-          "fuse_grid_current_l3": "Meterstroom L3 (A)",
-          "fuse_grid_voltage_l1": "Spanning L1 (V)",
-          "fuse_grid_voltage_l2": "Spanning L2 (V)",
-          "fuse_grid_voltage_l3": "Spanning L3 (V)"
+          "soc_home": "SOC thuisbatterij",
+          "battery_power": "Batterijvermogen (W, met teken)"
         },
         "data_description": {
-          "main_fuse_size": "Waarde van je hoofdzekering per fase.",
-          "fuse_grid_current_l1": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
-          "fuse_grid_current_l2": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
-          "fuse_grid_current_l3": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
-          "fuse_grid_voltage_l1": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
-          "fuse_grid_voltage_l2": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
-          "fuse_grid_voltage_l3": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning)."
+          "soc_home": "Laadtoestand van de thuisbatterij in procent.",
+          "battery_power": "Batterijvermogen met teken in W — NEGATIEF = ontladen, POSITIEF = laden. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor (zie de README)."
         }
       },
       "pv_forecast": {
@@ -167,76 +123,6 @@
         },
         "data_description": {
           "charger_model": "Tuya = vaste stappen (standaard). Generiek = stappen van 1 A voor niet-Tuya-wallboxen die de stroom als number-entiteit aanbieden."
-        }
-      },
-      "reconfigure_sensors": {
-        "title": "Energiesensoren opnieuw configureren - Stap {step}/{total_steps}",
-        "description": "Koppel de energiesensoren. Met zonnepanelen is elk veld verplicht, behalve de velden die als optioneel zijn aangegeven. Het huisverbruik wordt door de integratie berekend (productie + netto net − laadvermogen − batterijvermogen), er is geen verbruikssensor nodig.",
-        "data": {
-          "soc_car": "EV-batterij-SOC",
-          "ev_soc_limit": "EV-laadlimiet (optioneel)",
-          "soc_home": "Thuisbatterij-SOC",
-          "fv_production": "Zonneproductie",
-          "grid_import": "Netto netvermogen",
-          "fv_production_l2": "Zonneproductie L2 (optioneel)",
-          "fv_production_l3": "Zonneproductie L3 (optioneel)",
-          "grid_import_l2": "Netafname L2 (optioneel)",
-          "grid_import_l3": "Netafname L3 (optioneel)",
-          "grid_export": "Teruglevering (optioneel)",
-          "grid_export_l2": "Teruglevering L2 (optioneel)",
-          "grid_export_l3": "Teruglevering L3 (optioneel)",
-          "grid_available": "Net beschikbaar (binaire sensor)",
-          "battery_power": "Batterijvermogenssensor (W, met teken)",
-          "fuse_grid_import_l1": "Netafname L1 (W)",
-          "fuse_grid_export_l1": "Teruglevering L1 (W)",
-          "fuse_grid_import_l2": "Netafname L2 (W)",
-          "fuse_grid_export_l2": "Teruglevering L2 (W)",
-          "fuse_grid_import_l3": "Netafname L3 (W)",
-          "fuse_grid_export_l3": "Teruglevering L3 (W)"
-        },
-        "data_description": {
-          "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
-          "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten (bijv. het doel-laadniveau van de auto-integratie). De waarde telt als vol: EV-doelen worden hierop begrensd en een auto op de limiet wordt niet gestart. Leeg laten voor 100 %.",
-          "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
-          "fv_production": "Zonneproductie in W of kW: het totaal, of fase L1 wanneer L2 en L3 hieronder gekoppeld zijn.",
-          "grid_import": "Eén sensor in W of kW: positief bij afname van het net, negatief bij teruglevering (bijvoorbeeld de netto sensor gemaakt voor het Energie-dashboard). Direct gebruikt voor het overschot.",
-          "fv_production_l2": "Alleen wanneer het productieveld L1 bevat.",
-          "fv_production_l3": "Alleen wanneer het productieveld L1 bevat.",
-          "grid_import_l2": "Alleen zonder zonnepanelen, wanneer het veld hierboven L1 bevat.",
-          "grid_import_l3": "Alleen zonder zonnepanelen, wanneer het veld hierboven L1 bevat.",
-          "grid_available": "Optioneel. Binaire sensor die de netbeschikbaarheid aangeeft (on = net aanwezig, off = net weg). Indien toegewezen en off stopt de grid-modus van Night Smart Charge, zodat de thuisbatterij tijdens een stroomstoring niet wordt leeggetrokken (handig bij hybride Battery First / UPS-omvormers). Laat leeg om het vorige gedrag te behouden.",
-          "battery_power": "Optioneel. Accuvermogen in watt met teken — NEGATIEF = ontladen, POSITIEF = laden. Gebruikt wanneer het huisverbruik door de integratie wordt berekend, door de dead-band-buffer van Solar Surplus en door de accubescherming van Night Smart Charge. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld.",
-          "grid_export": "Alleen zonder zonnepanelen, wanneer afname en teruglevering twee sensoren zijn.",
-          "grid_export_l2": "Alleen zonder zonnepanelen, wanneer afname en teruglevering twee sensoren zijn.",
-          "grid_export_l3": "Alleen zonder zonnepanelen, wanneer afname en teruglevering twee sensoren zijn.",
-          "fuse_grid_import_l1": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
-          "fuse_grid_export_l1": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
-          "fuse_grid_import_l2": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
-          "fuse_grid_export_l2": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
-          "fuse_grid_import_l3": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
-          "fuse_grid_export_l3": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname)."
-        }
-      },
-      "reconfigure_main_fuse": {
-        "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
-        "description": "Beschermt de hoofdzekering: de laadstroom wordt begrensd zodat huislast + auto de zekering op geen enkele fase overschrijdt. Geldt voor elke laadmodus, ook Laden forceren en Boost.\n\nKies de zekeringgrootte en koppel de stroom van de meter per fase (A). Het afname- en terugleververmogen per fase uit de sensorstap geeft de richting van de stroom; zonder stroomsensor wordt de stroom uit dat vermogen berekend (en de spanning, indien gekoppeld). De laadstroom uit de laderstap wordt afgetrokken, zodat de last van de lader niet als huislast telt.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimale stroom en stopt na 2 minuten. De veiligheidsmarge kan later worden aangepast (EVSC Fuse Margin). Boven de zekering plus een harde grens (standaard 10 A, EVSC Fuse Hard Trip) stopt het laden meteen.",
-        "data": {
-          "main_fuse_size": "Grootte hoofdzekering",
-          "fuse_grid_current_l1": "Meterstroom L1 (A)",
-          "fuse_grid_current_l2": "Meterstroom L2 (A)",
-          "fuse_grid_current_l3": "Meterstroom L3 (A)",
-          "fuse_grid_voltage_l1": "Spanning L1 (V)",
-          "fuse_grid_voltage_l2": "Spanning L2 (V)",
-          "fuse_grid_voltage_l3": "Spanning L3 (V)"
-        },
-        "data_description": {
-          "main_fuse_size": "Waarde van je hoofdzekering per fase.",
-          "fuse_grid_current_l1": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
-          "fuse_grid_current_l2": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
-          "fuse_grid_current_l3": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
-          "fuse_grid_voltage_l1": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
-          "fuse_grid_voltage_l2": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
-          "fuse_grid_voltage_l3": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning)."
         }
       },
       "reconfigure_pv_forecast": {
@@ -317,6 +203,32 @@
           "fuse_charger_current_l3": "Koppel L2 en L3 om te zien op hoeveel fasen de auto laadt."
         }
       },
+      "reconfigure_solar": {
+        "title": "Zonnepanelen - Stap {step}/{total_steps}",
+        "description": "Koppel de zonneproductie in W of kW: het totaal, of fase L1 met L2 en L3 in de optionele velden (die worden opgeteld).",
+        "data": {
+          "fv_production": "Zonneproductie (totaal of L1)",
+          "fv_production_l2": "Zonneproductie L2 (optioneel)",
+          "fv_production_l3": "Zonneproductie L3 (optioneel)"
+        },
+        "data_description": {
+          "fv_production": "Zonneproductie in W of kW: het totaal, of fase L1 wanneer L2 en L3 hieronder gekoppeld zijn.",
+          "fv_production_l2": "Alleen wanneer het veld hierboven L1 bevat.",
+          "fv_production_l3": "Alleen wanneer het veld hierboven L1 bevat."
+        }
+      },
+      "reconfigure_battery": {
+        "title": "Thuisbatterij - Stap {step}/{total_steps}",
+        "description": "Koppel de thuisbatterij. Beide velden zijn verplicht: het batterijvermogen hoort bij het berekende huisverbruik, ook als de batterij alleen wordt getoond.",
+        "data": {
+          "soc_home": "SOC thuisbatterij",
+          "battery_power": "Batterijvermogen (W, met teken)"
+        },
+        "data_description": {
+          "soc_home": "Laadtoestand van de thuisbatterij in procent.",
+          "battery_power": "Batterijvermogen met teken in W — NEGATIEF = ontladen, POSITIEF = laden. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor (zie de README)."
+        }
+      },
       "charger_model": {
         "title": "Wallbox-model - Stap {step}/{total_steps}",
         "description": "Kies hoe je wallbox de laadstroom regelt.\n\n**Tuya** — de stroom kan alleen op vaste waarden (6, 8, 10, 13, 16, 20, 24, 32 A); om te verlagen wordt de wallbox uit- en weer ingeschakeld (een paar seconden pauze). Dit is de standaard en werkt met de meeste wallboxen — kies dit bij twijfel.\n\n**Generiek** — accepteert elke hele ampèrewaarde (6, 7, 8, … 32 A) via een `number`-entiteit: fijnere regeling en bij verlagen daalt de stroom live zonder de sessie te onderbreken.",
@@ -329,7 +241,7 @@
       },
       "features": {
         "title": "Wat heb je? - Stap {step}/{total_steps}",
-        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot en de zonneprognosestap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Load balancing** — kies *deze integratie* om de hoofdzekering vanaf hier te bewaken (vereist de sensoren per fase van je meter). Kies *de lader regelt het zelf* als je laadpaal al met een eigen meter balanceert, zodat ze elkaar niet tegenwerken.",
+        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot en de zonneprognosestap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Belastingbalancering** — houdt het huis onder de hoofdzekering tijdens het laden. *Alleen tonen*: de integratie berekent wat de balancering zou moeten doen en toont het op het dashboard, maar wijzigt de lader nooit (bijvoorbeeld bij een externe balancer). *Tonen en regelen*: de integratie verlaagt, pauzeert en verhoogt de laadstroom ook zelf.",
         "data": {
           "has_solar": "Zonnepanelen",
           "has_home_battery": "Thuisbatterij",
@@ -340,12 +252,50 @@
           "has_solar": "Uitschakelen als het huis geen zonnepanelen heeft.",
           "has_home_battery": "Inschakelen als het huis een thuisbatterij heeft waarmee rekening moet worden gehouden.",
           "home_battery_control": "Uitschakelen als de batterij een eigen sturing heeft (bijvoorbeeld een AI-optimalisatie). Ze wordt dan alleen op het dashboard getoond: laden wacht er nooit op, gebruikt haar nooit en de batterij-instellingen worden verborgen.",
-          "load_balancing": "Wie de belasting van het huis onder de hoofdzekering houdt tijdens het laden."
+          "load_balancing": "Geen, alleen tonen, of tonen en regelen."
+        }
+      },
+      "meter": {
+        "title": "Elektriciteitsmeter - Stap {step}/{total_steps}",
+        "description": "Koppel je elektriciteitsmeter. Alle velden zijn verplicht behalve net beschikbaar. Deze sensoren worden in elke opstelling gebruikt: het overschot, het berekende huisverbruik en de belastingbalancering komen er allemaal uit.\n\nDe stroom per fase krijgt zijn richting uit het afgenomen en teruggeleverde vermogen: een fase die teruglevert laat meer ruimte om te laden.",
+        "data": {
+          "main_fuse_size": "Hoofdzekering",
+          "grid_import": "Netto netvermogen",
+          "fuse_grid_import_l1": "Netafname L1 (W)",
+          "fuse_grid_import_l2": "Netafname L2 (W)",
+          "fuse_grid_import_l3": "Netafname L3 (W)",
+          "fuse_grid_export_l1": "Netteruglevering L1 (W)",
+          "fuse_grid_export_l2": "Netteruglevering L2 (W)",
+          "fuse_grid_export_l3": "Netteruglevering L3 (W)",
+          "fuse_grid_current_l1": "Netstroom L1 (A)",
+          "fuse_grid_current_l2": "Netstroom L2 (A)",
+          "fuse_grid_current_l3": "Netstroom L3 (A)",
+          "fuse_grid_voltage_l1": "Netspanning L1 (V)",
+          "fuse_grid_voltage_l2": "Netspanning L2 (V)",
+          "fuse_grid_voltage_l3": "Netspanning L3 (V)",
+          "grid_available": "Net beschikbaar (optioneel)"
+        },
+        "data_description": {
+          "main_fuse_size": "De waarde van je hoofdzekering per fase. Gebruikt door de belastingbalancering (alleen tonen, of tonen en regelen).",
+          "grid_import": "Eén sensor in W of kW: positief bij afname van het net, negatief bij teruglevering.",
+          "fuse_grid_import_l1": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
+          "fuse_grid_import_l2": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
+          "fuse_grid_import_l3": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
+          "fuse_grid_export_l1": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
+          "fuse_grid_export_l2": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
+          "fuse_grid_export_l3": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
+          "fuse_grid_current_l1": "Stroom door de hoofdzekering op deze fase, in A. Mag zonder teken zijn.",
+          "fuse_grid_current_l2": "Stroom door de hoofdzekering op deze fase, in A. Mag zonder teken zijn.",
+          "fuse_grid_current_l3": "Stroom door de hoofdzekering op deze fase, in A. Mag zonder teken zijn.",
+          "fuse_grid_voltage_l1": "Spanning op deze fase, in V.",
+          "fuse_grid_voltage_l2": "Spanning op deze fase, in V.",
+          "fuse_grid_voltage_l3": "Spanning op deze fase, in V.",
+          "grid_available": "Optioneel. Binaire sensor voor netbeschikbaarheid (aan = net aanwezig, uit = net weg). Bij uit stopt nachtladen van het net, zodat de thuisbatterij niet leegloopt tijdens een storing."
         }
       },
       "reconfigure_features": {
         "title": "Wat heb je? - Stap {step}/{total_steps}",
-        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot en de zonneprognosestap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Load balancing** — kies *deze integratie* om de hoofdzekering vanaf hier te bewaken (vereist de sensoren per fase van je meter). Kies *de lader regelt het zelf* als je laadpaal al met een eigen meter balanceert, zodat ze elkaar niet tegenwerken.",
+        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot en de zonneprognosestap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Belastingbalancering** — houdt het huis onder de hoofdzekering tijdens het laden. *Alleen tonen*: de integratie berekent wat de balancering zou moeten doen en toont het op het dashboard, maar wijzigt de lader nooit (bijvoorbeeld bij een externe balancer). *Tonen en regelen*: de integratie verlaagt, pauzeert en verhoogt de laadstroom ook zelf.",
         "data": {
           "has_solar": "Zonnepanelen",
           "has_home_battery": "Thuisbatterij",
@@ -356,7 +306,45 @@
           "has_solar": "Uitschakelen als het huis geen zonnepanelen heeft.",
           "has_home_battery": "Inschakelen als het huis een thuisbatterij heeft waarmee rekening moet worden gehouden.",
           "home_battery_control": "Uitschakelen als de batterij een eigen sturing heeft (bijvoorbeeld een AI-optimalisatie). Ze wordt dan alleen op het dashboard getoond: laden wacht er nooit op, gebruikt haar nooit en de batterij-instellingen worden verborgen.",
-          "load_balancing": "Wie de belasting van het huis onder de hoofdzekering houdt tijdens het laden."
+          "load_balancing": "Geen, alleen tonen, of tonen en regelen."
+        }
+      },
+      "reconfigure_meter": {
+        "title": "Elektriciteitsmeter - Stap {step}/{total_steps}",
+        "description": "Koppel je elektriciteitsmeter. Alle velden zijn verplicht behalve net beschikbaar. Deze sensoren worden in elke opstelling gebruikt: het overschot, het berekende huisverbruik en de belastingbalancering komen er allemaal uit.\n\nDe stroom per fase krijgt zijn richting uit het afgenomen en teruggeleverde vermogen: een fase die teruglevert laat meer ruimte om te laden.",
+        "data": {
+          "main_fuse_size": "Hoofdzekering",
+          "grid_import": "Netto netvermogen",
+          "fuse_grid_import_l1": "Netafname L1 (W)",
+          "fuse_grid_import_l2": "Netafname L2 (W)",
+          "fuse_grid_import_l3": "Netafname L3 (W)",
+          "fuse_grid_export_l1": "Netteruglevering L1 (W)",
+          "fuse_grid_export_l2": "Netteruglevering L2 (W)",
+          "fuse_grid_export_l3": "Netteruglevering L3 (W)",
+          "fuse_grid_current_l1": "Netstroom L1 (A)",
+          "fuse_grid_current_l2": "Netstroom L2 (A)",
+          "fuse_grid_current_l3": "Netstroom L3 (A)",
+          "fuse_grid_voltage_l1": "Netspanning L1 (V)",
+          "fuse_grid_voltage_l2": "Netspanning L2 (V)",
+          "fuse_grid_voltage_l3": "Netspanning L3 (V)",
+          "grid_available": "Net beschikbaar (optioneel)"
+        },
+        "data_description": {
+          "main_fuse_size": "De waarde van je hoofdzekering per fase. Gebruikt door de belastingbalancering (alleen tonen, of tonen en regelen).",
+          "grid_import": "Eén sensor in W of kW: positief bij afname van het net, negatief bij teruglevering.",
+          "fuse_grid_import_l1": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
+          "fuse_grid_import_l2": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
+          "fuse_grid_import_l3": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
+          "fuse_grid_export_l1": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
+          "fuse_grid_export_l2": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
+          "fuse_grid_export_l3": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
+          "fuse_grid_current_l1": "Stroom door de hoofdzekering op deze fase, in A. Mag zonder teken zijn.",
+          "fuse_grid_current_l2": "Stroom door de hoofdzekering op deze fase, in A. Mag zonder teken zijn.",
+          "fuse_grid_current_l3": "Stroom door de hoofdzekering op deze fase, in A. Mag zonder teken zijn.",
+          "fuse_grid_voltage_l1": "Spanning op deze fase, in V.",
+          "fuse_grid_voltage_l2": "Spanning op deze fase, in V.",
+          "fuse_grid_voltage_l3": "Spanning op deze fase, in V.",
+          "grid_available": "Optioneel. Binaire sensor voor netbeschikbaarheid (aan = net aanwezig, uit = net weg). Bij uit stopt nachtladen van het net, zodat de thuisbatterij niet leegloopt tijdens een storing."
         }
       },
       "reconfigure_cars": {
@@ -444,76 +432,6 @@
           "charger_model": "Tuya = vaste stappen (standaard). Generiek = stappen van 1 A voor niet-Tuya-wallboxen die de stroom als number-entiteit aanbieden."
         }
       },
-      "sensors": {
-        "title": "Energiesensoren bijwerken - Stap {step}/{total_steps}",
-        "description": "Koppel de energiesensoren. Met zonnepanelen is elk veld verplicht, behalve de velden die als optioneel zijn aangegeven. Het huisverbruik wordt door de integratie berekend (productie + netto net − laadvermogen − batterijvermogen), er is geen verbruikssensor nodig.",
-        "data": {
-          "soc_car": "EV-batterij-SOC",
-          "ev_soc_limit": "EV-laadlimiet (optioneel)",
-          "soc_home": "Thuisbatterij-SOC",
-          "fv_production": "Zonneproductie",
-          "grid_import": "Netto netvermogen",
-          "fv_production_l2": "Zonneproductie L2 (optioneel)",
-          "fv_production_l3": "Zonneproductie L3 (optioneel)",
-          "grid_import_l2": "Netafname L2 (optioneel)",
-          "grid_import_l3": "Netafname L3 (optioneel)",
-          "grid_export": "Teruglevering (optioneel)",
-          "grid_export_l2": "Teruglevering L2 (optioneel)",
-          "grid_export_l3": "Teruglevering L3 (optioneel)",
-          "grid_available": "Net beschikbaar (binaire sensor)",
-          "battery_power": "Batterijvermogenssensor (W, met teken)",
-          "fuse_grid_import_l1": "Netafname L1 (W)",
-          "fuse_grid_export_l1": "Teruglevering L1 (W)",
-          "fuse_grid_import_l2": "Netafname L2 (W)",
-          "fuse_grid_export_l2": "Teruglevering L2 (W)",
-          "fuse_grid_import_l3": "Netafname L3 (W)",
-          "fuse_grid_export_l3": "Teruglevering L3 (W)"
-        },
-        "data_description": {
-          "soc_car": "Sensor met de laadtoestand van de EV in procenten.",
-          "ev_soc_limit": "Sensor met de eigen laadlimiet van de auto in procenten (bijv. het doel-laadniveau van de auto-integratie). De waarde telt als vol: EV-doelen worden hierop begrensd en een auto op de limiet wordt niet gestart. Leeg laten voor 100 %.",
-          "soc_home": "Sensor met de laadtoestand van de thuisbatterij in procent. Getoond omdat je hebt aangegeven een thuisbatterij te hebben; antwoord nee in de eerste stap om hem te verwijderen.",
-          "fv_production": "Zonneproductie in W of kW: het totaal, of fase L1 wanneer L2 en L3 hieronder gekoppeld zijn.",
-          "grid_import": "Eén sensor in W of kW: positief bij afname van het net, negatief bij teruglevering (bijvoorbeeld de netto sensor gemaakt voor het Energie-dashboard). Direct gebruikt voor het overschot.",
-          "fv_production_l2": "Alleen wanneer het productieveld L1 bevat.",
-          "fv_production_l3": "Alleen wanneer het productieveld L1 bevat.",
-          "grid_import_l2": "Alleen zonder zonnepanelen, wanneer het veld hierboven L1 bevat.",
-          "grid_import_l3": "Alleen zonder zonnepanelen, wanneer het veld hierboven L1 bevat.",
-          "grid_available": "Optioneel. Binaire sensor die de netbeschikbaarheid aangeeft (on = net aanwezig, off = net weg). Indien toegewezen en off stopt de grid-modus van Night Smart Charge, zodat de thuisbatterij tijdens een stroomstoring niet wordt leeggetrokken (handig bij hybride Battery First / UPS-omvormers). Laat leeg om het vorige gedrag te behouden.",
-          "battery_power": "Optioneel. Accuvermogen in watt met teken — NEGATIEF = ontladen, POSITIEF = laden. Gebruikt wanneer het huisverbruik door de integratie wordt berekend, door de dead-band-buffer van Solar Surplus en door de accubescherming van Night Smart Charge. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor die de waarde negeert — zie de README voor een voorbeeld.",
-          "grid_export": "Alleen zonder zonnepanelen, wanneer afname en teruglevering twee sensoren zijn.",
-          "grid_export_l2": "Alleen zonder zonnepanelen, wanneer afname en teruglevering twee sensoren zijn.",
-          "grid_export_l3": "Alleen zonder zonnepanelen, wanneer afname en teruglevering twee sensoren zijn.",
-          "fuse_grid_import_l1": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
-          "fuse_grid_export_l1": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
-          "fuse_grid_import_l2": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
-          "fuse_grid_export_l2": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
-          "fuse_grid_import_l3": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
-          "fuse_grid_export_l3": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname)."
-        }
-      },
-      "main_fuse": {
-        "title": "Hoofdzekering-bewaking - Stap {step}/{total_steps}",
-        "description": "Beschermt de hoofdzekering: de laadstroom wordt begrensd zodat huislast + auto de zekering op geen enkele fase overschrijdt. Geldt voor elke laadmodus, ook Laden forceren en Boost.\n\nKies de zekeringgrootte en koppel de stroom van de meter per fase (A). Het afname- en terugleververmogen per fase uit de sensorstap geeft de richting van de stroom; zonder stroomsensor wordt de stroom uit dat vermogen berekend (en de spanning, indien gekoppeld). De laadstroom uit de laderstap wordt afgetrokken, zodat de last van de lader niet als huislast telt.\n\nWordt een metersensor onbeschikbaar, dan zakt het laden naar de minimale stroom en stopt na 2 minuten. De veiligheidsmarge kan later worden aangepast (EVSC Fuse Margin). Boven de zekering plus een harde grens (standaard 10 A, EVSC Fuse Hard Trip) stopt het laden meteen.",
-        "data": {
-          "main_fuse_size": "Grootte hoofdzekering",
-          "fuse_grid_current_l1": "Meterstroom L1 (A)",
-          "fuse_grid_current_l2": "Meterstroom L2 (A)",
-          "fuse_grid_current_l3": "Meterstroom L3 (A)",
-          "fuse_grid_voltage_l1": "Spanning L1 (V)",
-          "fuse_grid_voltage_l2": "Spanning L2 (V)",
-          "fuse_grid_voltage_l3": "Spanning L3 (V)"
-        },
-        "data_description": {
-          "main_fuse_size": "Waarde van je hoofdzekering per fase.",
-          "fuse_grid_current_l1": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
-          "fuse_grid_current_l2": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
-          "fuse_grid_current_l3": "Stroom door de hoofdzekering op deze fase. Mag zonder teken zijn.",
-          "fuse_grid_voltage_l1": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
-          "fuse_grid_voltage_l2": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning).",
-          "fuse_grid_voltage_l3": "Optioneel. Alleen gebruikt zonder stroomsensor (stroom = vermogen / spanning)."
-        }
-      },
       "pv_forecast": {
         "title": "Zonneverwachting bijwerken - Stap {step}/{total_steps}",
         "description": "Zonneprognose voor vandaag en morgen, in kWh. Beide verplicht; ze worden op het dashboard getoond en bewaard voor toekomstige planning.",
@@ -592,9 +510,35 @@
           "fuse_charger_current_l3": "Koppel L2 en L3 om te zien op hoeveel fasen de auto laadt."
         }
       },
+      "solar": {
+        "title": "Zonnepanelen - Stap {step}/{total_steps}",
+        "description": "Koppel de zonneproductie in W of kW: het totaal, of fase L1 met L2 en L3 in de optionele velden (die worden opgeteld).",
+        "data": {
+          "fv_production": "Zonneproductie (totaal of L1)",
+          "fv_production_l2": "Zonneproductie L2 (optioneel)",
+          "fv_production_l3": "Zonneproductie L3 (optioneel)"
+        },
+        "data_description": {
+          "fv_production": "Zonneproductie in W of kW: het totaal, of fase L1 wanneer L2 en L3 hieronder gekoppeld zijn.",
+          "fv_production_l2": "Alleen wanneer het veld hierboven L1 bevat.",
+          "fv_production_l3": "Alleen wanneer het veld hierboven L1 bevat."
+        }
+      },
+      "battery": {
+        "title": "Thuisbatterij - Stap {step}/{total_steps}",
+        "description": "Koppel de thuisbatterij. Beide velden zijn verplicht: het batterijvermogen hoort bij het berekende huisverbruik, ook als de batterij alleen wordt getoond.",
+        "data": {
+          "soc_home": "SOC thuisbatterij",
+          "battery_power": "Batterijvermogen (W, met teken)"
+        },
+        "data_description": {
+          "soc_home": "Laadtoestand van de thuisbatterij in procent.",
+          "battery_power": "Batterijvermogen met teken in W — NEGATIEF = ontladen, POSITIEF = laden. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor (zie de README)."
+        }
+      },
       "features": {
         "title": "Wat heb je? - Stap {step}/{total_steps}",
-        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot en de zonneprognosestap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Load balancing** — kies *deze integratie* om de hoofdzekering vanaf hier te bewaken (vereist de sensoren per fase van je meter). Kies *de lader regelt het zelf* als je laadpaal al met een eigen meter balanceert, zodat ze elkaar niet tegenwerken.",
+        "description": "Vertel de integratie hoe je installatie eruitziet. Daarna worden alleen de stappen en velden getoond die op jou van toepassing zijn; je kunt deze antwoorden later wijzigen via de opties van de integratie.\n\n**Zonnepanelen** — schakelt laden op zonne-overschot en de zonneprognosestap in.\n\n**Thuisbatterij** — vraagt om de batterijsensoren en maakt de batterij-instellingen aan (minimale SOC, batterij-ondersteuning, dagdoelen).\n\n**Belastingbalancering** — houdt het huis onder de hoofdzekering tijdens het laden. *Alleen tonen*: de integratie berekent wat de balancering zou moeten doen en toont het op het dashboard, maar wijzigt de lader nooit (bijvoorbeeld bij een externe balancer). *Tonen en regelen*: de integratie verlaagt, pauzeert en verhoogt de laadstroom ook zelf.",
         "data": {
           "has_solar": "Zonnepanelen",
           "has_home_battery": "Thuisbatterij",
@@ -605,7 +549,45 @@
           "has_solar": "Uitschakelen als het huis geen zonnepanelen heeft.",
           "has_home_battery": "Inschakelen als het huis een thuisbatterij heeft waarmee rekening moet worden gehouden.",
           "home_battery_control": "Uitschakelen als de batterij een eigen sturing heeft (bijvoorbeeld een AI-optimalisatie). Ze wordt dan alleen op het dashboard getoond: laden wacht er nooit op, gebruikt haar nooit en de batterij-instellingen worden verborgen.",
-          "load_balancing": "Wie de belasting van het huis onder de hoofdzekering houdt tijdens het laden."
+          "load_balancing": "Geen, alleen tonen, of tonen en regelen."
+        }
+      },
+      "meter": {
+        "title": "Elektriciteitsmeter - Stap {step}/{total_steps}",
+        "description": "Koppel je elektriciteitsmeter. Alle velden zijn verplicht behalve net beschikbaar. Deze sensoren worden in elke opstelling gebruikt: het overschot, het berekende huisverbruik en de belastingbalancering komen er allemaal uit.\n\nDe stroom per fase krijgt zijn richting uit het afgenomen en teruggeleverde vermogen: een fase die teruglevert laat meer ruimte om te laden.",
+        "data": {
+          "main_fuse_size": "Hoofdzekering",
+          "grid_import": "Netto netvermogen",
+          "fuse_grid_import_l1": "Netafname L1 (W)",
+          "fuse_grid_import_l2": "Netafname L2 (W)",
+          "fuse_grid_import_l3": "Netafname L3 (W)",
+          "fuse_grid_export_l1": "Netteruglevering L1 (W)",
+          "fuse_grid_export_l2": "Netteruglevering L2 (W)",
+          "fuse_grid_export_l3": "Netteruglevering L3 (W)",
+          "fuse_grid_current_l1": "Netstroom L1 (A)",
+          "fuse_grid_current_l2": "Netstroom L2 (A)",
+          "fuse_grid_current_l3": "Netstroom L3 (A)",
+          "fuse_grid_voltage_l1": "Netspanning L1 (V)",
+          "fuse_grid_voltage_l2": "Netspanning L2 (V)",
+          "fuse_grid_voltage_l3": "Netspanning L3 (V)",
+          "grid_available": "Net beschikbaar (optioneel)"
+        },
+        "data_description": {
+          "main_fuse_size": "De waarde van je hoofdzekering per fase. Gebruikt door de belastingbalancering (alleen tonen, of tonen en regelen).",
+          "grid_import": "Eén sensor in W of kW: positief bij afname van het net, negatief bij teruglevering.",
+          "fuse_grid_import_l1": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
+          "fuse_grid_import_l2": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
+          "fuse_grid_import_l3": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
+          "fuse_grid_export_l1": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
+          "fuse_grid_export_l2": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
+          "fuse_grid_export_l3": "Vermogen teruggeleverd aan het net op deze fase (0 bij afname).",
+          "fuse_grid_current_l1": "Stroom door de hoofdzekering op deze fase, in A. Mag zonder teken zijn.",
+          "fuse_grid_current_l2": "Stroom door de hoofdzekering op deze fase, in A. Mag zonder teken zijn.",
+          "fuse_grid_current_l3": "Stroom door de hoofdzekering op deze fase, in A. Mag zonder teken zijn.",
+          "fuse_grid_voltage_l1": "Spanning op deze fase, in V.",
+          "fuse_grid_voltage_l2": "Spanning op deze fase, in V.",
+          "fuse_grid_voltage_l3": "Spanning op deze fase, in V.",
+          "grid_available": "Optioneel. Binaire sensor voor netbeschikbaarheid (aan = net aanwezig, uit = net weg). Bij uit stopt nachtladen van het net, zodat de thuisbatterij niet leegloopt tijdens een storing."
         }
       },
       "cars": {

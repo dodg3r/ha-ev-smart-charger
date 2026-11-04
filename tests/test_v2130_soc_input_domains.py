@@ -11,7 +11,7 @@ def test_soc_fields_accept_plain_helpers():
     """
     from custom_components.ev_smart_charger.const import SOC_INPUT_DOMAINS
 
-    from custom_components.ev_smart_charger.config_flow import _sensor_schema
+    from custom_components.ev_smart_charger.config_flow import _battery_schema
 
     assert "sensor" in SOC_INPUT_DOMAINS  # never drop the normal case
     assert "input_number" in SOC_INPUT_DOMAINS
@@ -19,7 +19,7 @@ def test_soc_fields_accept_plain_helpers():
 
     # And the config flow really offers them (a constant nobody wires up is a
     # regression waiting to happen). v2.32.0: the car SOC lives in the car
-    # profile form, the home battery SOC in the sensors step.
+    # profile form, the home battery SOC in the battery step (v2.41.0).
     from custom_components.ev_smart_charger.config_flow import _car_schema
 
     def selectors(schema, keys):
@@ -29,7 +29,7 @@ def test_soc_fields_accept_plain_helpers():
             if str(key) in keys
         }
 
-    assert selectors(_sensor_schema(), ("soc_car", "soc_home")) == {
+    assert selectors(_battery_schema(), ("soc_car", "soc_home")) == {
         "soc_home": SOC_INPUT_DOMAINS,
     }
     assert selectors(_car_schema(), ("soc_car",)) == {"soc_car": SOC_INPUT_DOMAINS}

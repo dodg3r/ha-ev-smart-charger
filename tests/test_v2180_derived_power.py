@@ -9,7 +9,9 @@ import pytest
 
 from custom_components.ev_smart_charger.config_flow import (
     EVSCConfigFlow,
-    _sensor_schema,
+    _battery_schema,
+    _meter_schema,
+    _solar_schema,
 )
 from custom_components.ev_smart_charger.const import (
     CHARGER_STATUS_FREE,
@@ -288,23 +290,30 @@ def _required(schema):
     return {str(key) for key in schema.schema if key.__class__.__name__ == "Required"}
 
 
-def test_sensor_schema_with_solar_requires_net_and_phases():
-    """v2.39.0: net grid + import / export per phase are required with solar;
-    production L2/L3 are optional; the charging power left this step."""
-    required = _required(_sensor_schema({}, home_battery=False))
-    assert required == {
-        CONF_FV_PRODUCTION,
+def test_meter_schema_requires_every_meter_sensor():
+    """v2.41.0: the meter step (every setup) requires the fuse size, the net
+    grid sensor and import / export / current / voltage per phase; grid
+    available is optional."""
+    schema = _meter_schema({})
+    required = _required(schema)
+    assert required >= {
+        "main_fuse_size",
         CONF_GRID_IMPORT,
         CONF_FUSE_GRID_IMPORT_L1,
-        CONF_FUSE_GRID_IMPORT_L2,
         CONF_FUSE_GRID_IMPORT_L3,
         CONF_FUSE_GRID_EXPORT_L1,
-        CONF_FUSE_GRID_EXPORT_L2,
         CONF_FUSE_GRID_EXPORT_L3,
+        "fuse_grid_current_l1",
+        "fuse_grid_current_l3",
+        "fuse_grid_voltage_l1",
+        "fuse_grid_voltage_l3",
     }
-    assert CONF_HOME_CONSUMPTION not in {str(k) for k in _sensor_schema({}).schema}
+    assert len(required) == 14
+    assert "grid_available" in {str(k) for k in schema.schema}
+    assert "grid_available" not in required
+    assert CONF_HOME_CONSUMPTION not in {str(k) for k in schema.schema}
 
 
-def test_sensor_schema_without_solar():
-    required = _required(_sensor_schema({}, solar=False, home_battery=False))
-    assert required == {CONF_GRID_IMPORT}
+def test_solar_and_battery_schemas():
+    assert _required(_solar_schema({})) == {CONF_FV_PRODUCTION}
+    assert _required(_battery_schema({})) == {"soc_home", "battery_power"}
