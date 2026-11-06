@@ -673,7 +673,8 @@ _STEP_IDS: dict[str, dict[str, str]] = {
         "dashboard": "reconfigure_dashboard",
     },
     "options": {
-        "model": "init",
+        # v2.43.0: "init" is a menu (cars only / all settings).
+        "model": "charger_model",
         "features": "features",
         "meter": "meter",
         "entities": "entities",
@@ -705,17 +706,18 @@ def _active_steps(kind: str, features: dict[str, Any]) -> list[str]:
 # v2.31.0: car profile editor -------------------------------------------------
 _CAR_ACTION = "car_action"
 _CAR_ACTION_LABELS = {
-    "en": {"done": "Continue", "add": "Add a car", "edit": "Edit {name}", "remove": "Remove {name}"},
-    "it": {"done": "Continua", "add": "Aggiungi un'auto", "edit": "Modifica {name}", "remove": "Rimuovi {name}"},
-    "nl": {"done": "Doorgaan", "add": "Auto toevoegen", "edit": "{name} bewerken", "remove": "{name} verwijderen"},
-    "sv": {"done": "Fortsätt", "add": "Lägg till bil", "edit": "Ändra {name}", "remove": "Ta bort {name}"},
+    "en": {"done": "Continue", "save": "Save", "add": "Add a car", "edit": "Edit {name}", "remove": "Remove {name}"},
+    "it": {"done": "Continua", "save": "Salva", "add": "Aggiungi un'auto", "edit": "Modifica {name}", "remove": "Rimuovi {name}"},
+    "nl": {"done": "Doorgaan", "save": "Opslaan", "add": "Auto toevoegen", "edit": "{name} bewerken", "remove": "{name} verwijderen"},
+    "sv": {"done": "Fortsätt", "save": "Spara", "add": "Lägg till bil", "edit": "Ändra {name}", "remove": "Ta bort {name}"},
 }
 
 
-def _cars_menu_schema(hass, cars: list[dict]) -> vol.Schema:
+def _cars_menu_schema(hass, cars: list[dict], save: bool = False) -> vol.Schema:
     lang = (getattr(hass.config, "language", None) or "en") if hass else "en"
     labels = _CAR_ACTION_LABELS.get(lang) or _CAR_ACTION_LABELS["en"]
-    options = [{"value": "done", "label": labels["done"]}, {"value": "add", "label": labels["add"]}]
+    done_label = labels["save"] if save else labels["done"]
+    options = [{"value": "done", "label": done_label}, {"value": "add", "label": labels["add"]}]
     for index, car in enumerate(cars):
         options.append(
             {"value": f"edit:{index}", "label": labels["edit"].format(name=car[CONF_CAR_NAME])}
@@ -784,7 +786,12 @@ class _StepNavigator:
             return self.features_info
         return _features_defaults(self._base_data())
 
+    # v2.43.0: options menu "Cars" edits only the car profiles and saves.
+    _cars_only = False
+
     def _placeholders(self, logical: str) -> dict[str, str]:
+        if self._cars_only:
+            return {"step": "1", "total_steps": "1"}
         steps = _active_steps(self._flow_kind, self._features())
         index = steps.index(logical) + 1 if logical in steps else len(steps)
         return {"step": str(index), "total_steps": str(len(steps))}
@@ -874,12 +881,14 @@ class _StepNavigator:
                     cars.pop(index)
                 return await self._cars_step(None)
             if action == "done":
+                if self._cars_only:
+                    return await self._save_cars_only()
                 return await self._go_next("cars")
         placeholders = self._placeholders("cars")
         placeholders["cars"] = _cars_list_text(cars, self._active_car)
         return self.async_show_form(
             step_id=step_id,
-            data_schema=_cars_menu_schema(self.hass, cars),
+            data_schema=_cars_menu_schema(self.hass, cars, save=self._cars_only),
             errors={},
             description_placeholders=placeholders,
         )
@@ -1302,13 +1311,29 @@ class EVSCOptionsFlow(_StepNavigator, config_entries.OptionsFlowWithConfigEntry)
         return dict(self.config_entry.data)
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
-        """Options entry point: charger model (v2.39.0; was phase mode)."""
+        """Options entry point (v2.43.0): only the cars, or every setting."""
+        return self.async_show_menu(
+            step_id="init", menu_options=["cars_only", "charger_model"]
+        )
+
+    async def async_step_cars_only(self, user_input: dict[str, Any] | None = None):
+        """Edit the car profiles without the other steps (v2.43.0)."""
+        self._cars_only = True
+        return await self._cars_step(None)
+
+    async def _save_cars_only(self):
+        updated_data = self._with_cars(dict(self.config_entry.data))
+        self.hass.config_entries.async_update_entry(self.config_entry, data=updated_data)
+        return self.async_create_entry(title="", data={})
+
+    async def async_step_charger_model(self, user_input: dict[str, Any] | None = None):
+        """All settings: the charger model comes first (v2.39.0)."""
         if user_input is not None:
             self.mode_info.update(user_input)
             return await self._go_next("model")
 
         return self.async_show_form(
-            step_id="init",
+            step_id="charger_model",
             data_schema=_charger_model_schema(self.hass, self.config_entry.data),
             description_placeholders=self._placeholders("model"),
         )
