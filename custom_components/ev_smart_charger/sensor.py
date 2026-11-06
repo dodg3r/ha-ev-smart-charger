@@ -1,20 +1,24 @@
 """Sensor platform for EV Smart Charger diagnostics."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
+import time
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.util import dt as dt_util
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import (
+    CHARGED_TODAY_INTERVAL_SECONDS,
     CONF_SOC_CAR,
+    HELPER_CHARGED_TODAY_SUFFIX,
     HELPER_NIGHT_SESSION_STATE_SUFFIX,
     HELPER_NIGHT_CHARGE_PLAN_SUFFIX,
     NIGHT_CHARGE_MODE_IDLE,
@@ -99,6 +103,13 @@ async def async_setup_entry(
             HELPER_NIGHT_CHARGE_PLAN_SUFFIX,
             "EVSC Night Charge Plan",
             "mdi:calendar-clock",
+        ),
+        EVSCChargedTodaySensor(
+            runtime_data,
+            entry.entry_id,
+            HELPER_CHARGED_TODAY_SUFFIX,
+            "EVSC Charged Today",
+            "mdi:ev-plug-type2",
         ),
     ]
 
@@ -574,6 +585,87 @@ class EVSCCachedEVSOCSensor(EVSCBaseSensor):
                 self._attr_native_value = None
                 _LOGGER.warning("  ⚠️ Failed to restore cached SOC from: %s", last_state.state)
             self._attr_extra_state_attributes = dict(last_state.attributes)
+
+
+class EVSCChargedTodaySensor(EVSCBaseSensor):
+    """Energy the charger delivered today, in kWh (v2.44.0).
+
+    Integrates the charging power (``ChargingModel.read_charging_power``:
+    the mapped charging-power sensor, or charger current × voltage) every
+    ``CHARGED_TODAY_INTERVAL_SECONDS``. A missing reading counts as 0 W.
+    Starts again from 0 at local midnight; today's value survives a restart.
+    """
+
+    def __init__(self, runtime_data, entry_id, suffix, name, icon) -> None:
+        super().__init__(
+            runtime_data,
+            entry_id,
+            suffix,
+            name,
+            icon,
+            native_value=0.0,
+            native_unit_of_measurement="kWh",
+            entity_category=None,
+        )
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL
+        self._energy_kwh = 0.0
+        self._day = dt_util.now().date()
+        self._last_power_w = 0.0
+        self._last_mono: float | None = None
+        self._unsub = None
+
+    def _read_power_w(self) -> float:
+        model = getattr(self._runtime_data, "power_model", None)
+        if model is None or self.hass is None:
+            return 0.0
+        try:
+            power = model.read_charging_power(self.hass)
+        except Exception:  # noqa: BLE001 - never break the sensor on a bad read
+            return 0.0
+        return max(0.0, float(power)) if power is not None else 0.0
+
+    def _publish(self) -> None:
+        self._attr_native_value = round(self._energy_kwh, 2)
+        self._attr_last_reset = dt_util.start_of_local_day()
+        self._attr_extra_state_attributes = {
+            "date": self._day.isoformat(),
+            "power_w": round(self._last_power_w),
+        }
+        self.async_write_ha_state()
+
+    @callback
+    def _tick(self, _now=None) -> None:
+        now_mono = time.monotonic()
+        today = dt_util.now().date()
+        if self._last_mono is not None:
+            elapsed = min(now_mono - self._last_mono, 5 * CHARGED_TODAY_INTERVAL_SECONDS)
+            self._energy_kwh += self._last_power_w * elapsed / 3_600_000
+        if today != self._day:
+            self._day = today
+            self._energy_kwh = 0.0
+        self._last_mono = now_mono
+        self._last_power_w = self._read_power_w()
+        self._publish()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last_state = await self.async_get_last_state()
+        if last_state is not None and last_state.attributes.get("date") == self._day.isoformat():
+            try:
+                self._energy_kwh = float(last_state.state)
+            except (TypeError, ValueError):
+                self._energy_kwh = 0.0
+        self._unsub = async_track_time_interval(
+            self.hass, self._tick, timedelta(seconds=CHARGED_TODAY_INTERVAL_SECONDS)
+        )
+        self._tick()
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._unsub is not None:
+            self._unsub()
+            self._unsub = None
+        await super().async_will_remove_from_hass()
 
 
 class EVSCMainFuseSensor(EVSCBaseSensor):

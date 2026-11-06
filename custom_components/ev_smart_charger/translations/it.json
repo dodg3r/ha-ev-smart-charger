@@ -60,11 +60,13 @@
         "description": "Collega la batteria di casa. Entrambi i campi sono obbligatori: la potenza della batteria entra nel consumo della casa calcolato, anche quando la batteria è solo visualizzata.",
         "data": {
           "soc_home": "SOC batteria di casa",
-          "battery_power": "Potenza batteria (W, con segno)"
+          "battery_power": "Potenza batteria (W, con segno)",
+          "battery_power_invert": "Inverti il segno della potenza batteria"
         },
         "data_description": {
           "soc_home": "Stato di carica della batteria di casa in percentuale.",
-          "battery_power": "Potenza della batteria con segno in W — NEGATIVA = scarica, POSITIVA = carica. Se il sensore ha il segno opposto, invertilo con un sensore template (vedi il README)."
+          "battery_power": "Potenza della batteria con segno in W — NEGATIVA = scarica, POSITIVA = carica. Se il sensore ha il segno opposto, invertilo con un sensore template (vedi il README).",
+          "battery_power_invert": "Spunta se questo sensore mostra un valore positivo quando la batteria si scarica e negativo quando si carica. L'integrazione si aspetta positivo = in carica."
         }
       },
       "pv_forecast": {
@@ -222,11 +224,13 @@
         "description": "Collega la batteria di casa. Entrambi i campi sono obbligatori: la potenza della batteria entra nel consumo della casa calcolato, anche quando la batteria è solo visualizzata.",
         "data": {
           "soc_home": "SOC batteria di casa",
-          "battery_power": "Potenza batteria (W, con segno)"
+          "battery_power": "Potenza batteria (W, con segno)",
+          "battery_power_invert": "Inverti il segno della potenza batteria"
         },
         "data_description": {
           "soc_home": "Stato di carica della batteria di casa in percentuale.",
-          "battery_power": "Potenza della batteria con segno in W — NEGATIVA = scarica, POSITIVA = carica. Se il sensore ha il segno opposto, invertilo con un sensore template (vedi il README)."
+          "battery_power": "Potenza della batteria con segno in W — NEGATIVA = scarica, POSITIVA = carica. Se il sensore ha il segno opposto, invertilo con un sensore template (vedi il README).",
+          "battery_power_invert": "Spunta se questo sensore mostra un valore positivo quando la batteria si scarica e negativo quando si carica. L'integrazione si aspetta positivo = in carica."
         }
       },
       "charger_model": {
@@ -261,6 +265,7 @@
         "data": {
           "main_fuse_size": "Taglia fusibile principale",
           "grid_import": "Potenza netta di rete",
+          "grid_invert": "Inverti il segno della rete netta",
           "fuse_grid_import_l1": "Import rete L1 (W)",
           "fuse_grid_import_l2": "Import rete L2 (W)",
           "fuse_grid_import_l3": "Import rete L3 (W)",
@@ -278,6 +283,7 @@
         "data_description": {
           "main_fuse_size": "Taglia del fusibile principale per fase. Usata dal bilanciamento del carico (solo visualizzazione, o visualizza e regola).",
           "grid_import": "Un sensore in W o kW: positivo quando si compra dalla rete, negativo quando si vende.",
+          "grid_invert": "Spunta se questo sensore mostra un valore positivo quando vendi (esporti) e negativo quando compri. L'integrazione si aspetta positivo = acquisto dalla rete.",
           "fuse_grid_import_l1": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
           "fuse_grid_import_l2": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
           "fuse_grid_import_l3": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
@@ -315,6 +321,7 @@
         "data": {
           "main_fuse_size": "Taglia fusibile principale",
           "grid_import": "Potenza netta di rete",
+          "grid_invert": "Inverti il segno della rete netta",
           "fuse_grid_import_l1": "Import rete L1 (W)",
           "fuse_grid_import_l2": "Import rete L2 (W)",
           "fuse_grid_import_l3": "Import rete L3 (W)",
@@ -332,6 +339,7 @@
         "data_description": {
           "main_fuse_size": "Taglia del fusibile principale per fase. Usata dal bilanciamento del carico (solo visualizzazione, o visualizza e regola).",
           "grid_import": "Un sensore in W o kW: positivo quando si compra dalla rete, negativo quando si vende.",
+          "grid_invert": "Spunta se questo sensore mostra un valore positivo quando vendi (esporti) e negativo quando compri. L'integrazione si aspetta positivo = acquisto dalla rete.",
           "fuse_grid_import_l1": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
           "fuse_grid_import_l2": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
           "fuse_grid_import_l3": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
@@ -537,11 +545,13 @@
         "description": "Collega la batteria di casa. Entrambi i campi sono obbligatori: la potenza della batteria entra nel consumo della casa calcolato, anche quando la batteria è solo visualizzata.",
         "data": {
           "soc_home": "SOC batteria di casa",
-          "battery_power": "Potenza batteria (W, con segno)"
+          "battery_power": "Potenza batteria (W, con segno)",
+          "battery_power_invert": "Inverti il segno della potenza batteria"
         },
         "data_description": {
           "soc_home": "Stato di carica della batteria di casa in percentuale.",
-          "battery_power": "Potenza della batteria con segno in W — NEGATIVA = scarica, POSITIVA = carica. Se il sensore ha il segno opposto, invertilo con un sensore template (vedi il README)."
+          "battery_power": "Potenza della batteria con segno in W — NEGATIVA = scarica, POSITIVA = carica. Se il sensore ha il segno opposto, invertilo con un sensore template (vedi il README).",
+          "battery_power_invert": "Spunta se questo sensore mostra un valore positivo quando la batteria si scarica e negativo quando si carica. L'integrazione si aspetta positivo = in carica."
         }
       },
       "features": {
@@ -566,6 +576,7 @@
         "data": {
           "main_fuse_size": "Taglia fusibile principale",
           "grid_import": "Potenza netta di rete",
+          "grid_invert": "Inverti il segno della rete netta",
           "fuse_grid_import_l1": "Import rete L1 (W)",
           "fuse_grid_import_l2": "Import rete L2 (W)",
           "fuse_grid_import_l3": "Import rete L3 (W)",
@@ -583,6 +594,7 @@
         "data_description": {
           "main_fuse_size": "Taglia del fusibile principale per fase. Usata dal bilanciamento del carico (solo visualizzazione, o visualizza e regola).",
           "grid_import": "Un sensore in W o kW: positivo quando si compra dalla rete, negativo quando si vende.",
+          "grid_invert": "Spunta se questo sensore mostra un valore positivo quando vendi (esporti) e negativo quando compri. L'integrazione si aspetta positivo = acquisto dalla rete.",
           "fuse_grid_import_l1": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
           "fuse_grid_import_l2": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
           "fuse_grid_import_l3": "Potenza comprata dalla rete su questa fase (0 quando si vende).",
@@ -854,6 +866,9 @@
       },
       "evsc_night_charge_plan": {
         "name": "Piano ricarica notturna"
+      },
+      "evsc_charged_today": {
+        "name": "Caricato oggi"
       }
     },
     "time": {

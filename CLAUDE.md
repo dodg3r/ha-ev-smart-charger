@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.43.0
+**Current Version:** 2.44.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,39 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.44.0 (2026-11-06) — fork dodg3r
+**Invert sign for the signed sensors; both percentages in the ring; new install defaults; "Charged today"**
+
+Requested by the maintainer.
+- NEW `CONF_GRID_INVERT` (meter step, right after the net grid sensor) and
+  `CONF_BATTERY_POWER_INVERT` (battery step), `BooleanSelector`, default off,
+  all three flows, texts EN/IT/NL. `ChargingModel._grid_sign` /
+  `_battery_sign` (−1 when ticked) negate the net grid sensor(s) in
+  `read_grid_import` and the battery power in `read_battery_power`;
+  `read_consumption` and `read_battery_discharge` now go through
+  `read_battery_power`. `_apply_features` clears the battery invert with
+  the battery. Card config `grid_invert` / `battery_power_invert`
+  (`_gridDisplay`, `_homeBatteryTile`).
+- Ring: the EV % is green (the ring colour), the home battery % is shown
+  under the target in `--evsc-ring-home` (`.ring-home`, live `ring.home`);
+  the legend only names the colours ("Bil" / "Husbatteri").
+- New install defaults: charging profile `solar_surplus` (initial option of
+  `EVSCSelect`; the legacy-profile coercion still goes to manual), Night
+  Smart Charge switch on, `DEFAULT_CAR_READY_WEEKDAY` False (no day on),
+  `DEFAULT_EV_MIN_SOC_WEEKDAY` 80 (80 % every day). Restored values win.
+- NEW sensor `evsc_charged_today` (`EVSCChargedTodaySensor`, kWh, energy /
+  total, `last_reset` = start of day): integrates
+  `ChargingModel.read_charging_power` every `CHARGED_TODAY_INTERVAL_SECONDS`
+  (10 s; a gap counts at most 50 s), resets at local midnight, today's value
+  restored after a restart (attribute `date`). `TOTAL_INTEGRATION_ENTITIES`
+  79 → 80, `_NO_BATTERY` 64 → 65. Dashboard: green "Charged today" pill
+  under the forecast pill (`_renderEnergyPills`, `_chargedTodayText`,
+  suffix `chargedToday`, live `charged.today`, structural key `ct`),
+  EN/SV/IT/NL.
+- Tests: NEW `tests/test_v2440_invert_and_defaults.py`; counts.
+
+---
 
 ### v2.43.0 (2026-11-06) — fork dodg3r
 **Configure opens with a menu (Cars / All settings); home battery tile and target mark**

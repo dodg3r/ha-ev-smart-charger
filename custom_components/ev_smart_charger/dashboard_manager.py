@@ -54,6 +54,7 @@ except ImportError:  # pragma: no cover
 
 from .const import (
     CONF_BATTERY_POWER,
+    CONF_BATTERY_POWER_INVERT,
     CONF_CHARGING_POWER,
     CONF_CHARGING_POWER_L2,
     CONF_CHARGING_POWER_L3,
@@ -69,6 +70,7 @@ from .const import (
     CONF_FUSE_CHARGER_CURRENT_L2,
     CONF_FUSE_CHARGER_CURRENT_L3,
     CONF_GRID_IMPORT,
+    CONF_GRID_INVERT,
     CONF_GRID_IMPORT_L2,
     CONF_GRID_IMPORT_L3,
     CONF_GRID_EXPORT,
@@ -287,6 +289,9 @@ def _build_card_config(entry: ConfigEntry) -> dict[str, Any]:
     # v2.28.0: without solar panels the Solar Surplus settings
     # are hidden.
     config["has_solar"] = has_solar(data)
+    # v2.44.0: "Invert sign" for the two signed sensors.
+    config["grid_invert"] = bool(data.get(CONF_GRID_INVERT))
+    config["battery_power_invert"] = bool(data.get(CONF_BATTERY_POWER_INVERT))
     if is_three_phase(data):
         for card_key, conf_keys in (
             ("solar_power_entities", (CONF_FV_PRODUCTION, CONF_FV_PRODUCTION_L2, CONF_FV_PRODUCTION_L3)),

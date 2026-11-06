@@ -60,11 +60,13 @@
         "description": "Map the home battery. Both fields are required: the battery power is part of the computed house consumption, also when the battery is only shown.",
         "data": {
           "soc_home": "Home battery SOC",
-          "battery_power": "Battery power (W, signed)"
+          "battery_power": "Battery power (W, signed)",
+          "battery_power_invert": "Invert sign of battery power"
         },
         "data_description": {
           "soc_home": "Home battery state of charge in percent.",
-          "battery_power": "Signed battery power in W — NEGATIVE = discharging, POSITIVE = charging. If your sensor reports the opposite sign, invert it with a template sensor (see the README)."
+          "battery_power": "Signed battery power in W — NEGATIVE = discharging, POSITIVE = charging. If your sensor reports the opposite sign, invert it with a template sensor (see the README).",
+          "battery_power_invert": "Tick if this sensor shows plus when the battery discharges and minus when it charges. The integration expects plus = charging."
         }
       },
       "pv_forecast": {
@@ -222,11 +224,13 @@
         "description": "Map the home battery. Both fields are required: the battery power is part of the computed house consumption, also when the battery is only shown.",
         "data": {
           "soc_home": "Home battery SOC",
-          "battery_power": "Battery power (W, signed)"
+          "battery_power": "Battery power (W, signed)",
+          "battery_power_invert": "Invert sign of battery power"
         },
         "data_description": {
           "soc_home": "Home battery state of charge in percent.",
-          "battery_power": "Signed battery power in W — NEGATIVE = discharging, POSITIVE = charging. If your sensor reports the opposite sign, invert it with a template sensor (see the README)."
+          "battery_power": "Signed battery power in W — NEGATIVE = discharging, POSITIVE = charging. If your sensor reports the opposite sign, invert it with a template sensor (see the README).",
+          "battery_power_invert": "Tick if this sensor shows plus when the battery discharges and minus when it charges. The integration expects plus = charging."
         }
       },
       "charger_model": {
@@ -261,6 +265,7 @@
         "data": {
           "main_fuse_size": "Main fuse size",
           "grid_import": "Net grid power",
+          "grid_invert": "Invert sign of net grid",
           "fuse_grid_import_l1": "Grid import L1 (W)",
           "fuse_grid_import_l2": "Grid import L2 (W)",
           "fuse_grid_import_l3": "Grid import L3 (W)",
@@ -278,6 +283,7 @@
         "data_description": {
           "main_fuse_size": "The rating of your main fuse per phase. Used by load balancing (display only, or display and adjust).",
           "grid_import": "One sensor in W or kW: positive when buying from the grid, negative when selling (for example the net sensor made for the Energy dashboard).",
+          "grid_invert": "Tick if this sensor shows plus when you sell (export) and minus when you buy. The integration expects plus = buying from the grid.",
           "fuse_grid_import_l1": "Power bought from the grid on this phase (0 while selling).",
           "fuse_grid_import_l2": "Power bought from the grid on this phase (0 while selling).",
           "fuse_grid_import_l3": "Power bought from the grid on this phase (0 while selling).",
@@ -315,6 +321,7 @@
         "data": {
           "main_fuse_size": "Main fuse size",
           "grid_import": "Net grid power",
+          "grid_invert": "Invert sign of net grid",
           "fuse_grid_import_l1": "Grid import L1 (W)",
           "fuse_grid_import_l2": "Grid import L2 (W)",
           "fuse_grid_import_l3": "Grid import L3 (W)",
@@ -332,6 +339,7 @@
         "data_description": {
           "main_fuse_size": "The rating of your main fuse per phase. Used by load balancing (display only, or display and adjust).",
           "grid_import": "One sensor in W or kW: positive when buying from the grid, negative when selling (for example the net sensor made for the Energy dashboard).",
+          "grid_invert": "Tick if this sensor shows plus when you sell (export) and minus when you buy. The integration expects plus = buying from the grid.",
           "fuse_grid_import_l1": "Power bought from the grid on this phase (0 while selling).",
           "fuse_grid_import_l2": "Power bought from the grid on this phase (0 while selling).",
           "fuse_grid_import_l3": "Power bought from the grid on this phase (0 while selling).",
@@ -537,11 +545,13 @@
         "description": "Map the home battery. Both fields are required: the battery power is part of the computed house consumption, also when the battery is only shown.",
         "data": {
           "soc_home": "Home battery SOC",
-          "battery_power": "Battery power (W, signed)"
+          "battery_power": "Battery power (W, signed)",
+          "battery_power_invert": "Invert sign of battery power"
         },
         "data_description": {
           "soc_home": "Home battery state of charge in percent.",
-          "battery_power": "Signed battery power in W — NEGATIVE = discharging, POSITIVE = charging. If your sensor reports the opposite sign, invert it with a template sensor (see the README)."
+          "battery_power": "Signed battery power in W — NEGATIVE = discharging, POSITIVE = charging. If your sensor reports the opposite sign, invert it with a template sensor (see the README).",
+          "battery_power_invert": "Tick if this sensor shows plus when the battery discharges and minus when it charges. The integration expects plus = charging."
         }
       },
       "features": {
@@ -566,6 +576,7 @@
         "data": {
           "main_fuse_size": "Main fuse size",
           "grid_import": "Net grid power",
+          "grid_invert": "Invert sign of net grid",
           "fuse_grid_import_l1": "Grid import L1 (W)",
           "fuse_grid_import_l2": "Grid import L2 (W)",
           "fuse_grid_import_l3": "Grid import L3 (W)",
@@ -583,6 +594,7 @@
         "data_description": {
           "main_fuse_size": "The rating of your main fuse per phase. Used by load balancing (display only, or display and adjust).",
           "grid_import": "One sensor in W or kW: positive when buying from the grid, negative when selling (for example the net sensor made for the Energy dashboard).",
+          "grid_invert": "Tick if this sensor shows plus when you sell (export) and minus when you buy. The integration expects plus = buying from the grid.",
           "fuse_grid_import_l1": "Power bought from the grid on this phase (0 while selling).",
           "fuse_grid_import_l2": "Power bought from the grid on this phase (0 while selling).",
           "fuse_grid_import_l3": "Power bought from the grid on this phase (0 while selling).",
@@ -854,6 +866,9 @@
       },
       "evsc_night_charge_plan": {
         "name": "Night charge plan"
+      },
+      "evsc_charged_today": {
+        "name": "Charged today"
       }
     },
     "time": {

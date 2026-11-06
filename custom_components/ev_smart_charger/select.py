@@ -22,6 +22,7 @@ from .const import (
     HELPER_ACTIVE_CAR_SUFFIX,
     LEGACY_CHARGING_PROFILES,
     PROFILE_MANUAL,
+    PROFILE_SOLAR_SURPLUS,
     apply_active_car,
     get_active_car_name,
     get_cars,
@@ -86,7 +87,11 @@ class EVSCSelect(EVSCEntityMixin, SelectEntity, RestoreEntity):
             entity_category=EntityCategory.CONFIG,
         )
         self._attr_options = options
-        self._current_option = PROFILE_MANUAL  # Default to manual
+        # v2.44.0: a new install starts on Solar Surplus (was manual). The
+        # charging-profile select only; the restore path is unchanged.
+        self._current_option = (
+            PROFILE_SOLAR_SURPLUS if PROFILE_SOLAR_SURPLUS in options else PROFILE_MANUAL
+        )
 
     @property
     def current_option(self) -> str:

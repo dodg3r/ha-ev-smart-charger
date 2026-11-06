@@ -54,7 +54,8 @@ async def async_setup_entry(
         ("evsc_smart_charger_blocker_enabled", "Smart Charger Blocker", "mdi:solar-power", False),
         (HELPER_USE_HOME_BATTERY_SUFFIX, "Use Home Battery", "mdi:home-battery", False),
         ("evsc_priority_balancer_enabled", "Priority Balancer", "mdi:scale-balance", False),
-        ("evsc_night_smart_charge_enabled", "Night Smart Charge", "mdi:moon-waning-crescent", False),
+        # v2.44.0: on in a new install.
+        ("evsc_night_smart_charge_enabled", "Night Smart Charge", "mdi:moon-waning-crescent", True),
         (HELPER_PRESERVE_HOME_BATTERY_SUFFIX, "Preserve Home Battery", "mdi:battery-heart-variant", False),
         # Notification switches (default ON)
         ("evsc_notify_smart_blocker_enabled", "Notify Smart Blocker", "mdi:bell-outline", True),

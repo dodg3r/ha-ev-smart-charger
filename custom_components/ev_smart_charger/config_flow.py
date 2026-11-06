@@ -16,6 +16,7 @@ from .const import (
     CONF_CARS,
     CONF_BATTERY_CAPACITY,
     CONF_BATTERY_POWER,
+    CONF_BATTERY_POWER_INVERT,
     CONF_CAR_OWNER,
     CONF_CHARGER_MODEL,
     CONF_CHARGING_POWER,
@@ -34,6 +35,7 @@ from .const import (
     CONF_FV_PRODUCTION_L3,
     CONF_GRID_AVAILABLE,
     CONF_GRID_IMPORT,
+    CONF_GRID_INVERT,
     CONF_GRID_IMPORT_L2,
     CONF_GRID_IMPORT_L3,
     CONF_GRID_EXPORT,
@@ -208,6 +210,7 @@ def _normalize_meter_input(user_input: dict[str, Any]) -> dict[str, Any]:
     data = {key: user_input.get(key) or None for key in _METER_KEYS}
     data[CONF_MAIN_FUSE_SIZE] = get_main_fuse_size(user_input) or DEFAULT_LOAD_BALANCING_FUSE_SIZE
     data[CONF_GRID_AVAILABLE] = user_input.get(CONF_GRID_AVAILABLE) or None
+    data[CONF_GRID_INVERT] = bool(user_input.get(CONF_GRID_INVERT, False))
     for key in _LEGACY_GRID_KEYS:
         data[key] = None
     return data
@@ -227,6 +230,7 @@ def _normalize_battery_input(user_input: dict[str, Any]) -> dict[str, Any]:
     return {
         CONF_SOC_HOME: user_input.get(CONF_SOC_HOME),
         CONF_BATTERY_POWER: user_input.get(CONF_BATTERY_POWER),
+        CONF_BATTERY_POWER_INVERT: bool(user_input.get(CONF_BATTERY_POWER_INVERT, False)),
     }
 
 
@@ -382,6 +386,11 @@ def _meter_schema(current_data: dict[str, Any] | None = None) -> vol.Schema:
     }
     for key in _METER_KEYS:
         fields[vol.Required(key, **_field_config(current_data.get(key)))] = _entity_selector("sensor")
+        if key == CONF_GRID_IMPORT:
+            # v2.44.0: right under the net grid sensor.
+            fields[
+                vol.Optional(CONF_GRID_INVERT, default=bool(current_data.get(CONF_GRID_INVERT)))
+            ] = selector.BooleanSelector()
     fields[
         vol.Optional(CONF_GRID_AVAILABLE, **_suggested(current_data, CONF_GRID_AVAILABLE))
     ] = _entity_selector("binary_sensor")
@@ -417,6 +426,11 @@ def _battery_schema(current_data: dict[str, Any] | None = None) -> vol.Schema:
             vol.Required(
                 CONF_BATTERY_POWER, **_field_config(current_data.get(CONF_BATTERY_POWER))
             ): _entity_selector("sensor"),
+            # v2.44.0
+            vol.Optional(
+                CONF_BATTERY_POWER_INVERT,
+                default=bool(current_data.get(CONF_BATTERY_POWER_INVERT)),
+            ): selector.BooleanSelector(),
         }
     )
 
@@ -613,6 +627,7 @@ def _apply_features(data: dict[str, Any]) -> dict[str, Any]:
     if not wants_home_battery(data):
         data[CONF_SOC_HOME] = None
         data[CONF_BATTERY_POWER] = None
+        data[CONF_BATTERY_POWER_INVERT] = False
     if not has_solar(data):
         for key in _SOLAR_KEYS:
             data[key] = None
