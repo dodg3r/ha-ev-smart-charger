@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.41.1
+**Current Version:** 2.42.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,44 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.42.0 (2026-11-06) — fork dodg3r
+**Home battery first up to a SOC; battery tile; one surplus sentence; dead-band start fixed; fuse countdowns**
+
+Requested by the maintainer (Dahlbergs: 4.6 kW sun, battery charging 3.5 kW,
+export 0 W).
+- NEW number `evsc_home_battery_first_soc` (%, 0–100, step 5, default 0),
+  created whenever a home-battery SOC sensor is mapped (also display-only).
+  `TOTAL_INTEGRATION_ENTITIES` 78 → 79; `get_expected_entity_count` adds 1
+  for a display-only battery. Entity names EN/IT/NL.
+- Solar Surplus `_battery_first_info()`: below the setting (or always at
+  100 %, also without SOC) the battery's charging power
+  (`ChargingModel.read_battery_power()`, signed) counts as house load, so
+  the EV only gets what would be exported; at or above it the charging
+  counts as surplus (unchanged behaviour, "car first"). A discharging
+  battery is never reserved. Diagnostic: `battery_power_w`,
+  `home_battery_soc`, `battery_first_soc`, `battery_first_active`,
+  `battery_reserved_w`.
+- `_tick_info` (surplus_w, start_threshold_w and the battery values of the
+  tick) is added to every diagnostic event, so the dashboard always has them.
+- FIX: the opportunistic dead-band start never fired. The idle branch
+  ("Amperage optimal at 0A") called `_reset_state_tracking()` on every tick
+  and restarted the 120 s timer (log: "Starting 120s timer" each minute).
+  The timer is now kept while the charger is off.
+- Fuse guard: headroom attributes `restart_at` (paused charger may restart)
+  and `raise_at` (waiting increase), from new `FuseLimiter.hold_remaining()`
+  / `increase_remaining()`.
+- Dashboard: "Home battery" tile (charging / discharging kW · SOC, or idle);
+  the not-charging solar text is always "solar surplus X kW, too little to
+  start (needs Y kW)" (surplus from the diagnostic, last known value kept),
+  plus "home battery first (78 % of 90 %)" while the battery holds the sun;
+  in daylight the solar text wins over the next planned night hour; fuse
+  pause / cap texts count down ("retrying in …", "raising in …"). Setting
+  "Home Battery First Up To" in the Solar accordion. EN/SV/IT/NL.
+- Tests: NEW `tests/test_v2420_battery_first.py`; counts in
+  `test_entity_platforms.py`, `test_v2240_display_only_battery.py`.
+
+---
 
 ### v2.41.1 (2026-11-04) — fork dodg3r
 **No telemetry: the daily anonymous ping to the upstream maintainer is removed**

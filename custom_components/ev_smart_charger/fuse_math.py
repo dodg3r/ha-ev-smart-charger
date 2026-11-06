@@ -310,6 +310,16 @@ class FuseLimiter:
     def min_level(self) -> int:
         return self._levels[0]
 
+    def hold_remaining(self, now: float) -> float:
+        """Seconds until a restart may be tried after a stop (v2.42.0)."""
+        return max(0.0, self._hold_until - now)
+
+    def increase_remaining(self, now: float) -> float:
+        """Seconds until a waiting increase is applied, 0 when none (v2.42.0)."""
+        if self._increase_delay_s is None or self._up_since is None:
+            return 0.0
+        return max(0.0, self._increase_delay_s - (now - self._up_since))
+
     def _next_step_up(self, current: int) -> int:
         above = [level for level in self._levels if level > current]
         next_level = above[0] if above else current

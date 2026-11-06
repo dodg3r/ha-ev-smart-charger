@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.41.1"
+VERSION = "2.42.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -412,6 +412,13 @@ HELPER_SOLAR_START_OFFSET_SUFFIX = "evsc_solar_start_offset"
 DEFAULT_SOLAR_START_OFFSET = 0.0
 SOLAR_START_OFFSET_MIN = -4.0
 SOLAR_START_OFFSET_MAX = 4.0
+# v2.42.0 — the home battery gets the sun first up to this SOC (%). Below it
+# the battery's charging counts as house load, so the EV only gets what would
+# otherwise be exported; at or above it the battery's charging counts as free
+# sun for the EV. 0 = car first (as before), 100 = battery first. Created
+# whenever a home-battery SOC sensor is mapped (also display-only batteries).
+HELPER_HOME_BATTERY_FIRST_SOC_SUFFIX = "evsc_home_battery_first_soc"
+DEFAULT_HOME_BATTERY_FIRST_SOC = 0
 # v2.14.0 — main-fuse protection helpers (created only when a fuse is set)
 HELPER_FUSE_MARGIN_SUFFIX = "evsc_fuse_margin"
 HELPER_FUSE_HARD_TRIP_SUFFIX = "evsc_fuse_hard_trip"  # v2.19.0
@@ -694,7 +701,8 @@ EV_SOC_MONITOR_INTERVAL = 5  # seconds - polling frequency for cloud sensor reli
 # v2.31.0 adds 1 always-created select (evsc_active_car) → 84.
 # v2.36.0 removes the 6 Hybrid Inverter Mode entities (1 switch, 4 numbers,
 # 1 diagnostic sensor) → 78.
-TOTAL_INTEGRATION_ENTITIES = 78
+# v2.42.0 adds 1 number with a home battery (evsc_home_battery_first_soc) → 79.
+TOTAL_INTEGRATION_ENTITIES = 79
 # Verified count (v2.3.0): 53 entities when running in PV-only mode.
 # Unchanged in v2.1.0: the discharge number is battery-only (skipped in PV-only mode).
 # v2.3.0 (issue #32): evsc_night_pv_handoff_threshold is NOT battery-only → +1 → 53.
@@ -868,6 +876,9 @@ def get_expected_entity_count(config: dict) -> int:
         if has_home_battery(config)
         else TOTAL_INTEGRATION_ENTITIES_NO_BATTERY
     )
+    if shows_home_battery(config) and not has_home_battery(config):
+        # v2.42.0: a display-only battery still gets the battery-first number.
+        count += 1
     if is_fuse_protection_enabled(config):
         count += FUSE_PROTECTION_ENTITIES
     return count

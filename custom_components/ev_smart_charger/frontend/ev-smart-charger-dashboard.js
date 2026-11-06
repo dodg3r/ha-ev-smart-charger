@@ -132,6 +132,7 @@ const DOMAIN_SUFFIXES = {
   solarMaxAmperage: ["number", "evsc_solar_max_amperage"],
   offgridMaxAmperage: ["number", "evsc_offgrid_max_amperage"],
   solarStartOffset: ["number", "evsc_solar_start_offset"],
+  homeBatteryFirstSoc: ["number", "evsc_home_battery_first_soc"],
   useHomeBattery: ["switch", "evsc_use_home_battery"],
   homeBatteryMinSoc: ["number", "evsc_home_battery_min_soc"],
   batterySupportAmperage: ["number", "evsc_battery_support_amperage"],
@@ -256,6 +257,15 @@ const SETTINGS_CATALOG = [
           sv: "Flyttar överskottet som krävs för att starta (6,5 A) och fortsätta ladda (5,5 A). Minus startar på mindre sol: laddaren kan inte gå under 6 A, så resten tas från nätet och skyddet mot nätimport tillåter just så mycket. Plus väntar på mer sol.",
         },
         hint: { en: "Default 0 A · −4 to +4 A · −2 A ≈ 1.4 kW grid on three-phase", it: "Default 0 A · da −4 a +4 A · −2 A ≈ 1,4 kW rete in trifase", nl: "Standaard 0 A · −4 tot +4 A · −2 A ≈ 1,4 kW net bij driefase", sv: "Standard 0 A · −4 till +4 A · −2 A ≈ 1,4 kW från nätet på trefas" } },
+      { entityKey: "homeBatteryFirstSoc", kind: "stepper",
+        name: { en: "Home Battery First Up To", it: "Batteria domestica prima fino a", nl: "Thuisbatterij eerst tot", sv: "Hembatteriet först upp till" },
+        desc: {
+          en: "Below this level the home battery gets the sun first: its charging counts as house load, so the car only gets what would otherwise be exported. Above it the battery's charging counts as free sun for the car. Only changes how the surplus is counted; the battery itself is not controlled.",
+          it: "Sotto questo livello la batteria domestica riceve il sole per prima: la sua ricarica conta come consumo della casa, quindi l'auto riceve solo ciò che verrebbe esportato. Sopra, la ricarica della batteria conta come sole libero per l'auto. Cambia solo il calcolo del surplus; la batteria non viene comandata.",
+          nl: "Onder dit niveau krijgt de thuisbatterij de zon eerst: het laden telt als huisverbruik, dus de auto krijgt alleen wat anders teruggeleverd zou worden. Daarboven telt het laden van de batterij als vrije zon voor de auto. Verandert alleen de berekening van het overschot; de batterij zelf wordt niet aangestuurd.",
+          sv: "Under den här nivån får hembatteriet solen först: dess laddning räknas som husets förbrukning, så bilen får bara det som annars skulle exporteras. Över nivån räknas batteriets laddning som ledig sol för bilen. Ändrar bara hur överskottet räknas, batteriet styrs inte.",
+        },
+        hint: { en: "Default 0 % = car first · 100 % = battery first", it: "Default 0 % = prima l'auto · 100 % = prima la batteria", nl: "Standaard 0 % = auto eerst · 100 % = batterij eerst", sv: "Standard 0 % = bilen först · 100 % = batteriet först" } },
       { entityKey: "solarMaxAmperage", kind: "stepper",
         name: { en: "Solar Max Amperage", it: "Amperaggio max solare", nl: "Maximale zonnestroom", sv: "Högsta ström sol" },
         desc: {
@@ -627,6 +637,12 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Car connected",
     "charger.offline": "No contact",
     "charger.full": "Fully charged",
+    "battery.charging": "Charging {kw} kW · {soc}",
+    "battery.discharging": "Discharging {kw} kW · {soc}",
+    "battery.idle": "Idle · {soc}",
+    "reason.battery_first": "home battery first ({soc} of {limit} %)",
+    "status.fuse_retry": "retrying in {s}",
+    "status.fuse_raise": "raising in {s}",
     "car.label": "Car",
     "reason.surplus_low_need": "Car connected · solar surplus {kw} kW, too little to start (needs {need} kW)",
     "reason.no_surplus_need": "Car connected · no solar surplus (needs {need} kW to start)",
@@ -853,6 +869,12 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Bil ansluten",
     "charger.offline": "Ingen kontakt",
     "charger.full": "Fulladdad",
+    "battery.charging": "Laddar {kw} kW · {soc}",
+    "battery.discharging": "Laddar ur {kw} kW · {soc}",
+    "battery.idle": "Vilar · {soc}",
+    "reason.battery_first": "hembatteriet först ({soc} av {limit} %)",
+    "status.fuse_retry": "försöker igen om {s}",
+    "status.fuse_raise": "höjer om {s}",
     "car.label": "Bil",
     "reason.surplus_low_need": "Bil ansluten · solöverskott {kw} kW, för lite för att starta (kräver {need} kW)",
     "reason.no_surplus_need": "Bil ansluten · inget solöverskott (kräver {need} kW för att starta)",
@@ -1079,6 +1101,12 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Auto collegata",
     "charger.offline": "Nessun contatto",
     "charger.full": "Carica completa",
+    "battery.charging": "In carica {kw} kW · {soc}",
+    "battery.discharging": "In scarica {kw} kW · {soc}",
+    "battery.idle": "A riposo · {soc}",
+    "reason.battery_first": "prima la batteria domestica ({soc} su {limit} %)",
+    "status.fuse_retry": "nuovo tentativo tra {s}",
+    "status.fuse_raise": "aumento tra {s}",
     "car.label": "Auto",
     "reason.surplus_low_need": "Auto collegata · surplus {kw} kW, troppo poco per iniziare (servono {need} kW)",
     "reason.no_surplus_need": "Auto collegata · nessun surplus solare (servono {need} kW per iniziare)",
@@ -1305,6 +1333,12 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Auto aangesloten",
     "charger.offline": "Geen contact",
     "charger.full": "Volledig geladen",
+    "battery.charging": "Laadt {kw} kW · {soc}",
+    "battery.discharging": "Ontlaadt {kw} kW · {soc}",
+    "battery.idle": "Rust · {soc}",
+    "reason.battery_first": "thuisbatterij eerst ({soc} van {limit} %)",
+    "status.fuse_retry": "opnieuw over {s}",
+    "status.fuse_raise": "verhoogt over {s}",
     "car.label": "Auto",
     "reason.surplus_low_need": "Auto aangesloten · overschot {kw} kW, te weinig om te starten (nodig {need} kW)",
     "reason.no_surplus_need": "Auto aangesloten · geen zonne-overschot (nodig {need} kW om te starten)",
@@ -2435,20 +2469,25 @@ class EvSmartChargerDashboard extends HTMLElement {
     if (fuseState === "stopped" || fuseState === "hold" || fuseState === "hard_trip") {
       const key = phase ? `grid_current_${phase.toLowerCase()}` : null;
       const grid = key != null ? Number(fuse?.attributes?.[key]) : NaN;
-      return {
-        kind: "paused",
-        text: this._tf("status.fuse_paused", {
-          phase,
-          amps: Number.isFinite(grid) ? Math.abs(grid).toFixed(1) : "?",
-          fuse: fuse?.attributes?.main_fuse_a ?? "?",
-        }),
-      };
+      let text = this._tf("status.fuse_paused", {
+        phase,
+        amps: Number.isFinite(grid) ? Math.abs(grid).toFixed(1) : "?",
+        fuse: fuse?.attributes?.main_fuse_a ?? "?",
+      });
+      // v2.42.0: count down to the next restart attempt
+      const retry = this._secsUntil(fuse?.attributes?.restart_at);
+      if (retry != null) text += ` · ${this._tf("status.fuse_retry", { s: this._fmtLeft(retry) })}`;
+      return { kind: "paused", text };
     }
     const allowed = Number(fuse?.state);
     const setpoint = this._numericState(this._config.current_entity);
     if ((fuseState === "limited" || fuseState === "ramping")
         && Number.isFinite(allowed) && setpoint != null && setpoint >= allowed) {
-      return { kind: "capped", text: this._tf("status.capped_by_fuse", { phase }) };
+      let text = this._tf("status.capped_by_fuse", { phase });
+      // v2.42.0: count down to the next raise
+      const raise = this._secsUntil(fuse?.attributes?.raise_at);
+      if (raise != null) text += ` · ${this._tf("status.fuse_raise", { s: this._fmtLeft(raise) })}`;
+      return { kind: "capped", text };
     }
     return null;
   }
@@ -2457,15 +2496,91 @@ class EvSmartChargerDashboard extends HTMLElement {
    * v2.23.0: turn the Solar Surplus diagnostic code into plain words.
    * Unknown codes fall back to a neutral sentence instead of raw text.
    */
+  /** v2.42.0: "Laddar 3.5 kW · 78 %" / "Laddar ur …" / "Vilar · …". */
+  _homeBatteryText() {
+    const soc = this._numericState(this._config.home_battery_soc_entity);
+    const socText = soc != null ? `${Math.round(soc)} %` : "—";
+    const w = this._config.battery_power_entity
+      ? this._powerW(this._config.battery_power_entity)
+      : null;
+    if (w == null) return socText;
+    const kw = (Math.abs(w) / 1000).toFixed(1);
+    if (w > 50) return this._tf("battery.charging", { kw, soc: socText });
+    if (w < -50) return this._tf("battery.discharging", { kw, soc: socText });
+    return this._tf("battery.idle", { soc: socText });
+  }
+
+  /** v2.42.0: Solar Surplus' current surplus in W (last known), or null. */
+  _solarSurplusW() {
+    const diagObj = this._stateObj(this._entityId("solarDiagnostic"));
+    const w = Number(diagObj?.attributes?.surplus_w);
+    if (diagObj?.attributes?.surplus_w != null && Number.isFinite(w)) {
+      this._lastSurplusW = w;
+      return w;
+    }
+    const m = String(diagObj?.state || "").match(/^CHECKING:\s*(-?\d+(?:\.\d+)?)\s*W/i);
+    if (m) {
+      this._lastSurplusW = Number(m[1]);
+      return this._lastSurplusW;
+    }
+    return this._lastSurplusW ?? null;
+  }
+
+  /** v2.42.0: "hembatteriet först (78 % av 90 %)" while it holds the sun. */
+  _batteryFirstNote() {
+    const attrs = this._stateObj(this._entityId("solarDiagnostic"))?.attributes || {};
+    if (!attrs.battery_first_active || !(Number(attrs.battery_reserved_w) > 0)) return null;
+    const soc = Number(attrs.home_battery_soc);
+    return this._tf("reason.battery_first", {
+      soc: Number.isFinite(soc) ? `${Math.round(soc)} %` : "—",
+      limit: Math.round(Number(attrs.battery_first_soc) || 0),
+    });
+  }
+
+  /** v2.42.0: seconds until an ISO time, or null when past / missing. */
+  _secsUntil(iso) {
+    const t = iso ? new Date(iso).getTime() : NaN;
+    if (!Number.isFinite(t)) return null;
+    const secs = Math.ceil((t - Date.now()) / 1000);
+    return secs > 0 ? secs : null;
+  }
+
+  _fmtLeft(secs) {
+    return secs >= 60
+      ? `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`
+      : `${secs} s`;
+  }
+
+  /** v2.42.0: a fuse pause or a pending raise is counting down. */
+  _fuseCountdownActive() {
+    const attrs = this._stateObj(this._entityId("fuseHeadroom"))?.attributes || {};
+    return this._secsUntil(attrs.restart_at) != null || this._secsUntil(attrs.raise_at) != null;
+  }
+
   _friendlySolarReason(diag, charging) {
     const d = String(diag || "").trim();
     const up = d.toUpperCase();
     if (!d || ["UNKNOWN", "UNAVAILABLE"].includes(up)) return null;
     // v2.37.1: how much surplus a start needs, also when there is none now.
     const needW = this._solarStartNeedW();
-    const noSurplus = () => (needW != null
-      ? this._tf("reason.no_surplus_need", { need: (needW / 1000).toFixed(1) })
-      : this._t("reason.waiting_surplus"));
+    // v2.42.0: one sentence whatever the diagnostic code: the surplus now
+    // and what a start needs (plus the battery-first note when it applies).
+    const noSurplus = () => {
+      const w = this._solarSurplusW();
+      const need = needW != null ? (needW / 1000).toFixed(1) : null;
+      let text;
+      if (w != null && need != null) {
+        text = this._tf("reason.surplus_low_need", { kw: (Math.max(0, w) / 1000).toFixed(1), need });
+      } else if (w != null) {
+        text = this._tf("reason.surplus_low", { kw: (Math.max(0, w) / 1000).toFixed(1) });
+      } else if (need != null) {
+        text = this._tf("reason.no_surplus_need", { need });
+      } else {
+        text = this._t("reason.waiting_surplus");
+      }
+      const bf = this._batteryFirstNote();
+      return bf ? `${text} · ${bf}` : text;
+    };
     if (up.includes("CHARGER OFFLINE")) return this._t("status.charger_offline");
     // v2.40.0: the charger (or an external load balancer) paused the session
     if (up.includes("PAUSED BY CHARGER")) return this._t("reason.paused_by_charger");
@@ -2483,20 +2598,6 @@ class EvSmartChargerDashboard extends HTMLElement {
     if (up.includes("SUNSET")) return this._t("reason.sunset");
     if (up.startsWith("ERROR") || up.includes("SENSOR")) return this._t("reason.sensor");
     if (up.includes("BOOST")) return this._t("reason.boost");
-    if (up.startsWith("CHECKING")) {
-      const m = d.match(/(-?\d+(?:\.\d+)?)\s*W/i);
-      const w = m ? Number(m[1]) : NaN;
-      if (Number.isFinite(w) && w > 0) {
-        if (needW != null) {
-          return this._tf("reason.surplus_low_need", {
-            kw: (w / 1000).toFixed(1),
-            need: (needW / 1000).toFixed(1),
-          });
-        }
-        return this._tf("reason.surplus_low", { kw: (w / 1000).toFixed(1) });
-      }
-      return noSurplus();
-    }
     return noSurplus();
   }
 
@@ -2527,7 +2628,7 @@ class EvSmartChargerDashboard extends HTMLElement {
 
   /** Keep the countdown in the status line ticking once a second. */
   _schedulePendingTick() {
-    const pending = this._solarPending();
+    const pending = this._solarPending() || this._fuseCountdownActive();
     if (pending && !this._pendingTimer) {
       this._pendingTimer = setInterval(() => {
         const el = this.shadowRoot?.querySelector('[data-live="hero.status"]');
@@ -2536,7 +2637,7 @@ class EvSmartChargerDashboard extends HTMLElement {
           if (el.textContent !== st.text) el.textContent = st.text;
           el.setAttribute("data-tone", st.tone);
         }
-        if (!this._solarPending()) {
+        if (!this._solarPending() && !this._fuseCountdownActive()) {
           clearInterval(this._pendingTimer);
           this._pendingTimer = null;
         }
@@ -2624,7 +2725,11 @@ class EvSmartChargerDashboard extends HTMLElement {
         if (text) return { text, tone: "idle" };
       }
     }
-    if (isOn("nightEnabled")) {
+    const solarDiagState = String(this._stateObj(this._entityId("solarDiagnostic"))?.state || "");
+    const solarDaytime = /^(CHECKING|GRID_IMPORT|SPIKE|WAITING)/i.test(solarDiagState.trim());
+    // v2.42.0: in daylight the solar sentence (surplus and start need) is
+    // more useful than the next planned night hour.
+    if (isOn("nightEnabled") && !solarDaytime) {
       const next = this._nightPlanData()?.next;
       if (next) {
         const d = new Date(next);
@@ -4004,6 +4109,7 @@ class EvSmartChargerDashboard extends HTMLElement {
                   ${this._renderMetric(this._t("metric.grid_import"), displayValues.gridImport, "rose", "", "metric.gridImport")}
                   ${this._renderMetric(this._t("metric.charge_current"), displayValues.chargerCurrent, "teal", "", "metric.chargerCurrent")}
                   ${this._renderMetric(this._t("metric.charger"), displayValues.chargingPower, "cyan", "", "metric.chargingPower")}
+                  ${displayValues.homeBattery != null ? this._renderMetric(this._t("metric.home_battery"), displayValues.homeBattery, "violet", "", "metric.homeBattery") : ""}
                 </div>
               </div>
             </header>
@@ -4165,7 +4271,9 @@ class EvSmartChargerDashboard extends HTMLElement {
       chargingProfileId, nightEnabledId, nightTimeId, carReadyTimeId,
       nightSessionId,
     };
-    const displayValues = { chargingPower, solarPower, gridImport, chargerCurrent };
+    // v2.42.0: home battery tile (charging / discharging / idle · SOC)
+    const homeBattery = this._config.home_battery_soc_entity ? this._homeBatteryText() : null;
+    const displayValues = { chargingPower, solarPower, gridImport, chargerCurrent, homeBattery };
 
     // v1.10.4: collect live values (sensor-driven, change frequently) for
     // in-place DOM mutation when only sensors changed since last render.
@@ -4394,6 +4502,7 @@ class EvSmartChargerDashboard extends HTMLElement {
         "metric.gridImport": displayValues.gridImport,
         "metric.chargerCurrent": displayValues.chargerCurrent,
         "metric.chargingPower": displayValues.chargingPower,
+        ...(displayValues.homeBattery != null ? { "metric.homeBattery": displayValues.homeBattery } : {}),
         "ring.headline": ringHeadline,
         "ring.sub": ringSub,
         "legend.ev": legendEvText,

@@ -81,7 +81,7 @@ async def test_number_platform_setup_and_restore(hass, runtime_data):
 
     # 23 always-created + 11 home-battery-only numbers (see _mock_entry).
     # v2.36.0: −4 Hybrid Inverter Mode numbers.
-    assert len(entities) == 33  # v2.13.0: +1 off-grid max amperage (issue #57); v2.29.0: +1 solar start offset
+    assert len(entities) == 34  # v2.13.0: +1 off-grid max amperage (issue #57); v2.29.0: +1 solar start offset; v2.42.0: +1 home battery first
 
     entity = entities[0]
     assert entity.entity_id == "number.ev_smart_charger_entry_123_evsc_check_interval"

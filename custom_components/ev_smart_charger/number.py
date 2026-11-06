@@ -11,6 +11,9 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import (
     has_home_battery,
+    shows_home_battery,
+    HELPER_HOME_BATTERY_FIRST_SOC_SUFFIX,
+    DEFAULT_HOME_BATTERY_FIRST_SOC,
     get_charger_model,
     CHARGER_MODEL_GENERIC,
     DEFAULT_CHECK_INTERVAL,
@@ -187,6 +190,20 @@ async def async_setup_entry(
             default_value=DEFAULT_SOLAR_START_OFFSET, unit="A",
         )
     )
+
+    # v2.42.0: the home battery gets the sun first up to this SOC. Also for a
+    # display-only battery (it only changes how the surplus is counted).
+    if shows_home_battery(entry.data):
+        entities.append(
+            EVSCNumber(
+                runtime_data, entry.entry_id,
+                HELPER_HOME_BATTERY_FIRST_SOC_SUFFIX,
+                "EVSC Home Battery First Up To",
+                "mdi:home-battery",
+                min_value=0, max_value=100, step=5,
+                default_value=DEFAULT_HOME_BATTERY_FIRST_SOC, unit="%",
+            )
+        )
 
     # v2.14.0: main-fuse safety margin, only when fuse protection is set up.
     # Kept at 0.5 A steps regardless of charger model (it is a margin, not a

@@ -26,6 +26,7 @@ import time
 from typing import Any
 
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers.event import (
     async_track_state_change_event,
     async_track_time_interval,
@@ -542,7 +543,21 @@ class FuseGuard:
             # v2.41.0: True when the integration only shows what load
             # balancing should do and never changes the charger.
             "display_only": not self.adjusts,
+            # v2.42.0: when a paused charger may restart / a raise is applied
+            "restart_at": None,
+            "raise_at": None,
         }
+        now_m = time.monotonic()
+        hold = self._limiter.hold_remaining(now_m)
+        if hold > 0 and decision.allowed_a == 0:
+            attributes["restart_at"] = (
+                dt_util.now() + timedelta(seconds=hold)
+            ).replace(microsecond=0).isoformat()
+        rise = self._limiter.increase_remaining(now_m)
+        if rise > 0:
+            attributes["raise_at"] = (
+                dt_util.now() + timedelta(seconds=rise)
+            ).replace(microsecond=0).isoformat()
         for result in limit.phases:
             suffix = f"l{result.phase}"
             attributes[f"grid_current_{suffix}"] = (

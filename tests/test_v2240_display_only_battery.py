@@ -68,7 +68,8 @@ def test_display_only_battery_is_shown_but_not_used():
     assert shows_home_battery(DISPLAY_ONLY) is True
     assert has_home_battery(DISPLAY_ONLY) is False
     assert controls_home_battery(DISPLAY_ONLY) is False
-    assert get_expected_entity_count(DISPLAY_ONLY) == TOTAL_INTEGRATION_ENTITIES_NO_BATTERY
+    # v2.42.0: + the battery-first number
+    assert get_expected_entity_count(DISPLAY_ONLY) == TOTAL_INTEGRATION_ENTITIES_NO_BATTERY + 1
 
 
 def test_legacy_entry_keeps_controlling_the_battery():
