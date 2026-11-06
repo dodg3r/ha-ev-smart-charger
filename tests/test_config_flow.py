@@ -465,5 +465,6 @@ def test_entity_counts_v230():
     # v2.10.0 (issue #55) adds 1 always-created switch (stop charging) → 72 / 58.
     # v2.11.0 adds 1 always-created switch (force charge auto-disarm) → 73 / 59.
     # v2.13.0 (issue #57) adds 1 always-created number (off-grid max amperage) → 74 / 60.
-    assert TOTAL_INTEGRATION_ENTITIES == 78
+    # v2.42.0 adds 1 number with a home battery (battery first) → 79 / 64.
+    assert TOTAL_INTEGRATION_ENTITIES == 79
     assert TOTAL_INTEGRATION_ENTITIES_NO_BATTERY == 64
