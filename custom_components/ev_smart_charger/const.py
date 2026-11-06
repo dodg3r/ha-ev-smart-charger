@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.43.0"
+VERSION = "2.44.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -261,6 +261,16 @@ CONF_PV_FORECAST_TOMORROW = "pv_forecast_tomorrow"
 # SOC). v2.36.0: mapped in the sensors step (the Hybrid Inverter Mode step and
 # its CONF_HYBRID_INVERTER_MODE seed were removed).
 CONF_BATTERY_POWER = "battery_power"
+
+# v2.44.0: "Invert sign" checkboxes for the two signed sensors. On = the
+# sensor uses the opposite sign from the integration's convention (net grid:
+# plus = buying; battery power: plus = charging), so its value is negated
+# wherever it is read (ChargingModel and the dashboard). Default off.
+CONF_GRID_INVERT = "grid_invert"
+# v2.44.0: energy the charger delivered today (kWh, from the charging power).
+HELPER_CHARGED_TODAY_SUFFIX = "evsc_charged_today"
+CHARGED_TODAY_INTERVAL_SECONDS = 10
+CONF_BATTERY_POWER_INVERT = "battery_power_invert"
 
 # v2.17.0: "What do you have?" setup answers. They decide which config steps
 # and fields are shown. Existing entries without the keys derive the answers
@@ -571,7 +581,8 @@ DEFAULT_OFFGRID_MAX_AMPERAGE = 16  # amps (32 = off; v2.36.0 default 16 A, appli
 DEFAULT_MAX_BATTERY_DISCHARGE_FOR_EV = 0  # watts (0 = feature off, current behaviour)
 
 # ========== DEFAULT VALUES - PRIORITY BALANCER ==========
-DEFAULT_EV_MIN_SOC_WEEKDAY = 50  # percent (Monday-Friday)
+# v2.44.0: 80 % every day for new installs (was 50 % on weekdays).
+DEFAULT_EV_MIN_SOC_WEEKDAY = 80  # percent (Monday-Friday)
 DEFAULT_EV_MIN_SOC_WEEKEND = 80  # percent (Saturday-Sunday)
 DEFAULT_HOME_MIN_SOC = 50  # percent (all days)
 
@@ -607,7 +618,8 @@ ACTIVATION_GRACE_BEFORE_MINUTES = 2  # Activate 2 minutes before scheduled time 
 ACTIVATION_GRACE_AFTER_MINUTES = 5   # Continue accepting activation up to 5 minutes after scheduled time
 
 # ========== DEFAULT VALUES - CAR READY FLAGS ==========
-DEFAULT_CAR_READY_WEEKDAY = True  # Monday-Friday (car needed for work)
+# v2.44.0: no day has "car ready" on in a new install (was Monday-Friday).
+DEFAULT_CAR_READY_WEEKDAY = False  # Monday-Friday
 DEFAULT_CAR_READY_WEEKEND = False  # Saturday-Sunday (car not urgently needed)
 
 # ========== SMART BLOCKER SETTINGS ==========
@@ -702,7 +714,8 @@ EV_SOC_MONITOR_INTERVAL = 5  # seconds - polling frequency for cloud sensor reli
 # v2.36.0 removes the 6 Hybrid Inverter Mode entities (1 switch, 4 numbers,
 # 1 diagnostic sensor) → 78.
 # v2.42.0 adds 1 number with a home battery (evsc_home_battery_first_soc) → 79.
-TOTAL_INTEGRATION_ENTITIES = 79
+# v2.44.0 adds 1 always-created sensor (evsc_charged_today) → 80.
+TOTAL_INTEGRATION_ENTITIES = 80
 # Verified count (v2.3.0): 53 entities when running in PV-only mode.
 # Unchanged in v2.1.0: the discharge number is battery-only (skipped in PV-only mode).
 # v2.3.0 (issue #32): evsc_night_pv_handoff_threshold is NOT battery-only → +1 → 53.
@@ -720,7 +733,8 @@ TOTAL_INTEGRATION_ENTITIES = 79
 # v2.31.0: the active-car select is NOT battery-only → 70.
 # v2.36.0: the 6 Hybrid Inverter Mode entities were created in PV-only mode
 # too → 64.
-TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 64
+# v2.44.0: the charged-today sensor is NOT battery-only → 65.
+TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 65
 
 
 # ---------------------------------------------------------------------------

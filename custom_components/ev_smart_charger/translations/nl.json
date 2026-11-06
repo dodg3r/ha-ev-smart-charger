@@ -60,11 +60,13 @@
         "description": "Koppel de thuisbatterij. Beide velden zijn verplicht: het batterijvermogen hoort bij het berekende huisverbruik, ook als de batterij alleen wordt getoond.",
         "data": {
           "soc_home": "SOC thuisbatterij",
-          "battery_power": "Batterijvermogen (W, met teken)"
+          "battery_power": "Batterijvermogen (W, met teken)",
+          "battery_power_invert": "Teken van batterijvermogen omkeren"
         },
         "data_description": {
           "soc_home": "Laadtoestand van de thuisbatterij in procent.",
-          "battery_power": "Batterijvermogen met teken in W — NEGATIEF = ontladen, POSITIEF = laden. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor (zie de README)."
+          "battery_power": "Batterijvermogen met teken in W — NEGATIEF = ontladen, POSITIEF = laden. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor (zie de README).",
+          "battery_power_invert": "Vink aan als deze sensor plus toont bij ontladen en min bij laden. De integratie verwacht plus = laden."
         }
       },
       "pv_forecast": {
@@ -222,11 +224,13 @@
         "description": "Koppel de thuisbatterij. Beide velden zijn verplicht: het batterijvermogen hoort bij het berekende huisverbruik, ook als de batterij alleen wordt getoond.",
         "data": {
           "soc_home": "SOC thuisbatterij",
-          "battery_power": "Batterijvermogen (W, met teken)"
+          "battery_power": "Batterijvermogen (W, met teken)",
+          "battery_power_invert": "Teken van batterijvermogen omkeren"
         },
         "data_description": {
           "soc_home": "Laadtoestand van de thuisbatterij in procent.",
-          "battery_power": "Batterijvermogen met teken in W — NEGATIEF = ontladen, POSITIEF = laden. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor (zie de README)."
+          "battery_power": "Batterijvermogen met teken in W — NEGATIEF = ontladen, POSITIEF = laden. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor (zie de README).",
+          "battery_power_invert": "Vink aan als deze sensor plus toont bij ontladen en min bij laden. De integratie verwacht plus = laden."
         }
       },
       "charger_model": {
@@ -261,6 +265,7 @@
         "data": {
           "main_fuse_size": "Hoofdzekering",
           "grid_import": "Netto netvermogen",
+          "grid_invert": "Teken van netto net omkeren",
           "fuse_grid_import_l1": "Netafname L1 (W)",
           "fuse_grid_import_l2": "Netafname L2 (W)",
           "fuse_grid_import_l3": "Netafname L3 (W)",
@@ -278,6 +283,7 @@
         "data_description": {
           "main_fuse_size": "De waarde van je hoofdzekering per fase. Gebruikt door de belastingbalancering (alleen tonen, of tonen en regelen).",
           "grid_import": "Eén sensor in W of kW: positief bij afname van het net, negatief bij teruglevering.",
+          "grid_invert": "Vink aan als deze sensor plus toont bij verkopen (export) en min bij kopen. De integratie verwacht plus = kopen van het net.",
           "fuse_grid_import_l1": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
           "fuse_grid_import_l2": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
           "fuse_grid_import_l3": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
@@ -315,6 +321,7 @@
         "data": {
           "main_fuse_size": "Hoofdzekering",
           "grid_import": "Netto netvermogen",
+          "grid_invert": "Teken van netto net omkeren",
           "fuse_grid_import_l1": "Netafname L1 (W)",
           "fuse_grid_import_l2": "Netafname L2 (W)",
           "fuse_grid_import_l3": "Netafname L3 (W)",
@@ -332,6 +339,7 @@
         "data_description": {
           "main_fuse_size": "De waarde van je hoofdzekering per fase. Gebruikt door de belastingbalancering (alleen tonen, of tonen en regelen).",
           "grid_import": "Eén sensor in W of kW: positief bij afname van het net, negatief bij teruglevering.",
+          "grid_invert": "Vink aan als deze sensor plus toont bij verkopen (export) en min bij kopen. De integratie verwacht plus = kopen van het net.",
           "fuse_grid_import_l1": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
           "fuse_grid_import_l2": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
           "fuse_grid_import_l3": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
@@ -537,11 +545,13 @@
         "description": "Koppel de thuisbatterij. Beide velden zijn verplicht: het batterijvermogen hoort bij het berekende huisverbruik, ook als de batterij alleen wordt getoond.",
         "data": {
           "soc_home": "SOC thuisbatterij",
-          "battery_power": "Batterijvermogen (W, met teken)"
+          "battery_power": "Batterijvermogen (W, met teken)",
+          "battery_power_invert": "Teken van batterijvermogen omkeren"
         },
         "data_description": {
           "soc_home": "Laadtoestand van de thuisbatterij in procent.",
-          "battery_power": "Batterijvermogen met teken in W — NEGATIEF = ontladen, POSITIEF = laden. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor (zie de README)."
+          "battery_power": "Batterijvermogen met teken in W — NEGATIEF = ontladen, POSITIEF = laden. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor (zie de README).",
+          "battery_power_invert": "Vink aan als deze sensor plus toont bij ontladen en min bij laden. De integratie verwacht plus = laden."
         }
       },
       "features": {
@@ -566,6 +576,7 @@
         "data": {
           "main_fuse_size": "Hoofdzekering",
           "grid_import": "Netto netvermogen",
+          "grid_invert": "Teken van netto net omkeren",
           "fuse_grid_import_l1": "Netafname L1 (W)",
           "fuse_grid_import_l2": "Netafname L2 (W)",
           "fuse_grid_import_l3": "Netafname L3 (W)",
@@ -583,6 +594,7 @@
         "data_description": {
           "main_fuse_size": "De waarde van je hoofdzekering per fase. Gebruikt door de belastingbalancering (alleen tonen, of tonen en regelen).",
           "grid_import": "Eén sensor in W of kW: positief bij afname van het net, negatief bij teruglevering.",
+          "grid_invert": "Vink aan als deze sensor plus toont bij verkopen (export) en min bij kopen. De integratie verwacht plus = kopen van het net.",
           "fuse_grid_import_l1": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
           "fuse_grid_import_l2": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
           "fuse_grid_import_l3": "Vermogen afgenomen van het net op deze fase (0 bij teruglevering).",
@@ -854,6 +866,9 @@
       },
       "evsc_night_charge_plan": {
         "name": "Nachtlaadplan"
+      },
+      "evsc_charged_today": {
+        "name": "Vandaag geladen"
       }
     },
     "time": {

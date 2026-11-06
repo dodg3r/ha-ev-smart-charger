@@ -159,6 +159,7 @@ const DOMAIN_SUFFIXES = {
   priorityState: ["sensor", "evsc_priority_daily_state"],
   todayEvTarget: ["sensor", "evsc_today_ev_target"],
   todayHomeTarget: ["sensor", "evsc_today_home_target"],
+  chargedToday: ["sensor", "evsc_charged_today"],
   cachedEvSoc: ["sensor", "evsc_cached_ev_soc"],
   diagnostic: ["sensor", "evsc_diagnostic"],
   solarDiagnostic: ["sensor", "evsc_solar_surplus_diagnostic"],
@@ -713,6 +714,7 @@ const FRONTEND_LOCALES = {
     "status.waiting": "Waiting · {reason}",
     "status.not_charging": "Not charging",
     "hero.forecast_tomorrow": "Tomorrow Forecast",
+    "hero.charged_today": "Charged today",
     "hero.grid_lost": "⚠ Grid lost",
     "priority.ev": "Car first",
     "priority.home": "Home battery first",
@@ -945,6 +947,7 @@ const FRONTEND_LOCALES = {
     "status.waiting": "Väntar · {reason}",
     "status.not_charging": "Laddar inte",
     "hero.forecast_tomorrow": "Prognos i morgon",
+    "hero.charged_today": "Laddat idag",
     "hero.grid_lost": "⚠ Nätet borta",
     "priority.ev": "Bilen först",
     "priority.home": "Husbatteriet först",
@@ -1177,6 +1180,7 @@ const FRONTEND_LOCALES = {
     "status.waiting": "In attesa · {reason}",
     "status.not_charging": "Non in carica",
     "hero.forecast_tomorrow": "Forecast Domani",
+    "hero.charged_today": "Caricato oggi",
     "hero.grid_lost": "⚠ Rete assente",
     "priority.ev": "Prima l'auto",
     "priority.home": "Prima la batteria",
@@ -1409,6 +1413,7 @@ const FRONTEND_LOCALES = {
     "status.waiting": "Wachten · {reason}",
     "status.not_charging": "Laadt niet",
     "hero.forecast_tomorrow": "Verwachting morgen",
+    "hero.charged_today": "Vandaag geladen",
     "hero.grid_lost": "⚠ Net weg",
     "priority.ev": "Auto eerst",
     "priority.home": "Thuisbatterij eerst",
@@ -1599,6 +1604,9 @@ class EvSmartChargerDashboard extends HTMLElement {
       home_battery_controlled: config?.home_battery_controlled,
       // v2.28.0: false = no solar panels; Solar Surplus settings hidden.
       has_solar: config?.has_solar,
+      // v2.44.0: "Invert sign" for the signed sensors.
+      grid_invert: config?.grid_invert === true,
+      battery_power_invert: config?.battery_power_invert === true,
       solar_power_entities: config?.solar_power_entities,
       home_consumption_entities: config?.home_consumption_entities,
       grid_import_entities: config?.grid_import_entities,
@@ -2180,14 +2188,26 @@ class EvSmartChargerDashboard extends HTMLElement {
   _gridDisplay() {
     const exports = this._config.grid_export_entities;
     const imports = this._config.grid_import_entities;
+    // v2.44.0: "Invert sign" on the net grid sensor.
+    const sign = this._config.grid_invert ? -1 : 1;
     if (!Array.isArray(exports) || exports.length === 0 || !Array.isArray(imports)) {
-      return this._phaseAwareDisplay("grid_import_entities", "grid_import_entity", this._t("fallback.grid_import_entity"));
+      if (sign === 1) {
+        return this._phaseAwareDisplay("grid_import_entities", "grid_import_entity", this._t("fallback.grid_import_entity"));
+      }
+      const ids = Array.isArray(imports) && imports.length ? imports : [this._config.grid_import_entity];
+      let total = 0;
+      for (const id of ids) {
+        const w = this._powerW(id);
+        if (w == null) return this._displayValue(id, this._t("fallback.grid_import_entity"));
+        total += w;
+      }
+      return this._formatPowerW(-total);
     }
     let net = 0;
     for (const id of imports) {
       const w = this._powerW(id);
       if (w == null) return this._t("common.unavailable");
-      net += w;
+      net += sign * w;
     }
     for (const id of exports) {
       const w = this._powerW(id);
@@ -2502,9 +2522,11 @@ class EvSmartChargerDashboard extends HTMLElement {
    * below it. The SOC is on the ring. Without a power sensor: the SOC.
    */
   _homeBatteryTile() {
-    const w = this._config.battery_power_entity
+    const raw = this._config.battery_power_entity
       ? this._powerW(this._config.battery_power_entity)
       : null;
+    // v2.44.0: "Invert sign" on the battery power sensor.
+    const w = raw == null ? null : (this._config.battery_power_invert ? -raw : raw);
     if (w == null) {
       const soc = this._numericState(this._config.home_battery_soc_entity);
       return { value: soc != null ? `${Math.round(soc)} %` : "—", sub: "", dir: "idle" };
@@ -3042,9 +3064,8 @@ class EvSmartChargerDashboard extends HTMLElement {
                 data-live-attr-id="ring.homeOffset"/>`
       : "";
 
-    const legendHomeText = homePct != null
-      ? `${this._t("metric.home_battery")} ${Math.round(homePct)}%`
-      : "";
+    // v2.44.0: the percentages are in the ring; the legend only names the colours.
+    const legendHomeText = homePct != null ? this._t("metric.home_battery") : "";
     const legendHome = homePct != null
       ? `<div style="color: var(--evsc-ring-home);"><span class="ring-dot"></span><span data-live="legend.home">${legendHomeText}</span></div>`
       : "";
@@ -3053,7 +3074,10 @@ class EvSmartChargerDashboard extends HTMLElement {
       ? `<span class="charging-pulse" title="${this._t("metric.charging_power")}"></span>`
       : "";
 
-    const legendEvText = `${this._t("metric.ev_soc")}${evPct != null ? " " + Math.round(evPct) + "%" : ""}`;
+    const legendEvText = this._t("metric.ev_soc");
+    const homeCentre = homePct != null
+      ? `<div class="ring-home" style="color: var(--evsc-ring-home);" data-live="ring.home">${Math.round(homePct)}%</div>`
+      : "";
 
     return `
       <div class="hero-ring-wrap">
@@ -3069,8 +3093,9 @@ class EvSmartChargerDashboard extends HTMLElement {
             ${homePct != null ? this._renderTargetTick(rInner, this._homeTarget(), "ring.homeTarget") : ""}
           </svg>
           <div class="hero-ring-center">
-            <div class="ring-headline">${chargingDot}<span data-live="ring.headline">${headline}</span></div>
+            <div class="ring-headline" style="color: var(--evsc-aurora-green);">${chargingDot}<span data-live="ring.headline">${headline}</span></div>
             <div class="ring-sub" data-live="ring.sub">${sub}</div>
+            ${homeCentre}
           </div>
         </div>
         <div class="hero-ring-legend">
@@ -3229,6 +3254,24 @@ class EvSmartChargerDashboard extends HTMLElement {
    * documented contract on the config-flow help text) so a sensor with
    * no unit_of_measurement still renders sanely.
    */
+  /** v2.44.0: "Laddat idag" (kWh from sensor.…_evsc_charged_today), or null. */
+  _chargedTodayText() {
+    const id = this._entityId("chargedToday");
+    const obj = id ? this._stateObj(id) : null;
+    if (!obj) return null;
+    if (!obj.state || obj.state === "unknown" || obj.state === "unavailable") return "—";
+    return this._formatForecastKwh(obj);
+  }
+
+  /** v2.44.0: the forecast pill with "Charged today" under it. */
+  _renderEnergyPills() {
+    const forecast = this._renderForecastPill();
+    const charged = this._chargedTodayText();
+    if (charged == null) return forecast;
+    const pill = `<span class="forecast-pill charged-pill"><span class="forecast-pill-label">${this._t("hero.charged_today")}:</span> <span data-live="charged.today">${charged}</span></span>`;
+    return `<span class="energy-pill-stack">${forecast}${pill}</span>`;
+  }
+
   _formatForecastKwh(stateObj) {
     const raw = Number(stateObj?.state);
     if (!Number.isFinite(raw)) {
@@ -4123,7 +4166,7 @@ class EvSmartChargerDashboard extends HTMLElement {
               <div class="evsc-hero-body">
                 <div class="hero-pill-row">
                   ${this._renderPriorityPill(priorityState)}
-                  ${this._renderForecastPill()}
+                  ${this._renderEnergyPills()}
                   ${this._renderGridLostPill()}
                 </div>
                 <h1>${this._config.title || this._t("title.default")}</h1>
@@ -4437,6 +4480,8 @@ class EvSmartChargerDashboard extends HTMLElement {
       ni: nightOn,
       ch: chargingOnForKey,
       gl: gridLost,
+      // v2.44.0: the "charged today" pill appears with its sensor.
+      ct: this._chargedTodayText() != null,
       np: nightPlanKey,
     });
   }
@@ -4477,10 +4522,10 @@ class EvSmartChargerDashboard extends HTMLElement {
     void isActuallyCharging;
     const { headline: ringHeadline, sub: ringSub } = this._ringText(evPct);
 
-    const legendEvText = `${this._t("metric.ev_soc")}${evPct != null ? " " + Math.round(evPct) + "%" : ""}`;
-    const legendHomeText = homePct != null
-      ? `${this._t("metric.home_battery")} ${Math.round(homePct)}%`
-      : "";
+    const legendEvText = this._t("metric.ev_soc");
+    const legendHomeText = homePct != null ? this._t("metric.home_battery") : "";
+    const ringHome = homePct != null ? `${Math.round(homePct)}%` : "";
+    const chargedToday = this._chargedTodayText();
     const heroStatus = this._heroStatus();
 
     // v1.11.3: collect toggle / number / time state for live-update so
@@ -4538,6 +4583,8 @@ class EvSmartChargerDashboard extends HTMLElement {
         "ring.sub": ringSub,
         "legend.ev": legendEvText,
         "legend.home": legendHomeText,
+        "ring.home": ringHome,
+        ...(chargedToday != null ? { "charged.today": chargedToday } : {}),
         "forecast.tomorrow": forecastValue,
         "hero.status": heroStatus.text,
       },
@@ -5053,6 +5100,13 @@ class EvSmartChargerDashboard extends HTMLElement {
           font-weight: 700;
           letter-spacing: -0.04em;
           color: var(--evsc-fg);
+        }
+        /* v2.44.0: home battery % in the ring centre, in the ring's colour */
+        .hero-ring-center .ring-home {
+          font-size: 1.15rem;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          margin-top: 4px;
         }
         .hero-ring-center .ring-sub {
           font-size: 0.78rem;
@@ -5689,6 +5743,15 @@ class EvSmartChargerDashboard extends HTMLElement {
           border: 1px solid rgba(255, 149, 0, 0.45);
           color: var(--evsc-sys-orange);
           white-space: nowrap;
+        }
+        /* v2.44.0: "Charged today" under the forecast, green tint */
+        .energy-pill-stack {
+          display: inline-flex; flex-direction: column; align-items: flex-start; gap: 6px;
+        }
+        .forecast-pill.charged-pill {
+          background: rgba(52, 199, 89, 0.14);
+          border-color: rgba(52, 199, 89, 0.45);
+          color: var(--evsc-sys-green);
         }
         .forecast-pill .forecast-pill-label {
           font-weight: 500;

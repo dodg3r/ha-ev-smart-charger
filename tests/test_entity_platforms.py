@@ -248,7 +248,7 @@ async def test_sensor_platform_setup_publish_restore_and_log_manager(hass, runti
 
     # 9 always-created (v2.20.0: + night charge plan) + 1 home-battery-only
     # sensor (today_home_target). v2.36.0: −1 Hybrid Inverter diagnostic.
-    assert len(entities) == 9
+    assert len(entities) == 10  # v2.44.0: + charged today
 
     diagnostic = next(entity for entity in entities if entity.entity_id.endswith("evsc_diagnostic"))
     priority = next(

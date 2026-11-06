@@ -92,7 +92,7 @@ marked optional.
 | What | Unit |
 |---|---|
 | Main fuse size | A |
-| Net grid power — positive when buying, negative when selling | W / kW |
+| Net grid power — positive when buying, negative when selling (tick **Invert sign** if your sensor is the other way round) | W / kW |
 | Grid import power L1, L2, L3 | W |
 | Grid export power L1, L2, L3 | W |
 | Grid current L1, L2, L3 | A |
@@ -121,7 +121,7 @@ marked optional.
 | What | Unit |
 |---|---|
 | Battery SOC | % |
-| Battery power — negative when discharging, positive when charging | W |
+| Battery power — negative when discharging, positive when charging (tick **Invert sign** if your sensor is the other way round) | W |
 
 **Other**
 
@@ -179,7 +179,11 @@ steps that apply to your answers are shown.
 Everything can be changed later with **Reconfigure** or **Configure** on the
 integration, without losing the settings on the dashboard. **Configure** opens
 with a choice: **Cars** (add, edit or remove a car and save at once) or **All
-settings** (every step above). Answering "no" to
+settings** (every step above).
+
+A new install starts with the charging profile on **Solar surplus**, **Night
+Smart Charge** on, **car ready** off on every day and the car target at **80 %**
+every day. Answering "no" to
 solar or home battery removes the entities that no longer apply.
 
 ---
@@ -351,7 +355,9 @@ With the dashboard step on, **EV Smart Charger** appears in the sidebar
 (`/ev-smart-charger`). Two tabs:
 
 - **Dashboard** (Översikt) — car dropdown, status ring (outer = car, inner =
-  home battery, each with a mark at its target), a status line
+  home battery, each with a mark at its target; both percentages in the
+  centre in the ring's colour), the solar forecast with **Charged today**
+  (kWh) under it, a status line
   that says what is happening and what comes next ("Solar surplus 2.1 kW, too
   little to start (needs 4.5 kW)", "Cloud pause · stopping in 45 s",
   "Paused by main fuse protection · retrying in 1:30"), tiles for solar,
@@ -396,7 +402,7 @@ over restarts. Entity ids look like
 | Home battery | `evsc_home_battery_first_soc` (also display-only), `evsc_use_home_battery`, `evsc_priority_balancer_enabled`, `evsc_home_battery_min_soc`, `evsc_battery_support_amperage`, `evsc_battery_support_sunset_buffer`, `evsc_max_battery_discharge_for_ev`, `evsc_home_min_soc_<day>` |
 | Load balancing | `evsc_main_fuse`, `evsc_fuse_headroom`, `evsc_fuse_margin`, `evsc_fuse_hard_trip` |
 | Notifications | `evsc_notify_smart_blocker_enabled`, `evsc_notify_priority_balancer_enabled`, `evsc_notify_night_charge_enabled`, `evsc_live_activities_enabled` |
-| Status | `evsc_diagnostic`, `evsc_solar_surplus_diagnostic`, `evsc_priority_daily_state`, `evsc_night_charge_plan`, `evsc_night_session_state`, `evsc_today_ev_target`, `evsc_today_home_target`, `evsc_cached_ev_soc` |
+| Status | `evsc_diagnostic`, `evsc_solar_surplus_diagnostic`, `evsc_priority_daily_state`, `evsc_night_charge_plan`, `evsc_night_session_state`, `evsc_today_ev_target`, `evsc_today_home_target`, `evsc_cached_ev_soc`, `evsc_charged_today` (kWh, from 00:00) |
 | Logging | `evsc_enable_file_logging`, `evsc_trace_logging_enabled`, `evsc_log_file_path` |
 
 Home battery entities only exist with a battery the integration may use, load

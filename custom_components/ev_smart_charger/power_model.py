@@ -23,6 +23,7 @@ from .const import (
     CHARGER_STATUS_WAIT,
     CHARGING_POWER_DRAWING_FLOOR_W,
     CONF_BATTERY_POWER,
+    CONF_BATTERY_POWER_INVERT,
     CONF_CHARGING_POWER,
     CONF_CHARGING_POWER_L2,
     CONF_CHARGING_POWER_L3,
@@ -34,6 +35,7 @@ from .const import (
     CONF_FV_PRODUCTION_L3,
     CONF_GRID_AVAILABLE,
     CONF_GRID_IMPORT,
+    CONF_GRID_INVERT,
     CONF_GRID_IMPORT_L2,
     CONF_GRID_IMPORT_L3,
     CONF_GRID_EXPORT,
@@ -414,6 +416,9 @@ class ChargingModel:
     _meter_voltage_entities: list[str | None] = field(default_factory=list)
     # v2.38.0: optional grid export sensors (net grid = import − export).
     _grid_export_entities: list[str] = field(default_factory=list)
+    # v2.44.0: -1.0 when the user ticked "Invert sign" for the sensor.
+    _grid_sign: float = 1.0
+    _battery_sign: float = 1.0
     _config: dict = field(default_factory=dict, repr=False)
 
     @classmethod
@@ -439,6 +444,8 @@ class ChargingModel:
             ),
             _meter_export_entities=[config.get(k) for k in FUSE_GRID_EXPORT_KEYS[:phases]],
             _meter_voltage_entities=[config.get(k) for k in FUSE_GRID_VOLTAGE_KEYS[:phases]],
+            _grid_sign=-1.0 if config.get(CONF_GRID_INVERT) else 1.0,
+            _battery_sign=-1.0 if config.get(CONF_BATTERY_POWER_INVERT) else 1.0,
             _config=dict(config),
         )
 
@@ -566,11 +573,7 @@ class ChargingModel:
         export, minus any import.
         """
         ev = self._ev_power_for_balance(hass) or 0.0
-        battery = (
-            get_float(hass, self._battery_power_entity, default=0.0)
-            if self._battery_power_entity
-            else 0.0
-        )
+        battery = self.read_battery_power(hass) or 0.0
         house = self.read_production(hass) + self.read_grid_import(hass) - ev - battery
         return max(0.0, house)
 
@@ -582,7 +585,9 @@ class ChargingModel:
         Without a mapped import: the meter's import − export power per phase.
         """
         if self._grid_import_entities or not self._meter_import_entities:
-            imported = sum(get_float(hass, e) for e in self._grid_import_entities)
+            imported = self._grid_sign * sum(
+                get_float(hass, e) for e in self._grid_import_entities
+            )
             exported = sum(abs(get_float(hass, e)) for e in self._grid_export_entities)
             return imported - exported
         value = self._derived_grid_import(hass)
@@ -652,7 +657,7 @@ class ChargingModel:
         """
         if not self._battery_power_entity:
             return None
-        return get_float(hass, self._battery_power_entity, default=0.0)
+        return self._battery_sign * get_float(hass, self._battery_power_entity, default=0.0)
 
     def read_battery_discharge(self, hass: HomeAssistant) -> float | None:
         """Home-battery discharge in watts (>=0 = discharging), or None.
@@ -663,9 +668,10 @@ class ChargingModel:
         explicit guard is what distinguishes "unconfigured" from a genuine 0 W
         reading (``get_float`` defaults to 0.0 for missing/unknown states).
         """
-        if not self._battery_power_entity:
+        power = self.read_battery_power(hass)
+        if power is None:
             return None
-        return max(0.0, -get_float(hass, self._battery_power_entity, default=0.0))
+        return max(0.0, -power)
 
     # ----- charging-state SSOT (v2.2.0) -----
     def charging_power_entities(self) -> list[str]:
