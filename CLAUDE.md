@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.44.0
+**Current Version:** 2.45.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,21 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.45.0 (2026-11-06) — fork dodg3r
+**Ring shows only the percentages; targets in the legend; "Solar forecast tomorrow"**
+
+Requested by the maintainer. Frontend only.
+- `_ringText()` returns only the EV headline: the "Target 80 %" / "EV" line
+  in the ring centre (`ring-sub`, live `ring.sub`) is gone.
+- Legend under the ring: one row per ring (`.hero-ring-legend` column),
+  `_legendText(name, target)` → "Car · target 80%" / "Home battery ·
+  target 60%" (`ring.legend_target`, EN/SV/IT/NL), just the name without a
+  target. Targets: `_activeEvTarget()` / `_homeTarget()`.
+- `hero.forecast_tomorrow`: "Solar forecast tomorrow" / "Solprognos i
+  morgon" / "Previsione solare domani" / "Zonneverwachting morgen".
+
+---
 
 ### v2.44.0 (2026-11-06) — fork dodg3r
 **Invert sign for the signed sensors; both percentages in the ring; new install defaults; "Charged today"**

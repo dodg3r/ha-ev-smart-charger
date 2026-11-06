@@ -633,6 +633,7 @@ const FRONTEND_LOCALES = {
     "status.by_boost": "Boost",
     "status.by_force": "Force Charge",
     "ring.target": "Target {target}%",
+    "ring.legend_target": "{name} · target {target}%",
     "metric.charger": "Charger",
     "charger.no_car": "No car",
     "charger.connected": "Car connected",
@@ -713,7 +714,7 @@ const FRONTEND_LOCALES = {
     "night.soc_to_target": "{soc}% → {target}%",
     "status.waiting": "Waiting · {reason}",
     "status.not_charging": "Not charging",
-    "hero.forecast_tomorrow": "Tomorrow Forecast",
+    "hero.forecast_tomorrow": "Solar forecast tomorrow",
     "hero.charged_today": "Charged today",
     "hero.grid_lost": "⚠ Grid lost",
     "priority.ev": "Car first",
@@ -866,6 +867,7 @@ const FRONTEND_LOCALES = {
     "status.by_boost": "Boost",
     "status.by_force": "Tvångsladdning",
     "ring.target": "Mål {target} %",
+    "ring.legend_target": "{name} · mål {target} %",
     "metric.charger": "Laddare",
     "charger.no_car": "Ingen bil",
     "charger.connected": "Bil ansluten",
@@ -946,7 +948,7 @@ const FRONTEND_LOCALES = {
     "night.soc_to_target": "{soc} % → {target} %",
     "status.waiting": "Väntar · {reason}",
     "status.not_charging": "Laddar inte",
-    "hero.forecast_tomorrow": "Prognos i morgon",
+    "hero.forecast_tomorrow": "Solprognos i morgon",
     "hero.charged_today": "Laddat idag",
     "hero.grid_lost": "⚠ Nätet borta",
     "priority.ev": "Bilen först",
@@ -1099,6 +1101,7 @@ const FRONTEND_LOCALES = {
     "status.by_boost": "Boost",
     "status.by_force": "Forza ricarica",
     "ring.target": "Obiettivo {target}%",
+    "ring.legend_target": "{name} · obiettivo {target}%",
     "metric.charger": "Caricatore",
     "charger.no_car": "Nessuna auto",
     "charger.connected": "Auto collegata",
@@ -1179,7 +1182,7 @@ const FRONTEND_LOCALES = {
     "night.soc_to_target": "{soc}% → {target}%",
     "status.waiting": "In attesa · {reason}",
     "status.not_charging": "Non in carica",
-    "hero.forecast_tomorrow": "Forecast Domani",
+    "hero.forecast_tomorrow": "Previsione solare domani",
     "hero.charged_today": "Caricato oggi",
     "hero.grid_lost": "⚠ Rete assente",
     "priority.ev": "Prima l'auto",
@@ -1332,6 +1335,7 @@ const FRONTEND_LOCALES = {
     "status.by_boost": "Boost",
     "status.by_force": "Laden forceren",
     "ring.target": "Doel {target}%",
+    "ring.legend_target": "{name} · doel {target}%",
     "metric.charger": "Lader",
     "charger.no_car": "Geen auto",
     "charger.connected": "Auto aangesloten",
@@ -1412,7 +1416,7 @@ const FRONTEND_LOCALES = {
     "night.soc_to_target": "{soc}% → {target}%",
     "status.waiting": "Wachten · {reason}",
     "status.not_charging": "Laadt niet",
-    "hero.forecast_tomorrow": "Verwachting morgen",
+    "hero.forecast_tomorrow": "Zonneverwachting morgen",
     "hero.charged_today": "Vandaag geladen",
     "hero.grid_lost": "⚠ Net weg",
     "priority.ev": "Auto eerst",
@@ -3013,13 +3017,14 @@ class EvSmartChargerDashboard extends HTMLElement {
    *   - otherwise "—"
    */
   _ringText(evPct) {
-    const target = this._activeEvTarget();
-    return {
-      headline: evPct != null ? `${Math.round(evPct)}%` : "—",
-      sub: target != null
-        ? this._tf("ring.target", { target: Math.round(target) })
-        : this._t("metric.ev_soc"),
-    };
+    // v2.45.0: only the percentage; the targets are in the legend.
+    return { headline: evPct != null ? `${Math.round(evPct)}%` : "—" };
+  }
+
+  /** v2.45.0: legend row "Bil · mål 80 %", or just the name without a target. */
+  _legendText(name, target) {
+    const ok = target != null && Number.isFinite(Number(target)) && target > 0 && target <= 100;
+    return ok ? this._tf("ring.legend_target", { name, target: Math.round(Number(target)) }) : name;
   }
 
   _renderHeroRing() {
@@ -3051,7 +3056,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     // v2.23.0: the ring always shows the EV SOC and the target it charges
     // towards; power and current live in the tiles.
     void isActuallyCharging;
-    const { headline, sub } = this._ringText(evPct);
+    const { headline } = this._ringText(evPct);
 
     // v1.11.0: rings use aurora accents (more saturated, more electric)
     // for the live arcs while keeping the track in the muted system gray.
@@ -3065,7 +3070,9 @@ class EvSmartChargerDashboard extends HTMLElement {
       : "";
 
     // v2.44.0: the percentages are in the ring; the legend only names the colours.
-    const legendHomeText = homePct != null ? this._t("metric.home_battery") : "";
+    const legendHomeText = homePct != null
+      ? this._legendText(this._t("metric.home_battery"), this._homeTarget())
+      : "";
     const legendHome = homePct != null
       ? `<div style="color: var(--evsc-ring-home);"><span class="ring-dot"></span><span data-live="legend.home">${legendHomeText}</span></div>`
       : "";
@@ -3074,7 +3081,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       ? `<span class="charging-pulse" title="${this._t("metric.charging_power")}"></span>`
       : "";
 
-    const legendEvText = this._t("metric.ev_soc");
+    const legendEvText = this._legendText(this._t("metric.ev_soc"), this._activeEvTarget());
     const homeCentre = homePct != null
       ? `<div class="ring-home" style="color: var(--evsc-ring-home);" data-live="ring.home">${Math.round(homePct)}%</div>`
       : "";
@@ -3094,7 +3101,6 @@ class EvSmartChargerDashboard extends HTMLElement {
           </svg>
           <div class="hero-ring-center">
             <div class="ring-headline" style="color: var(--evsc-aurora-green);">${chargingDot}<span data-live="ring.headline">${headline}</span></div>
-            <div class="ring-sub" data-live="ring.sub">${sub}</div>
             ${homeCentre}
           </div>
         </div>
@@ -4520,10 +4526,12 @@ class EvSmartChargerDashboard extends HTMLElement {
       && derivedKw > 0
       && !this._isEvFull(evPct);
     void isActuallyCharging;
-    const { headline: ringHeadline, sub: ringSub } = this._ringText(evPct);
+    const { headline: ringHeadline } = this._ringText(evPct);
 
-    const legendEvText = this._t("metric.ev_soc");
-    const legendHomeText = homePct != null ? this._t("metric.home_battery") : "";
+    const legendEvText = this._legendText(this._t("metric.ev_soc"), this._activeEvTarget());
+    const legendHomeText = homePct != null
+      ? this._legendText(this._t("metric.home_battery"), this._homeTarget())
+      : "";
     const ringHome = homePct != null ? `${Math.round(homePct)}%` : "";
     const chargedToday = this._chargedTodayText();
     const heroStatus = this._heroStatus();
@@ -4580,7 +4588,6 @@ class EvSmartChargerDashboard extends HTMLElement {
           "metric.homeBatterySub": displayValues.homeBattery.sub,
         } : {}),
         "ring.headline": ringHeadline,
-        "ring.sub": ringSub,
         "legend.ev": legendEvText,
         "legend.home": legendHomeText,
         "ring.home": ringHome,
@@ -5103,10 +5110,9 @@ class EvSmartChargerDashboard extends HTMLElement {
         }
         /* v2.44.0: home battery % in the ring centre, in the ring's colour */
         .hero-ring-center .ring-home {
-          font-size: 1.15rem;
+          font-size: 1.3rem;
           font-weight: 700;
           letter-spacing: -0.02em;
-          margin-top: 4px;
         }
         .hero-ring-center .ring-sub {
           font-size: 0.78rem;
@@ -5115,8 +5121,10 @@ class EvSmartChargerDashboard extends HTMLElement {
           text-transform: uppercase;
           font-weight: 600;
         }
+        /* v2.45.0: one row per ring, with its target */
         .hero-ring-legend {
-          display: flex; gap: 16px; justify-content: center; margin-top: 12px;
+          display: flex; flex-direction: column; align-items: center;
+          gap: 4px; margin-top: 12px;
         }
         /* v2.15.0: "Charging · 16 A · 3.7 kW" pill under the SOC ring. */
         .hero-ring-pill {
