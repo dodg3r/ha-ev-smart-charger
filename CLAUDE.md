@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.45.0
+**Current Version:** 2.46.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,23 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.46.0 (2026-11-06) — fork dodg3r
+**Grid tile like the home battery tile; home battery legend "first to 60 %"**
+
+Requested by the maintainer. Frontend only.
+- `_gridDisplay()` returns a tile `{value, sub, dir}`: net grid (Σ import ×
+  invert sign − Σ |export|) without sign, "Import" (`dir` out, orange) or
+  "Export" (`dir` in, green) below, "0 W" neutral under 50 W. Rendered by
+  `_renderGridMetric()` (`.grid-tile`, shares the battery-tile colours), title
+  `metric.grid` ("Grid" / "Nät" / "Rete" / "Net"), live keys
+  `metric.gridImport`, `metric.gridSub`, class via `metric.gridDir`.
+  Texts `grid.import` / `grid.export` EN/SV/IT/NL.
+- `_homeLegendText()`: with "Home battery first up to" (1–99 %) the home row
+  reads "Home battery · first to 60%" (`ring.legend_first`, EN/SV/IT/NL),
+  otherwise "target X%" from today's home target as before.
+
+---
 
 ### v2.45.0 (2026-11-06) — fork dodg3r
 **Ring shows only the percentages; targets in the legend; "Solar forecast tomorrow"**
