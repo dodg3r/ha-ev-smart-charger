@@ -634,6 +634,10 @@ const FRONTEND_LOCALES = {
     "status.by_force": "Force Charge",
     "ring.target": "Target {target}%",
     "ring.legend_target": "{name} · target {target}%",
+    "ring.legend_first": "{name} · first to {target}%",
+    "metric.grid": "Grid",
+    "grid.import": "Import",
+    "grid.export": "Export",
     "metric.charger": "Charger",
     "charger.no_car": "No car",
     "charger.connected": "Car connected",
@@ -868,6 +872,10 @@ const FRONTEND_LOCALES = {
     "status.by_force": "Tvångsladdning",
     "ring.target": "Mål {target} %",
     "ring.legend_target": "{name} · mål {target} %",
+    "ring.legend_first": "{name} · först till {target} %",
+    "metric.grid": "Nät",
+    "grid.import": "Import",
+    "grid.export": "Export",
     "metric.charger": "Laddare",
     "charger.no_car": "Ingen bil",
     "charger.connected": "Bil ansluten",
@@ -1102,6 +1110,10 @@ const FRONTEND_LOCALES = {
     "status.by_force": "Forza ricarica",
     "ring.target": "Obiettivo {target}%",
     "ring.legend_target": "{name} · obiettivo {target}%",
+    "ring.legend_first": "{name} · prima fino a {target}%",
+    "metric.grid": "Rete",
+    "grid.import": "Prelievo",
+    "grid.export": "Immissione",
     "metric.charger": "Caricatore",
     "charger.no_car": "Nessuna auto",
     "charger.connected": "Auto collegata",
@@ -1336,6 +1348,10 @@ const FRONTEND_LOCALES = {
     "status.by_force": "Laden forceren",
     "ring.target": "Doel {target}%",
     "ring.legend_target": "{name} · doel {target}%",
+    "ring.legend_first": "{name} · eerst tot {target}%",
+    "metric.grid": "Net",
+    "grid.import": "Afname",
+    "grid.export": "Teruglevering",
     "metric.charger": "Lader",
     "charger.no_car": "Geen auto",
     "charger.connected": "Auto aangesloten",
@@ -2189,36 +2205,51 @@ class EvSmartChargerDashboard extends HTMLElement {
    * the main meter) it shows import − export in watts / kW; otherwise the
    * mapped grid-import sensor(s) as before.
    */
+  /**
+   * v2.46.0: grid tile like the home battery tile — unsigned power with
+   * "Import" (orange) or "Export" (green) below, neutral near zero.
+   * Net grid = Σ import (× invert sign) − Σ |export|, positive = buying.
+   */
   _gridDisplay() {
     const exports = this._config.grid_export_entities;
     const imports = this._config.grid_import_entities;
     // v2.44.0: "Invert sign" on the net grid sensor.
     const sign = this._config.grid_invert ? -1 : 1;
-    if (!Array.isArray(exports) || exports.length === 0 || !Array.isArray(imports)) {
-      if (sign === 1) {
-        return this._phaseAwareDisplay("grid_import_entities", "grid_import_entity", this._t("fallback.grid_import_entity"));
-      }
-      const ids = Array.isArray(imports) && imports.length ? imports : [this._config.grid_import_entity];
-      let total = 0;
-      for (const id of ids) {
-        const w = this._powerW(id);
-        if (w == null) return this._displayValue(id, this._t("fallback.grid_import_entity"));
-        total += w;
-      }
-      return this._formatPowerW(-total);
-    }
+    const fallback = this._t("fallback.grid_import_entity");
+    const hasExports = Array.isArray(exports) && exports.length > 0 && Array.isArray(imports);
+    const ids = Array.isArray(imports) && imports.length ? imports : [this._config.grid_import_entity];
     let net = 0;
-    for (const id of imports) {
+    for (const id of ids) {
       const w = this._powerW(id);
-      if (w == null) return this._t("common.unavailable");
+      if (w == null) {
+        const value = hasExports || ids.length > 1
+          ? this._t("common.unavailable")
+          : this._displayValue(id, fallback);
+        return { value, sub: "", dir: "idle" };
+      }
       net += sign * w;
     }
-    for (const id of exports) {
-      const w = this._powerW(id);
-      if (w == null) return this._t("common.unavailable");
-      net -= Math.abs(w);
+    if (hasExports) {
+      for (const id of exports) {
+        const w = this._powerW(id);
+        if (w == null) return { value: this._t("common.unavailable"), sub: "", dir: "idle" };
+        net -= Math.abs(w);
+      }
     }
-    return this._formatPowerW(net);
+    if (Math.abs(net) < 50) return { value: "0 W", sub: "", dir: "idle" };
+    return net > 0
+      ? { value: this._formatPowerW(net), sub: this._t("grid.import"), dir: "out" }
+      : { value: this._formatPowerW(-net), sub: this._t("grid.export"), dir: "in" };
+  }
+
+  _renderGridMetric(tile) {
+    return `
+      <div class="metric-card tone-rose grid-tile dir-${tile.dir}" data-live-attr-id="metric.gridDir">
+        <span class="eyebrow">${this._t("metric.grid")}</span>
+        <strong data-live="metric.gridImport">${tile.value}</strong>
+        <span class="metric-sub" data-live="metric.gridSub">${tile.sub}</span>
+      </div>
+    `;
   }
 
   /**
@@ -3071,7 +3102,7 @@ class EvSmartChargerDashboard extends HTMLElement {
 
     // v2.44.0: the percentages are in the ring; the legend only names the colours.
     const legendHomeText = homePct != null
-      ? this._legendText(this._t("metric.home_battery"), this._homeTarget())
+      ? this._homeLegendText()
       : "";
     const legendHome = homePct != null
       ? `<div style="color: var(--evsc-ring-home);"><span class="ring-dot"></span><span data-live="legend.home">${legendHomeText}</span></div>`
@@ -3139,6 +3170,20 @@ class EvSmartChargerDashboard extends HTMLElement {
    * when it is set between 1 and 99 %, otherwise today's home target when
    * EV Smart Charger controls the battery.
    */
+  /**
+   * v2.46.0: home battery legend. With "Home battery first up to" the mark
+   * is where the car starts getting the sun ("först till 60 %"); with the
+   * integration's own home target it is a target ("mål 60 %").
+   */
+  _homeLegendText() {
+    const name = this._t("metric.home_battery");
+    const first = this._numericState(this._entityId("homeBatteryFirstSoc"));
+    if (first != null && first > 0 && first < 100) {
+      return this._tf("ring.legend_first", { name, target: Math.round(first) });
+    }
+    return this._legendText(name, this._homeTarget());
+  }
+
   _homeTarget() {
     const first = this._numericState(this._entityId("homeBatteryFirstSoc"));
     if (first != null && first > 0 && first < 100) return first;
@@ -4182,7 +4227,7 @@ class EvSmartChargerDashboard extends HTMLElement {
                 })()}
                 <div class="evsc-metric-row">
                   ${this._renderMetric(this._t("metric.solar_power"), displayValues.solarPower, "amber", "", "metric.solarPower")}
-                  ${this._renderMetric(this._t("metric.grid_import"), displayValues.gridImport, "rose", "", "metric.gridImport")}
+                  ${this._renderGridMetric(displayValues.gridImport)}
                   ${this._renderMetric(this._t("metric.charge_current"), displayValues.chargerCurrent, "teal", "", "metric.chargerCurrent")}
                   ${this._renderMetric(this._t("metric.charger"), displayValues.chargingPower, "cyan", "", "metric.chargingPower")}
                   ${displayValues.homeBattery != null ? this._renderHomeBatteryMetric(displayValues.homeBattery) : ""}
@@ -4530,7 +4575,7 @@ class EvSmartChargerDashboard extends HTMLElement {
 
     const legendEvText = this._legendText(this._t("metric.ev_soc"), this._activeEvTarget());
     const legendHomeText = homePct != null
-      ? this._legendText(this._t("metric.home_battery"), this._homeTarget())
+      ? this._homeLegendText()
       : "";
     const ringHome = homePct != null ? `${Math.round(homePct)}%` : "";
     const chargedToday = this._chargedTodayText();
@@ -4580,7 +4625,8 @@ class EvSmartChargerDashboard extends HTMLElement {
     return {
       text: {
         "metric.solarPower": displayValues.solarPower,
-        "metric.gridImport": displayValues.gridImport,
+        "metric.gridImport": displayValues.gridImport.value,
+        "metric.gridSub": displayValues.gridImport.sub,
         "metric.chargerCurrent": displayValues.chargerCurrent,
         "metric.chargingPower": displayValues.chargingPower,
         ...(displayValues.homeBattery != null ? {
@@ -4609,6 +4655,10 @@ class EvSmartChargerDashboard extends HTMLElement {
         "ring.targetVisibility": { attr: "visibility", value: targetTick.visibility },
         "ring.homeTargetRotate": { attr: "transform", value: homeTargetTick.rotate },
         "ring.homeTargetVisibility": { attr: "visibility", value: homeTargetTick.visibility },
+        "metric.gridDir": {
+          attr: "class",
+          value: `metric-card tone-rose grid-tile dir-${displayValues.gridImport.dir}`,
+        },
         ...(displayValues.homeBattery != null ? {
           "metric.homeBatteryDir": {
             attr: "class",
@@ -5245,8 +5295,10 @@ class EvSmartChargerDashboard extends HTMLElement {
           font-weight: 500;
         }
         /* v2.43.0: home battery tile — signed power, direction below */
-        .battery-tile.dir-in strong { color: var(--evsc-aurora-green, #00d35a); }
-        .battery-tile.dir-out strong { color: var(--evsc-sys-orange, #ff9500); }
+        .battery-tile.dir-in strong,
+        .grid-tile.dir-in strong { color: var(--evsc-aurora-green, #00d35a); }
+        .battery-tile.dir-out strong,
+        .grid-tile.dir-out strong { color: var(--evsc-sys-orange, #ff9500); }
 
         /* ---------- Spotlight (priority engine) ---------- */
         .spotlight-panel {
