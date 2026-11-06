@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.46.0
+**Current Version:** 2.47.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,30 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.47.0 (2026-11-06) — fork dodg3r
+**A dashboard card fetches its sensors from the integration; legend "solar first to"**
+
+Requested by the maintainer: a `sections: [hero]` card on another view kept
+an old copy of the sensors and missed every new one (battery power, grid
+direction, invert).
+- `dashboard_manager.build_card_sensor_config(entry)`: the card config
+  without `type` / `title` / `entity_prefix` / `_build_version`. Published as
+  the `card_config` attribute of the `evsc_active_car` select (in
+  `_unrecorded_attributes`, so not in the recorder); the entry reloads on
+  every change, so the attribute is always current.
+- Card: `setConfig` keeps the user's keys (`_userConfig`);
+  `_applyIntegrationConfig()` (before `_applyCarProfile()` in `render`)
+  fills every key of `INTEGRATION_CONFIG_KEYS` the YAML leaves out. Keys in
+  the YAML win. `_integrationStamp` is part of the structural key, so a
+  changed config rebuilds the card once.
+- `ring.legend_first`: "solar first to" / "sol först till" / "sole prima
+  fino a" / "zon eerst tot" — the setting only applies to the sun, not to
+  the night charge.
+- README: a part as its own card needs only `type`, `sections` and `title`.
+- Tests: NEW `tests/test_v2470_card_config_attribute.py`.
+
+---
 
 ### v2.46.0 (2026-11-06) — fork dodg3r
 **Grid tile like the home battery tile; home battery legend "first to 60 %"**
