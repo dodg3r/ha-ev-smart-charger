@@ -637,9 +637,9 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Car connected",
     "charger.offline": "No contact",
     "charger.full": "Fully charged",
-    "battery.charging": "Charging {kw} kW · {soc}",
-    "battery.discharging": "Discharging {kw} kW · {soc}",
-    "battery.idle": "Idle · {soc}",
+    "battery.charging": "Charging",
+    "battery.discharging": "Discharging",
+    "battery.idle": "Idle",
     "reason.battery_first": "home battery first ({soc} of {limit} %)",
     "status.fuse_retry": "retrying in {s}",
     "status.fuse_raise": "raising in {s}",
@@ -869,9 +869,9 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Bil ansluten",
     "charger.offline": "Ingen kontakt",
     "charger.full": "Fulladdad",
-    "battery.charging": "Laddar {kw} kW · {soc}",
-    "battery.discharging": "Laddar ur {kw} kW · {soc}",
-    "battery.idle": "Vilar · {soc}",
+    "battery.charging": "Laddar",
+    "battery.discharging": "Laddar ur",
+    "battery.idle": "Vilar",
     "reason.battery_first": "hembatteriet först ({soc} av {limit} %)",
     "status.fuse_retry": "försöker igen om {s}",
     "status.fuse_raise": "höjer om {s}",
@@ -1101,9 +1101,9 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Auto collegata",
     "charger.offline": "Nessun contatto",
     "charger.full": "Carica completa",
-    "battery.charging": "In carica {kw} kW · {soc}",
-    "battery.discharging": "In scarica {kw} kW · {soc}",
-    "battery.idle": "A riposo · {soc}",
+    "battery.charging": "In carica",
+    "battery.discharging": "In scarica",
+    "battery.idle": "A riposo",
     "reason.battery_first": "prima la batteria domestica ({soc} su {limit} %)",
     "status.fuse_retry": "nuovo tentativo tra {s}",
     "status.fuse_raise": "aumento tra {s}",
@@ -1333,9 +1333,9 @@ const FRONTEND_LOCALES = {
     "charger.connected": "Auto aangesloten",
     "charger.offline": "Geen contact",
     "charger.full": "Volledig geladen",
-    "battery.charging": "Laadt {kw} kW · {soc}",
-    "battery.discharging": "Ontlaadt {kw} kW · {soc}",
-    "battery.idle": "Rust · {soc}",
+    "battery.charging": "Laadt",
+    "battery.discharging": "Ontlaadt",
+    "battery.idle": "Rust",
     "reason.battery_first": "thuisbatterij eerst ({soc} van {limit} %)",
     "status.fuse_retry": "opnieuw over {s}",
     "status.fuse_raise": "verhoogt over {s}",
@@ -2496,18 +2496,33 @@ class EvSmartChargerDashboard extends HTMLElement {
    * v2.23.0: turn the Solar Surplus diagnostic code into plain words.
    * Unknown codes fall back to a neutral sentence instead of raw text.
    */
-  /** v2.42.0: "Laddar 3.5 kW · 78 %" / "Laddar ur …" / "Vilar · …". */
-  _homeBatteryText() {
-    const soc = this._numericState(this._config.home_battery_soc_entity);
-    const socText = soc != null ? `${Math.round(soc)} %` : "—";
+  /**
+   * v2.43.0: the home battery tile shows the power with a sign
+   * ("+3.5 kW" charging, "−2.4 kW" discharging) and the direction in words
+   * below it. The SOC is on the ring. Without a power sensor: the SOC.
+   */
+  _homeBatteryTile() {
     const w = this._config.battery_power_entity
       ? this._powerW(this._config.battery_power_entity)
       : null;
-    if (w == null) return socText;
+    if (w == null) {
+      const soc = this._numericState(this._config.home_battery_soc_entity);
+      return { value: soc != null ? `${Math.round(soc)} %` : "—", sub: "", dir: "idle" };
+    }
     const kw = (Math.abs(w) / 1000).toFixed(1);
-    if (w > 50) return this._tf("battery.charging", { kw, soc: socText });
-    if (w < -50) return this._tf("battery.discharging", { kw, soc: socText });
-    return this._tf("battery.idle", { soc: socText });
+    if (w > 50) return { value: `+${kw} kW`, sub: this._t("battery.charging"), dir: "in" };
+    if (w < -50) return { value: `\u2212${kw} kW`, sub: this._t("battery.discharging"), dir: "out" };
+    return { value: "0 kW", sub: this._t("battery.idle"), dir: "idle" };
+  }
+
+  _renderHomeBatteryMetric(tile) {
+    return `
+      <div class="metric-card tone-violet battery-tile dir-${tile.dir}" data-live-attr-id="metric.homeBatteryDir">
+        <span class="eyebrow">${this._t("metric.home_battery")}</span>
+        <strong data-live="metric.homeBattery">${tile.value}</strong>
+        <span class="metric-sub" data-live="metric.homeBatterySub">${tile.sub}</span>
+      </div>
+    `;
   }
 
   /** v2.42.0: Solar Surplus' current surplus in W (last known), or null. */
@@ -3050,7 +3065,8 @@ class EvSmartChargerDashboard extends HTMLElement {
                     stroke-dasharray="${cOuter}" stroke-dashoffset="${cOuter * (1 - evFrac)}"
                     data-live-attr-id="ring.evOffset"/>
             ${inner}
-            ${this._renderTargetTick(rOuter)}
+            ${this._renderTargetTick(rOuter, this._activeEvTarget(), "ring.target")}
+            ${homePct != null ? this._renderTargetTick(rInner, this._homeTarget(), "ring.homeTarget") : ""}
           </svg>
           <div class="hero-ring-center">
             <div class="ring-headline">${chargingDot}<span data-live="ring.headline">${headline}</span></div>
@@ -3070,8 +3086,7 @@ class EvSmartChargerDashboard extends HTMLElement {
    * rotated -90°, so 0° is the top of the ring; the group is rotated to the
    * target and hidden when there is no target.
    */
-  _targetTickAttrs() {
-    const target = this._activeEvTarget();
+  _targetTickAttrs(target) {
     const ok = target != null && Number.isFinite(Number(target)) && target > 0 && target <= 100;
     return {
       rotate: `rotate(${ok ? (Number(target) / 100) * 360 : 0} 110 110)`,
@@ -3079,13 +3094,25 @@ class EvSmartChargerDashboard extends HTMLElement {
     };
   }
 
-  _renderTargetTick(radius) {
-    const { rotate, visibility } = this._targetTickAttrs();
+  _renderTargetTick(radius, target, liveKey) {
+    const { rotate, visibility } = this._targetTickAttrs(target);
     return `
-            <g class="ring-target" transform="${rotate}" data-live-attr-id="ring.targetRotate">
+            <g class="ring-target" transform="${rotate}" data-live-attr-id="${liveKey}Rotate">
               <line x1="${110 + radius - 10}" y1="110" x2="${110 + radius + 10}" y2="110"
-                    visibility="${visibility}" data-live-attr-id="ring.targetVisibility"/>
+                    visibility="${visibility}" data-live-attr-id="${liveKey}Visibility"/>
             </g>`;
+  }
+
+  /**
+   * v2.43.0: the mark on the home battery ring. "Home battery first up to"
+   * when it is set between 1 and 99 %, otherwise today's home target when
+   * EV Smart Charger controls the battery.
+   */
+  _homeTarget() {
+    const first = this._numericState(this._entityId("homeBatteryFirstSoc"));
+    if (first != null && first > 0 && first < 100) return first;
+    if (this._config?.home_battery_controlled === false) return null;
+    return this._numericState(this._entityId("todayHomeTarget"));
   }
 
   /**
@@ -4109,7 +4136,7 @@ class EvSmartChargerDashboard extends HTMLElement {
                   ${this._renderMetric(this._t("metric.grid_import"), displayValues.gridImport, "rose", "", "metric.gridImport")}
                   ${this._renderMetric(this._t("metric.charge_current"), displayValues.chargerCurrent, "teal", "", "metric.chargerCurrent")}
                   ${this._renderMetric(this._t("metric.charger"), displayValues.chargingPower, "cyan", "", "metric.chargingPower")}
-                  ${displayValues.homeBattery != null ? this._renderMetric(this._t("metric.home_battery"), displayValues.homeBattery, "violet", "", "metric.homeBattery") : ""}
+                  ${displayValues.homeBattery != null ? this._renderHomeBatteryMetric(displayValues.homeBattery) : ""}
                 </div>
               </div>
             </header>
@@ -4272,7 +4299,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       nightSessionId,
     };
     // v2.42.0: home battery tile (charging / discharging / idle · SOC)
-    const homeBattery = this._config.home_battery_soc_entity ? this._homeBatteryText() : null;
+    const homeBattery = this._config.home_battery_soc_entity ? this._homeBatteryTile() : null;
     const displayValues = { chargingPower, solarPower, gridImport, chargerCurrent, homeBattery };
 
     // v1.10.4: collect live values (sensor-driven, change frequently) for
@@ -4430,7 +4457,8 @@ class EvSmartChargerDashboard extends HTMLElement {
     const rOuter = 96;
     const rInner = 76;
     const cOuter = 2 * Math.PI * rOuter;
-    const targetTick = this._targetTickAttrs();
+    const targetTick = this._targetTickAttrs(this._activeEvTarget());
+    const homeTargetTick = this._targetTickAttrs(homePct != null ? this._homeTarget() : null);
     const cInner = 2 * Math.PI * rInner;
     const clamp01 = (n) => Math.max(0, Math.min(1, n));
     const evFrac = evPct != null ? clamp01(evPct / 100) : 0;
@@ -4502,7 +4530,10 @@ class EvSmartChargerDashboard extends HTMLElement {
         "metric.gridImport": displayValues.gridImport,
         "metric.chargerCurrent": displayValues.chargerCurrent,
         "metric.chargingPower": displayValues.chargingPower,
-        ...(displayValues.homeBattery != null ? { "metric.homeBattery": displayValues.homeBattery } : {}),
+        ...(displayValues.homeBattery != null ? {
+          "metric.homeBattery": displayValues.homeBattery.value,
+          "metric.homeBatterySub": displayValues.homeBattery.sub,
+        } : {}),
         "ring.headline": ringHeadline,
         "ring.sub": ringSub,
         "legend.ev": legendEvText,
@@ -4522,6 +4553,14 @@ class EvSmartChargerDashboard extends HTMLElement {
         },
         "ring.targetRotate": { attr: "transform", value: targetTick.rotate },
         "ring.targetVisibility": { attr: "visibility", value: targetTick.visibility },
+        "ring.homeTargetRotate": { attr: "transform", value: homeTargetTick.rotate },
+        "ring.homeTargetVisibility": { attr: "visibility", value: homeTargetTick.visibility },
+        ...(displayValues.homeBattery != null ? {
+          "metric.homeBatteryDir": {
+            attr: "class",
+            value: `metric-card tone-violet battery-tile dir-${displayValues.homeBattery.dir}`,
+          },
+        } : {}),
       },
       toggles: toggleStates,
       numbers: numberValues,
@@ -5143,6 +5182,9 @@ class EvSmartChargerDashboard extends HTMLElement {
           font-size: 0.8rem;
           font-weight: 500;
         }
+        /* v2.43.0: home battery tile — signed power, direction below */
+        .battery-tile.dir-in strong { color: var(--evsc-aurora-green, #00d35a); }
+        .battery-tile.dir-out strong { color: var(--evsc-sys-orange, #ff9500); }
 
         /* ---------- Spotlight (priority engine) ---------- */
         .spotlight-panel {

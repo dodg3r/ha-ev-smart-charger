@@ -171,7 +171,10 @@ async def test_options_flow_updates_entry_data(hass) -> None:
     flow.hass = hass
 
     # v2.39.0: init is the charger model → features → entities → sensors → …
-    result = await flow.async_step_init({CONF_CHARGER_MODEL: CHARGER_MODEL_TUYA})
+    # v2.43.0: init is a menu; "All settings" starts at the charger model
+    result = await flow.async_step_init()
+    assert result["type"] == data_entry_flow.FlowResultType.MENU
+    result = await flow.async_step_charger_model({CONF_CHARGER_MODEL: CHARGER_MODEL_TUYA})
     assert result["step_id"] == "features"
     result = await flow.async_step_features({CONF_HAS_SOLAR: True, CONF_HAS_HOME_BATTERY: True, CONF_LOAD_BALANCING: LOAD_BALANCING_NONE})
     assert result["step_id"] == "meter"
@@ -249,8 +252,13 @@ async def test_options_flow_manager_can_open_init_step(hass) -> None:
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
 
-    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["type"] == data_entry_flow.FlowResultType.MENU
     assert result["step_id"] == "init"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "charger_model"}
+    )
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["step_id"] == "charger_model"
 
 
 async def test_options_flow_manager_can_open_init_step_with_legacy_sensor_current(hass) -> None:
@@ -276,8 +284,13 @@ async def test_options_flow_manager_can_open_init_step_with_legacy_sensor_curren
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
 
-    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["type"] == data_entry_flow.FlowResultType.MENU
     assert result["step_id"] == "init"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "charger_model"}
+    )
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["step_id"] == "charger_model"
 
 
 async def test_async_get_options_flow_returns_expected_type() -> None:

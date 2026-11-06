@@ -177,7 +177,9 @@ steps that apply to your answers are shown.
 | Dashboard | create the sidebar dashboard (default on) |
 
 Everything can be changed later with **Reconfigure** or **Configure** on the
-integration, without losing the settings on the dashboard. Answering "no" to
+integration, without losing the settings on the dashboard. **Configure** opens
+with a choice: **Cars** (add, edit or remove a car and save at once) or **All
+settings** (every step above). Answering "no" to
 solar or home battery removes the entities that no longer apply.
 
 ---
@@ -306,6 +308,7 @@ connection sensor.
   it is plugged in, it becomes the active car. A manual choice is kept until
   that happens.
 - Daily targets and ready times are shared by all cars.
+- To add a car later: **Configure** on the integration → **Cars**.
 
 ### Home battery
 
@@ -347,11 +350,13 @@ connection sensor.
 With the dashboard step on, **EV Smart Charger** appears in the sidebar
 (`/ev-smart-charger`). Two tabs:
 
-- **Dashboard** (Översikt) — car dropdown, status ring with the target mark, a status line
+- **Dashboard** (Översikt) — car dropdown, status ring (outer = car, inner =
+  home battery, each with a mark at its target), a status line
   that says what is happening and what comes next ("Solar surplus 2.1 kW, too
   little to start (needs 4.5 kW)", "Cloud pause · stopping in 45 s",
   "Paused by main fuse protection · retrying in 1:30"), tiles for solar,
-  grid, charger current, charger and home battery, Stop / Boost, weekly
+  grid, charger current, charger and home battery (power with sign: "+3.5 kW"
+  charging, "−2.4 kW" discharging, the direction in words below), Stop / Boost, weekly
   planner, night plan with price bars and the charging profile.
 - **Settings** — every setting with explanation, grouped by function. Settings
   that do not apply to your setup are hidden.

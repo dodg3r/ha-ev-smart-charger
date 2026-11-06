@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.42.0
+**Current Version:** 2.43.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,34 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.43.0 (2026-11-06) — fork dodg3r
+**Configure opens with a menu (Cars / All settings); home battery tile and target mark**
+
+Requested by the maintainer.
+- Options flow: `init` is now a menu (`async_show_menu`, options
+  `cars_only` / `charger_model`). The charger-model form moved to step id
+  `charger_model` (options `_STEP_IDS["options"]["model"]`), its texts to
+  `options.step.charger_model`; `options.step.init` holds the menu texts
+  (EN/IT/NL).
+- "Cars" (`async_step_cars_only`): sets `_cars_only`, opens the existing car
+  list; "done" (label "Save" / "Spara") calls `_save_cars_only()`, which
+  writes `_with_cars(entry.data)` and finishes. Step counter shows 1/1.
+- Dashboard home battery tile: signed power ("+3.5 kW" green, "−2.4 kW"
+  orange, "0 kW") with the direction below ("Laddar" / "Laddar ur" /
+  "Vilar"); no SOC (it is on the ring). `_homeBatteryTile()` /
+  `_renderHomeBatteryMetric()`, live keys `metric.homeBattery`,
+  `metric.homeBatterySub`, class via `metric.homeBatteryDir`. Locale values
+  `battery.*` are words only now.
+- Target mark on the home battery ring (`_homeTarget()`: "Home battery first
+  up to" when 1–99 %, else today's home target when the battery is
+  controlled). `_targetTickAttrs(target)` / `_renderTargetTick(radius,
+  target, liveKey)` are shared with the EV mark; live keys
+  `ring.homeTargetRotate` / `ring.homeTargetVisibility`.
+- Tests: NEW `tests/test_v2430_cars_menu.py`; options-flow tests in
+  `test_config_flow_extended.py` go through the menu.
+
+---
 
 ### v2.42.0 (2026-11-06) — fork dodg3r
 **Home battery first up to a SOC; battery tile; one surplus sentence; dead-band start fixed; fuse countdowns**
