@@ -30,6 +30,7 @@ from .const import (
     HELPER_SOLAR_MAX_AMPERAGE_SUFFIX,
     HELPER_OFFGRID_MAX_AMPERAGE_SUFFIX,
     HELPER_SOLAR_START_OFFSET_SUFFIX,
+    HELPER_HOME_BATTERY_FIRST_SOC_SUFFIX,
     SOLAR_START_OFFSET_MIN,
     SOLAR_START_OFFSET_MAX,
     HELPER_NIGHTTIME_SUNSET_OFFSET_SUFFIX,
@@ -145,6 +146,10 @@ class SolarSurplusAutomation:
         self._solar_max_amperage_entity = None
         self._offgrid_max_amperage_entity = None
         self._solar_start_offset_entity = None
+        # v2.42.0: home battery gets the sun first up to this SOC
+        self._battery_first_entity = None
+        # v2.42.0: values computed this tick, added to every diagnostic event
+        self._tick_info: dict = {}
         # v2.6.0 (issue #42): nighttime window offsets (minutes). 0 = astronomical.
         self._nighttime_sunset_offset_entity = None
         self._nighttime_sunrise_offset_entity = None
@@ -497,6 +502,7 @@ class SolarSurplusAutomation:
         self._solar_max_amperage_entity = self._find_entity_by_suffix(HELPER_SOLAR_MAX_AMPERAGE_SUFFIX)
         self._offgrid_max_amperage_entity = self._find_entity_by_suffix(HELPER_OFFGRID_MAX_AMPERAGE_SUFFIX)
         self._solar_start_offset_entity = self._find_entity_by_suffix(HELPER_SOLAR_START_OFFSET_SUFFIX)
+        self._battery_first_entity = self._find_entity_by_suffix(HELPER_HOME_BATTERY_FIRST_SOC_SUFFIX)
         self._solar_surplus_diagnostic_sensor_entity = self._find_entity_by_suffix("evsc_solar_surplus_diagnostic")
         if self._runtime_data is not None:
             self._solar_surplus_diagnostic_sensor_obj = self._runtime_data.get_entity(
@@ -778,6 +784,38 @@ class SolarSurplusAutomation:
         offset = get_float(self.hass, entity, 0.0)
         return max(SOLAR_START_OFFSET_MIN, min(SOLAR_START_OFFSET_MAX, offset))
 
+    def _battery_first_info(self) -> dict:
+        """Battery-first share of the surplus (v2.42.0).
+
+        ``battery_reserved_w`` is the battery's charging power when it still
+        has priority (SOC below the battery-first setting), else 0. With the
+        setting at 100 % the battery always comes first, also without a SOC.
+        """
+        battery_w = self._power_model.read_battery_power(self.hass)
+        soc = None
+        if self._soc_home:
+            state = self.hass.states.get(self._soc_home)
+            try:
+                soc = float(state.state) if state is not None else None
+            except (TypeError, ValueError):
+                soc = None
+        limit = 0.0
+        if self._battery_first_entity:
+            limit = get_float(self.hass, self._battery_first_entity, default=0.0)
+        has_priority = limit > 0 and (
+            limit >= 100 or (soc is not None and soc < limit)
+        )
+        reserved = 0.0
+        if has_priority and battery_w is not None and battery_w > 0:
+            reserved = battery_w
+        return {
+            "battery_power_w": None if battery_w is None else round(battery_w),
+            "home_battery_soc": soc,
+            "battery_first_soc": limit if self._battery_first_entity else None,
+            "battery_first_active": has_priority,
+            "battery_reserved_w": round(reserved),
+        }
+
     def _start_threshold(self) -> float:
         """Surplus (A) needed to start or increase: 6.5 A + offset."""
         return SURPLUS_START_THRESHOLD + self._start_offset_amps()
@@ -984,6 +1022,7 @@ class SolarSurplusAutomation:
             self._check_count_reset_time = current_time
 
         self._check_count += 1
+        self._tick_info = {}
 
         # issue #50C: one separator per tick (fence pattern). Early-return
         # branches below no longer emit their own separator, so a single tick
@@ -1344,7 +1383,19 @@ class SolarSurplusAutomation:
         home_consumption = self._power_model.read_consumption(self.hass)
         grid_import = self._power_model.read_grid_import(self.hass)
         surplus_watts = fv_production - home_consumption
+        # v2.42.0: below the battery-first SOC the battery's charging is house
+        # load, so the EV only gets what would otherwise be exported.
+        battery_info = self._battery_first_info()
+        reserved = battery_info["battery_reserved_w"]
+        if reserved > 0:
+            home_consumption += reserved
+            surplus_watts -= reserved
         surplus_amps = surplus_watts / self._effective_voltage
+        self._tick_info = {
+            **battery_info,
+            "surplus_w": round(surplus_watts),
+            "start_threshold_w": round(self._start_threshold() * self._effective_voltage),
+        }
         # v2.8.0: refresh the production baseline used by the consumption-spike
         # classifier. Sampled once per tick: during a genuine production drop
         # (cloud) the live reading falls below this baseline and the fast path
@@ -1664,7 +1715,12 @@ class SolarSurplusAutomation:
                 self.logger.debug("Amperage optimal at 0A (charger off — nothing to confirm)")
             else:
                 self.logger.success(f"Amperage optimal at {current_amps}A")
+            # v2.42.0: with the charger off this branch runs on every tick
+            # while the dead-band timer counts; resetting it here restarted
+            # the timer each minute, so the opportunistic start never came.
+            keep_deadband = self._deadband_start_time if current_amps == 0 else None
             self._reset_state_tracking()
+            self._deadband_start_time = keep_deadband
 
     def _get_ev_soc_staleness(self) -> dict:
         """Return EV SOC freshness metadata based on cached sensor update age."""
@@ -2500,6 +2556,10 @@ class SolarSurplusAutomation:
         normalized.setdefault("last_external_cause", normalized.get("external_cause"))
         if self._coordinator is not None:
             normalized.setdefault("active_owner", self._coordinator.get_active_automation_name())
+        # v2.42.0: surplus, start need and battery-first values of this tick
+        # on every event, so the dashboard can always show them.
+        for key, value in self._tick_info.items():
+            normalized.setdefault(key, value)
         normalized.update(self._pending_action())
         return normalized
 

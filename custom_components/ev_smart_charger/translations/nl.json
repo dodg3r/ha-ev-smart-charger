@@ -719,6 +719,9 @@
       "evsc_solar_start_offset": {
         "name": "Startoffset zon"
       },
+      "evsc_home_battery_first_soc": {
+        "name": "Thuisbatterij eerst tot"
+      },
       "evsc_offgrid_max_amperage": {
         "name": "Maximale stroomsterkte off-grid"
       },

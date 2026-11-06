@@ -68,8 +68,9 @@ Assistant can control, several cars on one charger, and its own dashboard.
 - 🚗 **Car profiles** — several cars share the charger, each with its own SOC
   sensor, charge limit and battery size, plus a Guest profile without sensors.
   The car that is home and plugged in can be selected automatically.
-- 🔋 **Home battery** — optional. Can help the car on solar, be protected by a
-  daily minimum, or only be shown on the dashboard when it has its own control.
+- 🔋 **Home battery** — optional. Decide whether the battery or the car gets
+  the sun first (up to a chosen SOC), let it help the car on solar, or only
+  show it on the dashboard when it has its own control.
 - 📅 **Weekly planner** — EV target, "car ready" and ready time per weekday.
 - 📊 **Dashboard** — created automatically in the sidebar, follows the Home
   Assistant language (English, Swedish, Italian, Dutch), and each part can be
@@ -225,6 +226,9 @@ when the charging profile is `solar_surplus`.
 - **Ceilings**: `evsc_solar_max_amperage` (default 16 A), and
   `evsc_offgrid_max_amperage` while the grid-available sensor says the grid is
   gone.
+- **Home battery first** (`evsc_home_battery_first_soc`, see
+  [Home battery](#home-battery)) decides whether the battery's charging counts
+  as free sun for the car.
 - A car at its charge limit is not started; an unavailable charger status skips
   the tick instead of being read as "plugged in".
 
@@ -305,6 +309,15 @@ connection sensor.
 
 ### Home battery
 
+- **Home Battery First Up To** (`evsc_home_battery_first_soc`, default 0 %):
+  below this SOC the battery gets the sun first. Its charging then counts as
+  house load, so the car only gets what would otherwise be exported. At or
+  above it, the battery's charging counts as free sun for the car, which
+  takes it over. 0 % = car first, 100 % = battery first. It only changes how
+  the surplus is counted, so it also works for a battery with its own control.
+  Example: 4.6 kW sun, the battery charges 3.5 kW, the house uses 1.1 kW. Car
+  first: 3.5 kW is available for the car. Battery first: nothing until the
+  battery is full or leaves sun over.
 - **Let EV Smart Charger use the battery** off: the battery is only shown on the
   dashboard, nothing waits for it or draws from it.
 - **Use Home Battery** (`evsc_use_home_battery`): when solar is not enough, the
@@ -335,10 +348,11 @@ With the dashboard step on, **EV Smart Charger** appears in the sidebar
 (`/ev-smart-charger`). Two tabs:
 
 - **Dashboard** (Översikt) — car dropdown, status ring with the target mark, a status line
-  that says what is happening and what comes next ("Solar surplus · starts in
-  40 s", "load balancing should lower to 10 A"), tiles for solar, grid, charger
-  and house, Stop / Boost, weekly planner, night plan with price bars and the
-  charging profile.
+  that says what is happening and what comes next ("Solar surplus 2.1 kW, too
+  little to start (needs 4.5 kW)", "Cloud pause · stopping in 45 s",
+  "Paused by main fuse protection · retrying in 1:30"), tiles for solar,
+  grid, charger current, charger and home battery, Stop / Boost, weekly
+  planner, night plan with price bars and the charging profile.
 - **Settings** — every setting with explanation, grouped by function. Settings
   that do not apply to your setup are hidden.
 
@@ -374,7 +388,7 @@ over restarts. Entity ids look like
 | Solar Surplus | `evsc_check_interval`, `evsc_grid_import_threshold`, `evsc_grid_import_delay`, `evsc_surplus_drop_delay`, `evsc_spike_response_delay`, `evsc_solar_start_offset`, `evsc_solar_max_amperage`, `evsc_offgrid_max_amperage`, `evsc_nighttime_sunset_offset`, `evsc_nighttime_sunrise_offset` |
 | Night | `evsc_night_smart_charge_enabled`, `evsc_night_charge_amperage`, `evsc_car_ready_<day>`, `evsc_car_ready_time_<day>`, `evsc_ev_min_soc_<day>` |
 | Boost | `evsc_boost_charge_enabled`, `evsc_boost_charge_amperage`, `evsc_boost_target_soc`, `evsc_boost_schedule_enabled`, `evsc_boost_schedule_start_time`, `evsc_boost_schedule_end_time` |
-| Home battery | `evsc_use_home_battery`, `evsc_priority_balancer_enabled`, `evsc_home_battery_min_soc`, `evsc_battery_support_amperage`, `evsc_battery_support_sunset_buffer`, `evsc_max_battery_discharge_for_ev`, `evsc_home_min_soc_<day>` |
+| Home battery | `evsc_home_battery_first_soc` (also display-only), `evsc_use_home_battery`, `evsc_priority_balancer_enabled`, `evsc_home_battery_min_soc`, `evsc_battery_support_amperage`, `evsc_battery_support_sunset_buffer`, `evsc_max_battery_discharge_for_ev`, `evsc_home_min_soc_<day>` |
 | Load balancing | `evsc_main_fuse`, `evsc_fuse_headroom`, `evsc_fuse_margin`, `evsc_fuse_hard_trip` |
 | Notifications | `evsc_notify_smart_blocker_enabled`, `evsc_notify_priority_balancer_enabled`, `evsc_notify_night_charge_enabled`, `evsc_live_activities_enabled` |
 | Status | `evsc_diagnostic`, `evsc_solar_surplus_diagnostic`, `evsc_priority_daily_state`, `evsc_night_charge_plan`, `evsc_night_session_state`, `evsc_today_ev_target`, `evsc_today_home_target`, `evsc_cached_ev_soc` |

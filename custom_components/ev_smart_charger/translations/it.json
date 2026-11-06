@@ -719,6 +719,9 @@
       "evsc_solar_start_offset": {
         "name": "Offset avvio solare"
       },
+      "evsc_home_battery_first_soc": {
+        "name": "Batteria domestica prima fino a"
+      },
       "evsc_offgrid_max_amperage": {
         "name": "Amperaggio massimo off-grid"
       },

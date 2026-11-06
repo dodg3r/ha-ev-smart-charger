@@ -644,6 +644,16 @@ class ChargingModel:
                 return setpoint * self.effective_voltage
         return None
 
+    def read_battery_power(self, hass: HomeAssistant) -> float | None:
+        """Signed home-battery power in W (positive = charging), or None.
+
+        v2.42.0: used for the battery-first share of the surplus and shown on
+        the dashboard. None when no battery-power sensor is mapped.
+        """
+        if not self._battery_power_entity:
+            return None
+        return get_float(hass, self._battery_power_entity, default=0.0)
+
     def read_battery_discharge(self, hass: HomeAssistant) -> float | None:
         """Home-battery discharge in watts (>=0 = discharging), or None.
 
