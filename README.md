@@ -356,8 +356,9 @@ With the dashboard step on, **EV Smart Charger** appears in the sidebar
 
 - **Dashboard** (Översikt) — car dropdown, status ring (outer = car, inner =
   home battery, each with a mark at its target; both percentages in the
-  centre in the ring's colour), the solar forecast with **Charged today**
-  (kWh) under it, a status line
+  centre in the ring's colour, and under the ring one row each with its
+  target, e.g. "● Car · target 80%"), the solar forecast for tomorrow with
+  **Charged today** (kWh) under it, a status line
   that says what is happening and what comes next ("Solar surplus 2.1 kW, too
   little to start (needs 4.5 kW)", "Cloud pause · stopping in 45 s",
   "Paused by main fuse protection · retrying in 1:30"), tiles for solar,
