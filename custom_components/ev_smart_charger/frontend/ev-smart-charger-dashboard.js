@@ -634,7 +634,7 @@ const FRONTEND_LOCALES = {
     "status.by_force": "Force Charge",
     "ring.target": "Target {target}%",
     "ring.legend_target": "{name} · target {target}%",
-    "ring.legend_first": "{name} · first to {target}%",
+    "ring.legend_first": "{name} · solar first to {target}%",
     "metric.grid": "Grid",
     "grid.import": "Import",
     "grid.export": "Export",
@@ -872,7 +872,7 @@ const FRONTEND_LOCALES = {
     "status.by_force": "Tvångsladdning",
     "ring.target": "Mål {target} %",
     "ring.legend_target": "{name} · mål {target} %",
-    "ring.legend_first": "{name} · först till {target} %",
+    "ring.legend_first": "{name} · sol först till {target} %",
     "metric.grid": "Nät",
     "grid.import": "Import",
     "grid.export": "Export",
@@ -1110,7 +1110,7 @@ const FRONTEND_LOCALES = {
     "status.by_force": "Forza ricarica",
     "ring.target": "Obiettivo {target}%",
     "ring.legend_target": "{name} · obiettivo {target}%",
-    "ring.legend_first": "{name} · prima fino a {target}%",
+    "ring.legend_first": "{name} · sole prima fino a {target}%",
     "metric.grid": "Rete",
     "grid.import": "Prelievo",
     "grid.export": "Immissione",
@@ -1348,7 +1348,7 @@ const FRONTEND_LOCALES = {
     "status.by_force": "Laden forceren",
     "ring.target": "Doel {target}%",
     "ring.legend_target": "{name} · doel {target}%",
-    "ring.legend_first": "{name} · eerst tot {target}%",
+    "ring.legend_first": "{name} · zon eerst tot {target}%",
     "metric.grid": "Net",
     "grid.import": "Afname",
     "grid.export": "Teruglevering",
@@ -1569,6 +1569,18 @@ const FRONTEND_LOCALES = {
   }
 };
 
+// v2.47.0: card keys the integration can fill in (see _applyIntegrationConfig).
+const INTEGRATION_CONFIG_KEYS = [
+  "charging_power_entity", "charging_power_entities", "ev_soc_entity",
+  "ev_soc_limit_entity", "home_battery_soc_entity", "solar_power_entity",
+  "solar_power_entities", "grid_import_entity", "grid_import_entities",
+  "grid_export_entities", "current_entity", "charger_status_entity",
+  "pv_forecast_entity", "pv_forecast_tomorrow_entity", "battery_power_entity",
+  "grid_available_entity", "phase_mode", "charger_model",
+  "home_battery_controlled", "has_solar", "grid_invert", "battery_power_invert",
+  "charger_current_entity", "charger_current_entities",
+];
+
 class EvSmartChargerDashboard extends HTMLElement {
   static getStubConfig() {
     return {
@@ -1578,6 +1590,10 @@ class EvSmartChargerDashboard extends HTMLElement {
   }
 
   setConfig(config) {
+    // v2.47.0: the keys the user wrote; anything left out is filled from the
+    // integration (card_config attribute of the active-car select).
+    this._userConfig = { ...(config || {}) };
+    this._integrationStamp = "";
     // v1.9.1: soft accept. We auto-discover the real entity_prefix from
     // hass.states using the `evsc_forza_ricarica` sentinel, so the user no
     // longer has to know (or correctly spell) the prefix in advance.
@@ -2430,6 +2446,31 @@ class EvSmartChargerDashboard extends HTMLElement {
   }
 
   /** v2.31.0: car profiles from the active-car select, or null. */
+  /**
+   * v2.47.0: fill every sensor / setting the card YAML leaves out from the
+   * integration's own card config (attribute `card_config` of the
+   * active-car select). A card with only `type` and `sections` then shows
+   * the same sensors as the auto-dashboard and follows reconfigures and
+   * updates. Keys written in the card YAML always win.
+   */
+  _applyIntegrationConfig() {
+    const st = this._stateObj(this._entityId("activeCar"));
+    const cfg = st?.attributes?.card_config;
+    if (!cfg || typeof cfg !== "object") return;
+    const stamp = JSON.stringify(cfg);
+    if (stamp === this._integrationStamp) return;
+    this._integrationStamp = stamp;
+    const user = this._userConfig || {};
+    for (const key of INTEGRATION_CONFIG_KEYS) {
+      if (user[key] !== undefined && user[key] !== null) continue;
+      if (!(key in cfg)) continue;
+      const value = cfg[key];
+      this._config[key] = (key === "grid_invert" || key === "battery_power_invert")
+        ? value === true
+        : value;
+    }
+  }
+
   _carProfiles() {
     const st = this._stateObj(this._entityId("activeCar"));
     const cars = st?.attributes?.cars;
@@ -4303,6 +4344,7 @@ class EvSmartChargerDashboard extends HTMLElement {
     }
     this._schedulePendingTick();
 
+    this._applyIntegrationConfig();
     this._applyCarProfile();
 
     const forceChargeId = this._entityId("forceCharge");
@@ -4516,6 +4558,7 @@ class EvSmartChargerDashboard extends HTMLElement {
       : "";
 
     return JSON.stringify({
+      ic: this._integrationStamp || "",
       car: carKey,
       view: this._view,
       acc: [...(this._openAccordions || [])].sort(),

@@ -126,6 +126,16 @@ class EVSCSelect(EVSCEntityMixin, SelectEntity, RestoreEntity):
         self.async_write_ha_state()
 
 
+def _card_config(entry) -> dict:
+    """v2.47.0: the integration's card config without the card-only keys."""
+    try:
+        from .dashboard_manager import build_card_sensor_config
+        return build_card_sensor_config(entry)
+    except Exception:  # noqa: BLE001 - never break the select over the card
+        _LOGGER.debug("Card config for the dashboard card not available", exc_info=True)
+        return {}
+
+
 class EVSCCarSelect(EVSCEntityMixin, SelectEntity):
     """v2.31.0: choose the active car profile.
 
@@ -161,9 +171,16 @@ class EVSCCarSelect(EVSCEntityMixin, SelectEntity):
     def current_option(self) -> str:
         return get_active_car_name(self._data)
 
+    # v2.47.0: the card config is only for the dashboard card; keep it out
+    # of the recorder.
+    _unrecorded_attributes = frozenset({"card_config"})
+
     @property
     def extra_state_attributes(self) -> dict:
         return {
+            # v2.47.0: the sensors the dashboard card needs, so a card with
+            # only `type` and `sections` follows the integration.
+            "card_config": _card_config(self._entry),
             "cars": [
                 {
                     "name": car[CONF_CAR_NAME],

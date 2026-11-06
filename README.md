@@ -358,7 +358,7 @@ With the dashboard step on, **EV Smart Charger** appears in the sidebar
   home battery, each with a mark at its target; both percentages in the
   centre in the ring's colour, and under the ring one row each with its
   target, e.g. "● Car · target 80%"; with "Home battery first up to" the
-  home row reads "● Home battery · first to 60%"), the solar forecast for tomorrow with
+  home row reads "● Home battery · solar first to 60%"), the solar forecast for tomorrow with
   **Charged today** (kWh) under it, a status line
   that says what is happening and what comes next ("Solar surplus 2.1 kW, too
   little to start (needs 4.5 kW)", "Cloud pause · stopping in 45 s",
@@ -370,14 +370,18 @@ With the dashboard step on, **EV Smart Charger** appears in the sidebar
 - **Settings** — every setting with explanation, grouped by function. Settings
   that do not apply to your setup are hidden.
 
-**A part as its own card.** Open the dashboard → edit → raw configuration
-editor, copy the card and add `sections`:
+**A part as its own card.** Add a card with only the parts you want; the
+card fetches every sensor from the integration (since v2.47.0), so it follows
+reconfigures and updates by itself:
 
 ```yaml
 type: custom:ev-smart-charger-dashboard
-entity_prefix: ev_smart_charger_<entry_id_lowercased>
 sections: [hero, night]
+title: Billaddare
 ```
+
+A sensor written in the card YAML (e.g. `grid_import_entity`) wins over the
+integration's.
 
 | Option | Values |
 |---|---|

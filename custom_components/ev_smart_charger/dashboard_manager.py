@@ -325,6 +325,20 @@ def _build_card_config(entry: ConfigEntry) -> dict[str, Any]:
     return config
 
 
+_CARD_ONLY_KEYS = ("type", "title", "entity_prefix", "_build_version")
+
+
+def build_card_sensor_config(entry: ConfigEntry) -> dict[str, Any]:
+    """v2.47.0: the card config without the card-only keys.
+
+    Published as the `card_config` attribute of the active-car select, so a
+    card on any view (e.g. `sections: [hero]`) can fill in the sensors it
+    does not list itself.
+    """
+    config = _build_card_config(entry)
+    return {k: v for k, v in config.items() if k not in _CARD_ONLY_KEYS}
+
+
 def _build_dashboard_view(entry: ConfigEntry) -> dict[str, Any]:
     """Build the full Lovelace storage config (single view, single card)."""
     return {
