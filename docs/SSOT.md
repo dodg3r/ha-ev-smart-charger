@@ -485,7 +485,6 @@ Canonical maintainer docs:
 
 - `docs/SSOT.md`
 - `docs/CODEBASE_MAP.md`
-- `docs/REFACTOR_PLAN.md`
 - `README.md`
 
 ## 9. Quality baseline

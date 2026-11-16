@@ -111,8 +111,6 @@ Active suites are under `tests/` and cover:
 - EV SOC monitor and astral time service
 - boost, blocker, night charge, solar surplus, and scenarios
 
-Historical test artifacts are archived under `docs/historical/` and are not part of the active pytest contract.
-
 ## 8. Documentation
 
 Canonical documents:
@@ -120,6 +118,3 @@ Canonical documents:
 - `README.md`
 - `docs/SSOT.md`
 - `docs/CODEBASE_MAP.md`
-- `docs/REFACTOR_PLAN.md`
-
-Historical notes, bug analyses, and archived test-session material live under `docs/historical/`.
