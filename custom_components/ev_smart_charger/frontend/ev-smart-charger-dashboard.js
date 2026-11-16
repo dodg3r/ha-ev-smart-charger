@@ -191,7 +191,7 @@ for (const day of DAYS) {
 // =====================================================================
 // v2.28.0: parts of the dashboard that can be shown on their own with
 // `sections: [...]` in the card config.
-const EMBED_SECTIONS = ["car", "hero", "controls", "weekly", "night", "profile", "settings"];
+const EMBED_SECTIONS = ["car", "hero", "controls", "weekly", "night", "prices", "profile", "settings"];
 
 const SETTINGS_CATALOG = [
   {
@@ -715,6 +715,7 @@ const FRONTEND_LOCALES = {
     "night.waiting_more_prices": "The plan opens when prices reach the car-ready time.",
     "night.legend_cheap": "Cheapest",
     "night.legend_plan": "Planned",
+    "night.prices_title": "Electricity price",
     "night.tap_hint": "Tap a bar to see its price",
     "night.price_now": "Now",
     "night.soc_to_target": "{soc}% → {target}%",
@@ -955,6 +956,7 @@ const FRONTEND_LOCALES = {
     "night.waiting_more_prices": "Planen öppnar när priserna når klartiden.",
     "night.legend_cheap": "Billigast",
     "night.legend_plan": "Planerad",
+    "night.prices_title": "Elpris",
     "night.tap_hint": "Tryck på en stapel för att se priset",
     "night.price_now": "Nu",
     "night.soc_to_target": "{soc} % → {target} %",
@@ -1195,6 +1197,7 @@ const FRONTEND_LOCALES = {
     "night.waiting_more_prices": "Il piano si attiva quando i prezzi coprono l'orario di auto pronta.",
     "night.legend_cheap": "Più economiche",
     "night.legend_plan": "Pianificate",
+    "night.prices_title": "Prezzo dell'elettricità",
     "night.tap_hint": "Tocca una barra per vedere il prezzo",
     "night.price_now": "Ora",
     "night.soc_to_target": "{soc}% → {target}%",
@@ -1435,6 +1438,7 @@ const FRONTEND_LOCALES = {
     "night.waiting_more_prices": "Het plan start zodra de prijzen tot de klaar-tijd lopen.",
     "night.legend_cheap": "Goedkoopst",
     "night.legend_plan": "Gepland",
+    "night.prices_title": "Stroomprijs",
     "night.tap_hint": "Tik op een staaf om de prijs te zien",
     "night.price_now": "Nu",
     "night.soc_to_target": "{soc}% → {target}%",
@@ -1810,7 +1814,7 @@ class EvSmartChargerDashboard extends HTMLElement {
 
   getCardSize() {
     if (this._sections) {
-      const sizes = { hero: 5, controls: 4, weekly: 4, night: 6, profile: 2, settings: 10 };
+      const sizes = { hero: 5, controls: 4, weekly: 4, night: 6, prices: 4, profile: 2, settings: 10 };
       return this._sections.reduce((n, s) => n + (sizes[s] || 3), 0);
     }
     return 12;
@@ -3815,7 +3819,8 @@ class EvSmartChargerDashboard extends HTMLElement {
       + `<span class="hint">${this._t("night.tap_hint")}</span>`;
   }
 
-  _renderNightCardV2() {
+  // v2.49.0: { pricesOnly: true } = only the price chart (embedded "prices").
+  _renderNightCardV2({ pricesOnly = false } = {}) {
     const enabledId = this._entityId("nightEnabled");
     const enabled = this._isOn(enabledId);
     const plan = this._nightPlanData();
@@ -3940,6 +3945,19 @@ class EvSmartChargerDashboard extends HTMLElement {
       planSub = `${statusText} · ${this._tf("night.soc_to_target", {
         soc: Math.round(plan.soc), target: Math.round(plan.target),
       })}${dayName ? ` (${dayName})` : ""}`;
+    }
+
+    if (pricesOnly) {
+      return `
+      <section class="evsc-night-card evsc-prices-card">
+        <div class="evsc-night-head">
+          <div>
+            <span class="evsc-night-eyebrow">${this._t("night.prices_title")}</span>
+            ${readyText ? `<span class="evsc-night-sub">${readyText}</span>` : ""}
+          </div>
+        </div>
+        ${chart}
+      </section>`;
     }
 
     return `
@@ -4355,6 +4373,7 @@ class EvSmartChargerDashboard extends HTMLElement {
         controls: () => controlsHtml,
         weekly: () => this._renderWeeklyPlannerV2(),
         night: () => this._renderNightCardV2(),
+        prices: () => this._renderNightCardV2({ pricesOnly: true }),
         profile: () => profileHtml,
         settings: () => `<div class="evsc-settings-list">${SETTINGS_CATALOG.map((cat) => this._renderAccordion(cat)).join("")}</div>`,
       };
@@ -7217,6 +7236,7 @@ class EvSmartChargerDashboard extends HTMLElement {
           margin-bottom: 12px;
           padding-left: 6px;
         }
+        .evsc-prices-card .evsc-np-legend { margin-bottom: 0; }
         .evsc-np-legend .dot {
           display: inline-block;
           width: 8px;

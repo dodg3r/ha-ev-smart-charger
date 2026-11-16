@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.48.0
+**Current Version:** 2.49.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,22 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.49.0 (2026-11-16) — fork dodg3r
+**Price chart as its own card (`sections: [prices]`)**
+
+Requested by the maintainer: the night card's price chart on a normal
+dashboard, without the "5 cheapest" / "Charge plan" boxes and the toggle.
+Frontend only.
+- `EMBED_SECTIONS` gains `prices`; `_renderNightCardV2({ pricesOnly: true })`
+  returns the head (`night.prices_title`: "Electricity price" / "Elpris" /
+  "Prezzo dell'elettricità" / "Stroomprijs", plus the ready-by / prices-until
+  text) and the chart with its scale, tap-to-read price and the cheapest /
+  planned marking (`.evsc-prices-card`, legend without bottom margin).
+  `getCardSize` 4.
+- README: `prices` in the `sections` table.
+
+---
 
 ### v2.48.0 (2026-11-16) — fork dodg3r
 **Night card price chart: price scale and tap-to-read price**

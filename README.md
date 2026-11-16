@@ -386,7 +386,7 @@ integration's.
 
 | Option | Values |
 |---|---|
-| `sections` | `hero`, `car`, `controls`, `weekly`, `night`, `profile`, `settings` |
+| `sections` | `hero`, `car`, `controls`, `weekly`, `night`, `prices`, `profile`, `settings` (`prices` = only the price chart of the night card, with the cheapest and planned hours marked) |
 | `theme` | `ha` follows the Home Assistant theme, `evsc` keeps the card's own look (default `ha` with `sections`) |
 
 Without the auto-dashboard, add the resource
