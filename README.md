@@ -366,7 +366,8 @@ With the dashboard step on, **EV Smart Charger** appears in the sidebar
   grid (power without sign, "Import" in orange or "Export" in green below,
   neutral under 50 W), charger current, charger and home battery (power with sign: "+3.5 kW"
   charging, "−2.4 kW" discharging, the direction in words below), Stop / Boost, weekly
-  planner, night plan with price bars and the charging profile.
+  planner, night plan with price bars (a price scale on the right edge; tap a
+  bar to read its hour and price, also in the app) and the charging profile.
 - **Settings** — every setting with explanation, grouped by function. Settings
   that do not apply to your setup are hidden.
 

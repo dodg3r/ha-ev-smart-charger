@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.47.0
+**Current Version:** 2.48.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,23 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.48.0 (2026-11-16) — fork dodg3r
+**Night card price chart: price scale and tap-to-read price**
+
+Requested by the maintainer: the hourly price was only visible as a hover
+tooltip (`title`), which does nothing on touch / in the app. Frontend only.
+- `_renderNightCardV2()`: dashed gridlines at max / mid / min price with the
+  value on the right edge (`.evsc-np-grid`, `.evsc-np-gridline`,
+  `.evsc-np-axis`; same scale as the bars, 18–100 % of the column).
+- Each column carries `data-np-idx`; a click / tap selects it (`.sel`,
+  purple outline) and fills the readout above the chart (`_npReadout()`:
+  "1.18 kr/kWh · Nu 07:00", weekday when not today, a hint on the right).
+  Default selection is the current hour; the choice survives re-renders
+  (`_npSelected` = the hour's start, `_npPrices` holds the rendered list).
+- Locales `night.tap_hint`, `night.price_now` EN/SV/IT/NL.
+
+---
 
 ### v2.47.0 (2026-11-06) — fork dodg3r
 **A dashboard card fetches its sensors from the integration; legend "solar first to"**

@@ -715,6 +715,8 @@ const FRONTEND_LOCALES = {
     "night.waiting_more_prices": "The plan opens when prices reach the car-ready time.",
     "night.legend_cheap": "Cheapest",
     "night.legend_plan": "Planned",
+    "night.tap_hint": "Tap a bar to see its price",
+    "night.price_now": "Now",
     "night.soc_to_target": "{soc}% → {target}%",
     "status.waiting": "Waiting · {reason}",
     "status.not_charging": "Not charging",
@@ -953,6 +955,8 @@ const FRONTEND_LOCALES = {
     "night.waiting_more_prices": "Planen öppnar när priserna når klartiden.",
     "night.legend_cheap": "Billigast",
     "night.legend_plan": "Planerad",
+    "night.tap_hint": "Tryck på en stapel för att se priset",
+    "night.price_now": "Nu",
     "night.soc_to_target": "{soc} % → {target} %",
     "status.waiting": "Väntar · {reason}",
     "status.not_charging": "Laddar inte",
@@ -1191,6 +1195,8 @@ const FRONTEND_LOCALES = {
     "night.waiting_more_prices": "Il piano si attiva quando i prezzi coprono l'orario di auto pronta.",
     "night.legend_cheap": "Più economiche",
     "night.legend_plan": "Pianificate",
+    "night.tap_hint": "Tocca una barra per vedere il prezzo",
+    "night.price_now": "Ora",
     "night.soc_to_target": "{soc}% → {target}%",
     "status.waiting": "In attesa · {reason}",
     "status.not_charging": "Non in carica",
@@ -1429,6 +1435,8 @@ const FRONTEND_LOCALES = {
     "night.waiting_more_prices": "Het plan start zodra de prijzen tot de klaar-tijd lopen.",
     "night.legend_cheap": "Goedkoopst",
     "night.legend_plan": "Gepland",
+    "night.tap_hint": "Tik op een staaf om de prijs te zien",
+    "night.price_now": "Nu",
     "night.soc_to_target": "{soc}% → {target}%",
     "status.waiting": "Wachten · {reason}",
     "status.not_charging": "Laadt niet",
@@ -3406,6 +3414,19 @@ class EvSmartChargerDashboard extends HTMLElement {
       node.addEventListener("click", () => this._toggleAllCarReady());
     });
 
+    // v2.48.0: tap a price bar to read its price (touch has no hover).
+    root.querySelectorAll("[data-np-idx]").forEach((node) => {
+      node.addEventListener("click", () => {
+        const data = this._npPrices;
+        const idx = Number(node.dataset.npIdx);
+        if (!data || !data.prices[idx]) return;
+        this._npSelected = data.prices[idx].start;
+        root.querySelectorAll("[data-np-idx]").forEach((n) => n.classList.toggle("sel", n === node));
+        const out = root.querySelector("[data-np-readout]");
+        if (out) out.innerHTML = this._npReadout(data.prices, idx, data.unit);
+      });
+    });
+
     root.querySelectorAll("[data-number][data-direction]").forEach((node) => {
       node.addEventListener("click", () => {
         this._adjustNumber(node.dataset.number, Number(node.dataset.direction));
@@ -3777,6 +3798,23 @@ class EvSmartChargerDashboard extends HTMLElement {
     return `${v.toFixed(digits)}${unit ? ` ${unit}` : ""}`;
   }
 
+  // v2.48.0: "14:00 · 1.23 kr" for the tapped hour (or now), hint otherwise.
+  _npReadout(prices, idx, unit) {
+    const p = prices[idx];
+    if (!p) return `<span class="hint">${this._t("night.tap_hint")}</span>`;
+    const d = new Date(p.start);
+    const nowHour = new Date();
+    nowHour.setMinutes(0, 0, 0);
+    let when = `${this._hourLabel(p.start)}:00`;
+    if (d.getTime() === nowHour.getTime()) {
+      when = `${this._t("night.price_now")} ${when}`;
+    } else if (d.toDateString() !== new Date().toDateString()) {
+      when = `${d.toLocaleDateString(this._language(), { weekday: "short" })} ${when}`;
+    }
+    return `<strong>${this._formatPrice(p.price, unit)}</strong><span>${when}</span>`
+      + `<span class="hint">${this._t("night.tap_hint")}</span>`;
+  }
+
   _renderNightCardV2() {
     const enabledId = this._entityId("nightEnabled");
     const enabled = this._isOn(enabledId);
@@ -3816,6 +3854,17 @@ class EvSmartChargerDashboard extends HTMLElement {
       const plannable = plan.mode === "plan" && plan.plannable ? new Set(plan.plannable) : null;
       const nowHour = new Date();
       nowHour.setMinutes(0, 0, 0);
+      // v2.48.0: price axis (max / mid / min) + tap-to-read price.
+      this._npPrices = { prices, unit: plan.unit };
+      const pct = (v) => (max > min ? 18 + ((v - min) / (max - min)) * 82 : 59);
+      const axisVals = max > min ? [max, (max + min) / 2, min] : [max];
+      const axis = axisVals.map((v) => `
+          <div class="evsc-np-gridline" style="bottom:${pct(v).toFixed(1)}%">
+            <span class="evsc-np-axis">${this._formatPrice(v, "")}</span>
+          </div>`).join("");
+      const nowIdx = prices.findIndex((p) => new Date(p.start).getTime() === nowHour.getTime());
+      let selIdx = prices.findIndex((p) => p.start === this._npSelected);
+      if (selIdx < 0) selIdx = nowIdx;
       const bars = prices.map((p, idx) => {
         const has = hasPrice(p.price);
         const ratio = has && max > min ? (Number(p.price) - min) / (max - min) : 0.5;
@@ -3832,13 +3881,17 @@ class EvSmartChargerDashboard extends HTMLElement {
         const label = idx % step === 0 ? this._hourLabel(p.start) : "";
         const title = `${this._hourLabel(p.start)}:00 · ${this._formatPrice(p.price, plan.unit)}`;
         return `
-          <div class="evsc-np-col" title="${title}">
+          <div class="evsc-np-col${idx === selIdx ? " sel" : ""}" title="${title}" data-np-idx="${idx}">
             <div class="${cls}" style="height:${h}%"></div>
             <span class="evsc-np-tick">${label}</span>
           </div>`;
       }).join("");
       chart = `
-        <div class="evsc-np-chart" role="img" aria-label="${this._t("night.cheapest")}">${bars}</div>
+        <div class="evsc-np-readout" data-np-readout>${this._npReadout(prices, selIdx, plan.unit)}</div>
+        <div class="evsc-np-chart" aria-label="${this._t("night.cheapest")}">
+          <div class="evsc-np-grid" aria-hidden="true">${axis}</div>
+          ${bars}
+        </div>
         <div class="evsc-np-legend">
           <span><i class="dot cheap"></i>${this._t("night.legend_cheap")}</span>
           <span><i class="dot plan"></i>${this._t("night.legend_plan")}</span>
@@ -7070,11 +7123,58 @@ class EvSmartChargerDashboard extends HTMLElement {
           align-items: flex-end;
           gap: 3px;
           height: 96px;
-          padding: 8px 6px 18px;
+          padding: 8px 40px 18px 6px;
           margin-bottom: 6px;
+          position: relative;
           border-radius: 14px;
           background: radial-gradient(60% 100% at 50% 100%, color-mix(in srgb, var(--evsc-sys-purple) 18%, transparent), transparent 75%);
         }
+        .evsc-np-grid {
+          position: absolute;
+          top: 8px;
+          bottom: 18px;
+          left: 6px;
+          right: 40px;
+          pointer-events: none;
+        }
+        .evsc-np-gridline {
+          position: absolute;
+          left: 0;
+          right: 0;
+          border-top: 1px dashed color-mix(in srgb, var(--evsc-fg) 18%, transparent);
+        }
+        .evsc-np-axis {
+          position: absolute;
+          left: calc(100% + 5px);
+          top: -7px;
+          font-size: 9px;
+          font-weight: 600;
+          color: var(--evsc-fg-low);
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+        .evsc-np-readout {
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
+          min-height: 20px;
+          margin: 0 0 4px 6px;
+          font-size: 12px;
+          color: var(--evsc-fg-low);
+          font-variant-numeric: tabular-nums;
+        }
+        .evsc-np-readout strong {
+          font-size: 15px;
+          color: var(--evsc-fg);
+        }
+        .evsc-np-readout .hint {
+          margin-left: auto;
+          font-size: 10px;
+          opacity: 0.8;
+        }
+        .evsc-np-col { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .evsc-np-col.sel .evsc-np-bar { outline: 2px solid var(--evsc-sys-purple); outline-offset: 1px; }
+        .evsc-np-col.sel .evsc-np-bar.now { outline-color: var(--evsc-fg); }
         .evsc-np-col {
           flex: 1 1 0;
           min-width: 0;
