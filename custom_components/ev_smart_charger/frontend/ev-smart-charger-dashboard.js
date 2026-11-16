@@ -3948,14 +3948,17 @@ class EvSmartChargerDashboard extends HTMLElement {
     }
 
     if (pricesOnly) {
-      return `
-      <section class="evsc-night-card evsc-prices-card">
+      // v2.50.0: `hide_header: true` drops the title / prices-until line.
+      const head = this._userConfig?.hide_header === true ? "" : `
         <div class="evsc-night-head">
           <div>
             <span class="evsc-night-eyebrow">${this._t("night.prices_title")}</span>
             ${readyText ? `<span class="evsc-night-sub">${readyText}</span>` : ""}
           </div>
-        </div>
+        </div>`;
+      return `
+      <section class="evsc-night-card evsc-prices-card">
+        ${head}
         ${chart}
       </section>`;
     }
@@ -6029,6 +6032,17 @@ class EvSmartChargerDashboard extends HTMLElement {
           box-shadow: none;
         }
         ha-card.theme-ha .metric-card::before { display: none; }
+        /* v2.50.0: the night / price part is flat in the HA theme (no
+           panel inside the card), like the hero. */
+        ha-card.theme-ha .evsc-night-card {
+          background: transparent;
+          border: 0;
+          box-shadow: none;
+          padding: 4px;
+        }
+        ha-card.theme-ha .evsc-np-chart {
+          background: none;
+        }
 
         @media (max-width: 540px) {
           .hero-card { padding: 18px 18px; }

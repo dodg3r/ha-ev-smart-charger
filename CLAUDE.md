@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.49.0
+**Current Version:** 2.50.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,19 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.50.0 (2026-11-16) — fork dodg3r
+**Price chart flat in the HA theme; `hide_header` for the price part**
+
+Requested by the maintainer (price chart under a markdown card). Frontend only.
+- `ha-card.theme-ha .evsc-night-card`: transparent, no border / shadow,
+  padding 4px (like the hero), and the chart's purple glow is off — no panel
+  inside the card. Applies to the `night` and `prices` parts in the HA theme.
+- Card option `hide_header: true` (read from `_userConfig`): the `prices`
+  part drops its title / prices-until line.
+- README: `hide_header` in the options table.
+
+---
 
 ### v2.49.0 (2026-11-16) — fork dodg3r
 **Price chart as its own card (`sections: [prices]`)**
