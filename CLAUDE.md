@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.53.0
+**Current Version:** 2.53.1
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,20 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.53.1 (2026-11-17) — fork dodg3r
+**FIX: double line between the price chart and a markdown card in stack-in-card**
+
+Reported by the maintainer (v2.51.0 did not fix it). stack-in-card removes a
+child's frame by styling its `ha-card` inline once. The card's slow render
+path replaced the whole shadow root (`shadowRoot.innerHTML`), so every
+structural rebuild (e.g. right after the integration's card config arrives)
+created a new `ha-card` without those styles and the border came back.
+- Frontend only: `_ensureCard()` keeps one `ha-card` and one `<style>` in the
+  shadow root; the slow path sets the card's class, its content and the
+  stylesheet text (only when changed). The boot placeholder uses the same card.
+
+---
 
 ### v2.53.0 (2026-11-17) — fork dodg3r
 **Home battery that balances against the main fuse itself**
