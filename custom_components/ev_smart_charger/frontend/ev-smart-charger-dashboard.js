@@ -4419,10 +4419,8 @@ class EvSmartChargerDashboard extends HTMLElement {
         return;
       }
       this._lastRenderHash = "__boot__";
-      this.shadowRoot.innerHTML = `
-        <ha-card>
+      this._ensureCard().card.innerHTML = `
           <div class="boot-state">${this._t("boot.waiting_for_hass")}</div>
-        </ha-card>
       `;
       return;
     }
@@ -4556,7 +4554,6 @@ class EvSmartChargerDashboard extends HTMLElement {
       : "";
 
     const html = `
-      <ha-card class="${embedded ? "is-embedded" : ""}${this._haTheme ? " theme-ha" : ""}">
         <div class="dashboard-shell${embedded ? " is-embedded" : ""}">
           ${embedded ? "" : `<div class="aurora aurora-a"></div>
           <div class="aurora aurora-b"></div>
@@ -4566,13 +4563,39 @@ class EvSmartChargerDashboard extends HTMLElement {
           ${viewHtml}
           ${diagnosticsHtml}
         </div>
-      </ha-card>
-      <style>${this._inlineStyles()}</style>
     `;
 
     this._lastStructuralKey = structuralKey;
-    this.shadowRoot.innerHTML = html;
+    // v2.53.1: the ha-card element is kept between rebuilds; only its class
+    // and content change. A wrapper card (stack-in-card) styles our
+    // ha-card inline (no border / shadow) once; a new ha-card on every
+    // rebuild dropped those styles and brought the frame back.
+    const { card, style } = this._ensureCard();
+    card.className = `${embedded ? "is-embedded" : ""}${this._haTheme ? " theme-ha" : ""}`.trim();
+    const css = this._inlineStyles();
+    if (style.textContent !== css) style.textContent = css;
+    card.innerHTML = html;
     this._bindEvents();
+  }
+
+  /** v2.53.1: the persistent ha-card and stylesheet of the shadow root. */
+  _ensureCard() {
+    const root = this.shadowRoot;
+    let card = null;
+    let style = null;
+    for (const child of root.children) {
+      if (child.tagName === "HA-CARD" && !card) card = child;
+      else if (child.tagName === "STYLE" && !style) style = child;
+    }
+    if (!card) {
+      card = document.createElement("ha-card");
+      root.prepend(card);
+    }
+    if (!style) {
+      style = document.createElement("style");
+      root.appendChild(style);
+    }
+    return { card, style };
   }
 
   /**
