@@ -36,7 +36,7 @@ Assistant can control, several cars on one charger, and its own dashboard.
 - [How the charging works](#how-the-charging-works)
   - [Who decides](#who-decides)
   - [Solar Surplus](#solar-surplus)
-  - [Night Smart Charge (cheapest hours)](#night-smart-charge-cheapest-hours)
+  - [Charge plan (cheapest hours)](#charge-plan-cheapest-hours)
   - [Boost Charge](#boost-charge)
   - [Main fuse protection (load balancing)](#main-fuse-protection-load-balancing)
   - [Car profiles](#car-profiles)
@@ -57,9 +57,10 @@ Assistant can control, several cars on one charger, and its own dashboard.
   the current as the sun comes and goes. Waits for the charger's readings after
   every change, reacts within seconds when the house suddenly uses more, and
   never starts on grid power.
-- 🌙 **Night Smart Charge** — reads the electricity prices (Nord Pool or
+- 🌙 **Charge plan** — reads the electricity prices (Nord Pool or
   compatible), works out how many hours the car needs to reach its target, and
-  charges in the cheapest night hours before the time the car must be ready.
+  charges in the cheapest hours, day or night, before the time the car must be
+  ready. Before a sunny day it can wait for the sun instead of buying at night.
 - ⚡ **Boost Charge** — the manual "charge now" button, with its own current and
   target. Stops at the target, when switched off, or when the car is unplugged.
 - 🔌 **Main fuse protection** — keeps house load plus the car below the main fuse
@@ -201,7 +202,7 @@ highest one win:
 | 1 | Force Charge | switch on — keeps the charger running |
 | 2 | Boost Charge | switched on, or its schedule is running |
 | 3 | Smart Charger Blocker | the charger starts in the blocked window |
-| 4 | Night Smart Charge | the current hour is a planned hour |
+| 4 | Charge plan | the current hour is a planned hour |
 | 5 | Solar Surplus | profile `solar_surplus`, daytime |
 
 The main fuse protection is not in this list: with *Display and adjust* it caps
@@ -238,7 +239,7 @@ when the charging profile is `solar_surplus`.
 - A car at its charge limit is not started; an unavailable charger status skips
   the tick instead of being read as "plugged in".
 
-### Night Smart Charge (cheapest hours)
+### Charge plan (cheapest hours)
 
 Switch: `evsc_night_smart_charge_enabled`. Current: `evsc_night_charge_amperage`.
 
@@ -247,12 +248,21 @@ Switch: `evsc_night_smart_charge_enabled`. Current: `evsc_night_charge_amperage`
    solar instead.
 2. When the car is plugged in, the energy to the day's EV target is turned into
    a number of hours at the night current (capacity × missing % / 0.9).
-3. The cheapest **night hours** (between sunset and sunrise, plus the morning of
-   the deadline day) before the deadline are planned. The charger only runs in
-   those hours.
-4. The plan goes live when the prices reach the deadline. If they never do, it
+3. The cheapest hours before the deadline are planned, **day or night**. The
+   charger only runs in those hours; in between, Solar Surplus charges as usual
+   and the plan drops hours that are no longer needed. In a planned daytime
+   hour the house uses the solar power first, only the rest comes from the
+   grid.
+4. **Sunny day ahead** (`evsc_min_solar_forecast_threshold`, "Skip night before
+   sunny day", default 15 kWh, 0 = off): when the forecast for the coming day
+   (today's forecast before today's sunrise, otherwise tomorrow's) reaches the
+   value and the ready time is at least 2 h after that sunrise, the night before
+   it is skipped and the plan waits for the sun. The night is still used when
+   the day hours cannot reach the target. Skipped hours are dimmed on the card,
+   like hours after the ready time.
+5. The plan goes live when the prices reach the deadline. If they never do, it
    plans at sunset with what is known, so the car is never left empty.
-5. Raising the target re-opens a finished plan; an unplug only stops the session
+6. Raising the target re-opens a finished plan; an unplug only stops the session
    after 60 s, so a status blink is not read as a disconnect.
 
 Without a car ready day in the coming week the card shows an overview of the

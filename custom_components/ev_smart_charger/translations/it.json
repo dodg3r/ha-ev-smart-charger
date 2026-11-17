@@ -675,7 +675,7 @@
         "name": "Bilanciamento priorita"
       },
       "evsc_night_smart_charge_enabled": {
-        "name": "Night smart charge"
+        "name": "Piano di ricarica"
       },
       "evsc_preserve_home_battery": {
         "name": "Preserva batteria di casa"
@@ -794,10 +794,10 @@
         "name": "SOC minimo casa domenica"
       },
       "evsc_min_solar_forecast_threshold": {
-        "name": "Soglia minima previsione solare"
+        "name": "Salta la notte prima di un giorno di sole"
       },
       "evsc_night_charge_amperage": {
-        "name": "Amperaggio ricarica notturna"
+        "name": "Amperaggio piano di ricarica"
       },
       "evsc_night_pv_handoff_threshold": {
         "name": "Soglia FV per handoff diurno"

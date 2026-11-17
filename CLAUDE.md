@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.51.0
+**Current Version:** 2.52.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,39 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.52.0 (2026-11-17) — fork dodg3r
+**Charge plan: the cheapest hours day or night; the night before a sunny day is a reserve; "Night Smart Charge" renamed "Charge plan"**
+
+Agreed with the maintainer (no power tariff, so with car ready ON the price
+decides; car ready OFF stays solar surplus only).
+- `PlannedNightCharge`: every hour from now to the deadline may be planned
+  (`_night_hours` removed, so daytime hours are no longer excluded). New
+  `_solar_skip_hours()`: the next sunny day is today before today's sunrise
+  (`CONF_PV_FORECAST`), otherwise tomorrow (`CONF_PV_FORECAST_TOMORROW`);
+  when its forecast (kWh, Wh/MWh normalised) reaches
+  `evsc_min_solar_forecast_threshold` (reused number, default 20 → **15**
+  kWh, 0 = off) and the deadline is at least `CHARGE_PLAN_SOLAR_MIN_HOURS`
+  (2) after that sunrise, the dark hours of the night before it are skipped.
+  The threshold entity and both forecast sensors are watched.
+- `charge_planner.build_plan(reserve=...)`: skipped hours are planned only
+  when the allowed hours cannot cover the need (`NightPlan.reserve_used`);
+  a committed hour always stays a candidate. `cheapest` is taken from the
+  allowed hours only.
+- Plan sensor: `reserve_used`, `solar_skip`, `solar_skip_day`,
+  `solar_forecast_kwh`, `solar_threshold_kwh`. `plannable` = allowed hours,
+  so the card dims only skipped nights and hours after the ready time.
+- Rename (texts only, entity ids unchanged): "Night Smart Charge" /
+  "Nattladdning" → "Charge plan" / "Laddplan" / "Piano di ricarica" /
+  "Laadplan" in the card (title, settings group, banner, status lines,
+  weekly info) and the entity names; new settings row "Skip night before
+  sunny day" (`minSolarForecast`, needs solar) EN/SV/IT/NL.
+- README: charge plan section.
+- Tests: NEW `tests/test_v2520_charge_plan.py`; the v2.21.0 night-hours test
+  removed. Restored threshold values (20 from earlier installs) win; set it
+  to 15 in the settings.
+
+---
 
 ### v2.51.0 (2026-11-17) — fork dodg3r
 **Price chart keeps every known hour during a live plan; card border yields to stack-in-card**

@@ -675,7 +675,7 @@
         "name": "Priority balancer"
       },
       "evsc_night_smart_charge_enabled": {
-        "name": "Night smart charge"
+        "name": "Charge plan"
       },
       "evsc_preserve_home_battery": {
         "name": "Preserve home battery"
@@ -794,10 +794,10 @@
         "name": "Home min SOC Sunday"
       },
       "evsc_min_solar_forecast_threshold": {
-        "name": "Min solar forecast threshold"
+        "name": "Skip night before sunny day"
       },
       "evsc_night_charge_amperage": {
-        "name": "Night charge amperage"
+        "name": "Charge plan amperage"
       },
       "evsc_night_pv_handoff_threshold": {
         "name": "Night PV handoff threshold"

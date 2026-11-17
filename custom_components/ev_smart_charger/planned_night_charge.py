@@ -35,6 +35,11 @@ from .const import (
     CONF_BATTERY_CAPACITY,
     CONF_EV_CHARGER_STATUS,
     CONF_PRICE_SENSOR,
+    CONF_PV_FORECAST,
+    CONF_PV_FORECAST_TOMORROW,
+    CHARGE_PLAN_SOLAR_MIN_HOURS,
+    DEFAULT_MIN_SOLAR_FORECAST_THRESHOLD,
+    HELPER_MIN_SOLAR_FORECAST_THRESHOLD_SUFFIX,
     CONF_SOC_CAR,
     DEFAULT_BATTERY_CAPACITY,
     DEFAULT_CAR_READY_TIME,
@@ -130,6 +135,10 @@ class PlannedNightCharge:
         self._price_entity = config.get(CONF_PRICE_SENSOR)
         self._status_entity = config.get(CONF_EV_CHARGER_STATUS)
         self._soc_entity = config.get(CONF_SOC_CAR)
+        self._forecast_today_entity = config.get(CONF_PV_FORECAST)
+        self._forecast_tomorrow_entity = config.get(CONF_PV_FORECAST_TOMORROW)
+        # v2.52.0: last solar-skip decision, published with the plan.
+        self._solar_info: dict = {}
 
         self._unsubs: list = []
         self._prices: dict[datetime, float] = {}
@@ -248,7 +257,12 @@ class PlannedNightCharge:
 
         watched = [
             entity
-            for entity in (self._status_entity, self._soc_entity)
+            for entity in (
+                self._status_entity,
+                self._soc_entity,
+                self._forecast_today_entity,
+                self._forecast_tomorrow_entity,
+            )
             if entity
         ]
         if self._price_entity:
@@ -261,6 +275,7 @@ class PlannedNightCharge:
             HELPER_NIGHT_CHARGE_ENABLED_SUFFIX,
             HELPER_NIGHT_CHARGE_AMPERAGE_SUFFIX,
             HELPER_CAR_READY_TIME_SUFFIX,
+            HELPER_MIN_SOLAR_FORECAST_THRESHOLD_SUFFIX,
         ):
             entity = self._entity(key)
             if entity:
@@ -411,34 +426,86 @@ class PlannedNightCharge:
                 return deadline, key
         return None, None
 
-    def _night_hours(self, hours: list[datetime], deadline: datetime | None) -> set[datetime]:
-        """Hours that may be planned: between sunset and sunrise, plus the
-        morning of the deadline day up to the deadline."""
-        cache: dict = {}
+    def _sun_times(self, day) -> tuple[datetime | None, datetime | None]:
+        """Local sunrise and sunset of a date."""
+        ref = datetime.combine(day, time(12), tzinfo=dt_util.DEFAULT_TIME_ZONE)
+        rise = self._astral.get_sunrise(ref)
+        sset = self._astral.get_sunset(ref)
+        return (
+            dt_util.as_local(rise) if rise else None,
+            dt_util.as_local(sset) if sset else None,
+        )
 
-        def sun(day):
-            if day not in cache:
-                ref = datetime.combine(day, time(12), tzinfo=dt_util.DEFAULT_TIME_ZONE)
-                rise = self._astral.get_sunrise(ref)
-                sset = self._astral.get_sunset(ref)
-                cache[day] = (
-                    dt_util.as_local(rise) if rise else None,
-                    dt_util.as_local(sset) if sset else None,
-                )
-            return cache[day]
+    def _solar_threshold(self) -> float:
+        entity = self._entity(HELPER_MIN_SOLAR_FORECAST_THRESHOLD_SUFFIX)
+        if not entity:
+            return float(DEFAULT_MIN_SOLAR_FORECAST_THRESHOLD)
+        value = state_helper.get_float(self.hass, entity, None)
+        if value is None:
+            return float(DEFAULT_MIN_SOLAR_FORECAST_THRESHOLD)
+        return max(0.0, float(value))
 
-        allowed: set[datetime] = set()
+    def _forecast_kwh(self, entity: str | None) -> float | None:
+        if not entity:
+            return None
+        state = self.hass.states.get(entity)
+        if state is None:
+            return None
+        try:
+            value = float(state.state)
+        except (TypeError, ValueError):
+            return None
+        unit = str(state.attributes.get("unit_of_measurement") or "").strip()
+        if unit == "Wh":
+            value /= 1000.0
+        elif unit == "MWh":
+            value *= 1000.0
+        return value
+
+    def _solar_skip_hours(
+        self, hours: list[datetime], deadline: datetime, now: datetime
+    ) -> set[datetime]:
+        """v2.52.0: night hours to skip before a sunny day.
+
+        The next sunny day is today before today's sunrise (today's
+        forecast), otherwise tomorrow (tomorrow's forecast). When its
+        forecast reaches the threshold and there are at least
+        ``CHARGE_PLAN_SOLAR_MIN_HOURS`` between its sunrise and the deadline,
+        the dark hours of the night before it are only kept as a reserve.
+        """
+        local_now = dt_util.as_local(now)
+        today = local_now.date()
+        threshold = self._solar_threshold()
+        rise_today, _ = self._sun_times(today)
+        if rise_today is not None and local_now < rise_today:
+            day = today
+            forecast = self._forecast_kwh(self._forecast_today_entity)
+        else:
+            day = today + timedelta(days=1)
+            forecast = self._forecast_kwh(self._forecast_tomorrow_entity)
+        rise, _ = self._sun_times(day)
+        _, sset_prev = self._sun_times(day - timedelta(days=1))
+        active = (
+            threshold > 0
+            and forecast is not None
+            and forecast >= threshold
+            and rise is not None
+            and deadline >= rise + timedelta(hours=CHARGE_PLAN_SOLAR_MIN_HOURS)
+        )
+        self._solar_info = {
+            "solar_skip": active,
+            "solar_skip_day": day.isoformat(),
+            "solar_forecast_kwh": None if forecast is None else round(forecast, 2),
+            "solar_threshold_kwh": threshold,
+        }
+        if not active:
+            return set()
+        skip: set[datetime] = set()
         for hour in hours:
             mid = hour + timedelta(minutes=30)
-            rise, sset = sun(mid.date())
-            if rise is None or sset is None:
-                allowed.add(hour)
-                continue
-            if mid < rise or mid >= sset:
-                allowed.add(hour)
-            elif deadline is not None and mid.date() == deadline.date() and hour < deadline:
-                allowed.add(hour)
-        return allowed
+            if mid < rise and (sset_prev is None or mid >= sset_prev):
+                skip.add(hour)
+        return skip
 
     def _window_start(self, deadline: datetime) -> datetime:
         """Return the sunset before the deadline."""
@@ -569,6 +636,7 @@ class PlannedNightCharge:
                 power_kw=self._power_kw(),
             )
             plan.planned = []
+            self._solar_info = {}
             self._last_plan = plan
             if self._active:
                 await self._stop("No car-ready day")
@@ -583,7 +651,10 @@ class PlannedNightCharge:
         window_start = current_hour
         sunset_before = self._window_start(deadline)
         hours = window_hours(window_start, deadline)
-        allowed = self._night_hours(hours, deadline)
+        # v2.52.0: every hour up to the deadline may be planned; before a
+        # sunny day the night hours are only a reserve.
+        skipped = self._solar_skip_hours(hours, deadline, now)
+        allowed = set(hours) - skipped
 
         # The latch only holds for the target it was set for: raising the
         # target re-opens the plan, a 1 % drop after a finished charge does not.
@@ -631,6 +702,7 @@ class PlannedNightCharge:
             committed=sorted(self._committed),
             earliest=now,
             allowed=allowed,
+            reserve=skipped,
         )
         if wants_charge and needed_kwh is None:
             # SOC unknown: fall back to the cheapest hours that are left.
@@ -850,5 +922,7 @@ class PlannedNightCharge:
             "price_unit": unit,
             "price_sensor": self._price_entity,
             "active": self._active,
+            "reserve_used": plan.reserve_used,
+            **self._solar_info,
         }
         self._publish(HELPER_NIGHT_CHARGE_PLAN_SUFFIX, status, attributes)

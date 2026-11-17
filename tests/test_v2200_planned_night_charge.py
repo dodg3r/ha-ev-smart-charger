@@ -296,17 +296,6 @@ async def test_no_priceless_plan_right_after_startup(hass):
     assert _at(base + timedelta(days=1), 6) in planned
 
 
-async def test_night_hours_exclude_daytime(hass):
-    base = _base()
-    night = PlannedNightCharge(hass, "entry", {}, Mock(), _controller())
-    hours = [_at(base, h) for h in (2, 12, 23)]
-    allowed = night._night_hours(hours, _at(base + timedelta(days=1), 7))
-    assert allowed == {_at(base, 2), _at(base, 23)}
-    # On the deadline day the morning up to the deadline may be used.
-    allowed = night._night_hours([_at(base, 12)], _at(base, 16))
-    assert allowed == {_at(base, 12)}
-
-
 async def test_disconnected_car_is_not_planned(hass):
     base = _base()
     night, controller = await _component(hass, base)

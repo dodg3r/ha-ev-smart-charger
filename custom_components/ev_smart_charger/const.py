@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.51.0"
+VERSION = "2.52.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -588,7 +588,11 @@ DEFAULT_HOME_MIN_SOC = 50  # percent (all days)
 
 # ========== DEFAULT VALUES - NIGHT SMART CHARGE ==========
 DEFAULT_NIGHT_CHARGE_TIME = "01:00:00"
-DEFAULT_MIN_SOLAR_FORECAST_THRESHOLD = 20  # kWh
+# v2.52.0: the charge plan skips the night before a sunny day when the
+# day's forecast reaches this value (0 = off; the night stays a reserve).
+DEFAULT_MIN_SOLAR_FORECAST_THRESHOLD = 15  # kWh
+# Hours of sun needed between that sunrise and the car-ready time.
+CHARGE_PLAN_SOLAR_MIN_HOURS = 2
 DEFAULT_NIGHT_CHARGE_AMPERAGE = 16  # amps
 DEFAULT_CAR_READY_TIME = "08:00:00"  # Default deadline when car must be ready
 NIGHT_CHARGE_COOLDOWN_SECONDS = 3600  # 1 hour - prevent re-evaluation after completion

@@ -675,7 +675,7 @@
         "name": "Prioriteitsbalans"
       },
       "evsc_night_smart_charge_enabled": {
-        "name": "Slim nachtelijk laden"
+        "name": "Laadplan"
       },
       "evsc_preserve_home_battery": {
         "name": "Thuisbatterij sparen"
@@ -794,10 +794,10 @@
         "name": "Min. woning-SOC zondag"
       },
       "evsc_min_solar_forecast_threshold": {
-        "name": "Minimale zonnedrempel verwachting"
+        "name": "Nacht overslaan vóór zonnige dag"
       },
       "evsc_night_charge_amperage": {
-        "name": "Nachtlaadstroom"
+        "name": "Laadplan-stroom"
       },
       "evsc_night_pv_handoff_threshold": {
         "name": "PV-drempel voor dagoverdracht"

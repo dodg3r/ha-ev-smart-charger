@@ -21,6 +21,7 @@ class NightPlan:
     planned: list[datetime] = field(default_factory=list)
     needed_kwh: float | None = None
     needed_hours: int | None = None
+    reserve_used: bool = False                # v2.52.0: skipped hours were needed
 
 
 def window_hours(start: datetime, end: datetime) -> list[datetime]:
@@ -106,6 +107,7 @@ def build_plan(
     committed: list[datetime] | None = None,
     earliest: datetime | None = None,
     allowed: set[datetime] | None = None,
+    reserve: set[datetime] | None = None,
 ) -> NightPlan:
     """Build the plan for one night window.
 
@@ -114,8 +116,9 @@ def build_plan(
     cheapest hours that cover the need. ``committed`` hours (already started)
     are kept in the plan. Only hours that end after ``earliest`` (usually
     now) can be planned. When ``allowed`` is given, only those hours are
-    candidates for both the cheapest hours and the plan (v2.21.0: night
-    hours only, so the plan never competes with free solar).
+    candidates for both the cheapest hours and the plan. ``reserve`` hours
+    (v2.52.0: night hours skipped before a sunny day) are only planned when
+    the allowed hours cannot cover the need.
     """
     hours = window_hours(window_start, deadline)
     window_prices = {hour: prices[hour] for hour in hours if hour in prices}
@@ -125,7 +128,11 @@ def build_plan(
         hours=hours,
         prices=window_prices,
     )
-    candidates = [hour for hour in hours if allowed is None or hour in allowed]
+    committed_set = set(committed or [])
+    candidates = [
+        hour for hour in hours
+        if allowed is None or hour in allowed or hour in committed_set
+    ]
     # v2.21.1: only hours with a known price can be "cheapest".
     plan.cheapest = pick_cheapest(
         [hour for hour in candidates if hour in window_prices],
@@ -146,4 +153,17 @@ def build_plan(
             min(plan.needed_hours, len(open_hours)),
             required=committed if plan.needed_hours > 0 else None,
         )
+        missing = plan.needed_hours - len(plan.planned)
+        if reserve and missing > 0:
+            extra = [
+                hour
+                for hour in hours
+                if hour in reserve
+                and hour not in plan.planned
+                and (earliest is None or hour + timedelta(hours=1) > earliest)
+            ]
+            picked = pick_cheapest(extra, window_prices, missing)
+            if picked:
+                plan.planned = sorted(plan.planned + picked)
+                plan.reserve_used = True
     return plan
