@@ -17,6 +17,9 @@ from .const import (
     CONF_BATTERY_CAPACITY,
     CONF_BATTERY_POWER,
     CONF_BATTERY_POWER_INVERT,
+    BATTERY_PHASE_POWER_KEYS,
+    CONF_BATTERY_PHASE_INVERT,
+    CONF_BATTERY_SELF_BALANCING,
     CONF_CAR_OWNER,
     CONF_CHARGER_MODEL,
     CONF_CHARGING_POWER,
@@ -226,12 +229,28 @@ def _normalize_solar_input(user_input: dict[str, Any]) -> dict[str, Any]:
 
 
 def _normalize_battery_input(user_input: dict[str, Any]) -> dict[str, Any]:
-    """Home battery SOC and power (v2.41.0)."""
-    return {
+    """Home battery SOC and power (v2.41.0); self-balancing (v2.53.0)."""
+    data = {
         CONF_SOC_HOME: user_input.get(CONF_SOC_HOME),
         CONF_BATTERY_POWER: user_input.get(CONF_BATTERY_POWER),
         CONF_BATTERY_POWER_INVERT: bool(user_input.get(CONF_BATTERY_POWER_INVERT, False)),
+        CONF_BATTERY_SELF_BALANCING: bool(
+            user_input.get(CONF_BATTERY_SELF_BALANCING, False)
+        ),
+        CONF_BATTERY_PHASE_INVERT: bool(user_input.get(CONF_BATTERY_PHASE_INVERT, False)),
     }
+    for key in BATTERY_PHASE_POWER_KEYS:
+        data[key] = user_input.get(key) or None
+    return data
+
+
+def _battery_errors(data: dict[str, Any]) -> dict[str, str]:
+    """v2.53.0: self-balancing needs the battery power on every phase."""
+    if data.get(CONF_BATTERY_SELF_BALANCING) and not all(
+        data.get(key) for key in BATTERY_PHASE_POWER_KEYS
+    ):
+        return {"base": "battery_phase_required"}
+    return {}
 
 
 def _merge_entry_data(base_data: dict[str, Any], *sections: dict[str, Any]) -> dict[str, Any]:
@@ -431,6 +450,19 @@ def _battery_schema(current_data: dict[str, Any] | None = None) -> vol.Schema:
                 CONF_BATTERY_POWER_INVERT,
                 default=bool(current_data.get(CONF_BATTERY_POWER_INVERT)),
             ): selector.BooleanSelector(),
+            # v2.53.0: the battery balances against the main fuse itself.
+            vol.Optional(
+                CONF_BATTERY_SELF_BALANCING,
+                default=bool(current_data.get(CONF_BATTERY_SELF_BALANCING)),
+            ): selector.BooleanSelector(),
+            **{
+                vol.Optional(key, **_suggested(current_data, key)): _entity_selector("sensor")
+                for key in BATTERY_PHASE_POWER_KEYS
+            },
+            vol.Optional(
+                CONF_BATTERY_PHASE_INVERT,
+                default=bool(current_data.get(CONF_BATTERY_PHASE_INVERT)),
+            ): selector.BooleanSelector(),
         }
     )
 
@@ -628,6 +660,10 @@ def _apply_features(data: dict[str, Any]) -> dict[str, Any]:
         data[CONF_SOC_HOME] = None
         data[CONF_BATTERY_POWER] = None
         data[CONF_BATTERY_POWER_INVERT] = False
+        data[CONF_BATTERY_SELF_BALANCING] = False
+        data[CONF_BATTERY_PHASE_INVERT] = False
+        for key in BATTERY_PHASE_POWER_KEYS:
+            data[key] = None
     if not has_solar(data):
         for key in _SOLAR_KEYS:
             data[key] = None
@@ -837,13 +873,17 @@ class _StepNavigator:
 
     async def _battery_step(self, step_id: str, user_input: dict[str, Any] | None):
         """Home battery (v2.41.0)."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            self.sensor_info.update(_normalize_battery_input(user_input))
-            return await self._go_next("battery")
+            data = _normalize_battery_input(user_input)
+            errors = _battery_errors(data)
+            if not errors:
+                self.sensor_info.update(data)
+                return await self._go_next("battery")
         return self.async_show_form(
             step_id=step_id,
-            data_schema=_battery_schema(self._base_data()),
-            errors={},
+            data_schema=_battery_schema({**self._base_data(), **(user_input or {})}),
+            errors=errors,
             description_placeholders=self._placeholders("battery"),
         )
 

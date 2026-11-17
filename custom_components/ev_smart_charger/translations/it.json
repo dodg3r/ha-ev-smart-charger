@@ -61,12 +61,22 @@
         "data": {
           "soc_home": "SOC batteria di casa",
           "battery_power": "Potenza batteria (W, con segno)",
-          "battery_power_invert": "Inverti il segno della potenza batteria"
+          "battery_power_invert": "Inverti il segno della potenza batteria",
+          "battery_self_balancing": "La batteria si bilancia da sola sul fusibile principale",
+          "battery_phase_power_l1": "Potenza batteria / inverter L1",
+          "battery_phase_power_l2": "Potenza batteria / inverter L2",
+          "battery_phase_power_l3": "Potenza batteria / inverter L3",
+          "battery_phase_invert": "Inverti il segno della potenza per fase"
         },
         "data_description": {
           "soc_home": "Stato di carica della batteria di casa in percentuale.",
           "battery_power": "Potenza della batteria con segno in W — NEGATIVA = scarica, POSITIVA = carica. Se il sensore ha il segno opposto, invertilo con un sensore template (vedi il README).",
-          "battery_power_invert": "Spunta se questo sensore mostra un valore positivo quando la batteria si scarica e negativo quando si carica. L'integrazione si aspetta positivo = in carica."
+          "battery_power_invert": "Spunta se questo sensore mostra un valore positivo quando la batteria si scarica e negativo quando si carica. L'integrazione si aspetta positivo = in carica.",
+          "battery_self_balancing": "Seleziona se la batteria o l'inverter riduce da sé la carica quando il fusibile principale è vicino al limite. La carica prelevata dalla rete conta allora come carico che la batteria toglie da sola: l'auto viene ridotta solo se la casa supera il limite anche senza di essa. Il limite rigido resta valido.",
+          "battery_phase_power_l1": "Potenza AC della batteria o dell'inverter su L1 (W o kW). Obbligatoria se la batteria si bilancia da sola.",
+          "battery_phase_power_l2": "Potenza AC della batteria o dell'inverter su L2.",
+          "battery_phase_power_l3": "Potenza AC della batteria o dell'inverter su L3.",
+          "battery_phase_invert": "L'integrazione si aspetta più = carica dalla rete. Seleziona se i sensori mostrano meno durante la carica (es. FoxESS Inverter Power R/S/T)."
         }
       },
       "pv_forecast": {
@@ -225,12 +235,22 @@
         "data": {
           "soc_home": "SOC batteria di casa",
           "battery_power": "Potenza batteria (W, con segno)",
-          "battery_power_invert": "Inverti il segno della potenza batteria"
+          "battery_power_invert": "Inverti il segno della potenza batteria",
+          "battery_self_balancing": "La batteria si bilancia da sola sul fusibile principale",
+          "battery_phase_power_l1": "Potenza batteria / inverter L1",
+          "battery_phase_power_l2": "Potenza batteria / inverter L2",
+          "battery_phase_power_l3": "Potenza batteria / inverter L3",
+          "battery_phase_invert": "Inverti il segno della potenza per fase"
         },
         "data_description": {
           "soc_home": "Stato di carica della batteria di casa in percentuale.",
           "battery_power": "Potenza della batteria con segno in W — NEGATIVA = scarica, POSITIVA = carica. Se il sensore ha il segno opposto, invertilo con un sensore template (vedi il README).",
-          "battery_power_invert": "Spunta se questo sensore mostra un valore positivo quando la batteria si scarica e negativo quando si carica. L'integrazione si aspetta positivo = in carica."
+          "battery_power_invert": "Spunta se questo sensore mostra un valore positivo quando la batteria si scarica e negativo quando si carica. L'integrazione si aspetta positivo = in carica.",
+          "battery_self_balancing": "Seleziona se la batteria o l'inverter riduce da sé la carica quando il fusibile principale è vicino al limite. La carica prelevata dalla rete conta allora come carico che la batteria toglie da sola: l'auto viene ridotta solo se la casa supera il limite anche senza di essa. Il limite rigido resta valido.",
+          "battery_phase_power_l1": "Potenza AC della batteria o dell'inverter su L1 (W o kW). Obbligatoria se la batteria si bilancia da sola.",
+          "battery_phase_power_l2": "Potenza AC della batteria o dell'inverter su L2.",
+          "battery_phase_power_l3": "Potenza AC della batteria o dell'inverter su L3.",
+          "battery_phase_invert": "L'integrazione si aspetta più = carica dalla rete. Seleziona se i sensori mostrano meno durante la carica (es. FoxESS Inverter Power R/S/T)."
         }
       },
       "charger_model": {
@@ -420,7 +440,8 @@
       "charger_control_required": "Mappa uno switch del charger oppure entrambi i pulsanti di avvio e arresto ricarica.",
       "car_name_required": "Inserisci un nome.",
       "car_name_exists": "Un'altra auto ha già questo nome.",
-      "car_name_reserved": "Questo nome è usato dal profilo Ospite."
+      "car_name_reserved": "Questo nome è usato dal profilo Ospite.",
+      "battery_phase_required": "Mappa la potenza della batteria su tutte e tre le fasi quando la batteria si bilancia da sola sul fusibile principale."
     },
     "abort": {
       "already_configured": "Un'altra istanza di EV Smart Charger usa gia questo charger switch.",
@@ -546,12 +567,22 @@
         "data": {
           "soc_home": "SOC batteria di casa",
           "battery_power": "Potenza batteria (W, con segno)",
-          "battery_power_invert": "Inverti il segno della potenza batteria"
+          "battery_power_invert": "Inverti il segno della potenza batteria",
+          "battery_self_balancing": "La batteria si bilancia da sola sul fusibile principale",
+          "battery_phase_power_l1": "Potenza batteria / inverter L1",
+          "battery_phase_power_l2": "Potenza batteria / inverter L2",
+          "battery_phase_power_l3": "Potenza batteria / inverter L3",
+          "battery_phase_invert": "Inverti il segno della potenza per fase"
         },
         "data_description": {
           "soc_home": "Stato di carica della batteria di casa in percentuale.",
           "battery_power": "Potenza della batteria con segno in W — NEGATIVA = scarica, POSITIVA = carica. Se il sensore ha il segno opposto, invertilo con un sensore template (vedi il README).",
-          "battery_power_invert": "Spunta se questo sensore mostra un valore positivo quando la batteria si scarica e negativo quando si carica. L'integrazione si aspetta positivo = in carica."
+          "battery_power_invert": "Spunta se questo sensore mostra un valore positivo quando la batteria si scarica e negativo quando si carica. L'integrazione si aspetta positivo = in carica.",
+          "battery_self_balancing": "Seleziona se la batteria o l'inverter riduce da sé la carica quando il fusibile principale è vicino al limite. La carica prelevata dalla rete conta allora come carico che la batteria toglie da sola: l'auto viene ridotta solo se la casa supera il limite anche senza di essa. Il limite rigido resta valido.",
+          "battery_phase_power_l1": "Potenza AC della batteria o dell'inverter su L1 (W o kW). Obbligatoria se la batteria si bilancia da sola.",
+          "battery_phase_power_l2": "Potenza AC della batteria o dell'inverter su L2.",
+          "battery_phase_power_l3": "Potenza AC della batteria o dell'inverter su L3.",
+          "battery_phase_invert": "L'integrazione si aspetta più = carica dalla rete. Seleziona se i sensori mostrano meno durante la carica (es. FoxESS Inverter Power R/S/T)."
         }
       },
       "features": {
@@ -648,7 +679,8 @@
       "charger_control_required": "Mappa uno switch del charger oppure entrambi i pulsanti di avvio e arresto ricarica.",
       "car_name_required": "Inserisci un nome.",
       "car_name_exists": "Un'altra auto ha già questo nome.",
-      "car_name_reserved": "Questo nome è usato dal profilo Ospite."
+      "car_name_reserved": "Questo nome è usato dal profilo Ospite.",
+      "battery_phase_required": "Mappa la potenza della batteria su tutte e tre le fasi quando la batteria si bilancia da sola sul fusibile principale."
     }
   },
   "entity": {

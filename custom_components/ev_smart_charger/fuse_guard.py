@@ -34,6 +34,8 @@ from homeassistant.helpers.event import (
 
 from .utils import state_helper
 from .const import (
+    BATTERY_PHASE_POWER_KEYS,
+    CONF_BATTERY_PHASE_INVERT,
     CONF_EV_CHARGER_CURRENT,
     CONF_CHARGING_POWER,
     CONF_CHARGING_POWER_L2,
@@ -59,6 +61,7 @@ from .const import (
     HELPER_FUSE_HARD_TRIP_SUFFIX,
     HELPER_FUSE_HEADROOM_SENSOR_SUFFIX,
     HELPER_FUSE_MARGIN_SUFFIX,
+    battery_self_balances,
     get_amp_levels,
     fuse_protection_adjusts,
     get_main_fuse_size,
@@ -210,6 +213,8 @@ class FuseGuard:
     def _tracked_entities(self) -> list[str]:
         entities = [self.config.get(key) for key in FUSE_ENTITY_KEYS]
         entities += [self._switch_entity, self._current_entity]
+        if battery_self_balances(self.config):
+            entities += [self.config.get(key) for key in BATTERY_PHASE_POWER_KEYS]
         if uses_charger_buttons(self.config):
             entities += [
                 self.config.get(key)
@@ -239,6 +244,7 @@ class FuseGuard:
         charger = self._read_charger_phase_currents()
         readings: list[PhaseReading] = []
         for index in range(self.phase_count):
+            voltage = self._read_entity(self.config.get(FUSE_GRID_VOLTAGE_KEYS[index]))
             readings.append(
                 PhaseReading(
                     grid_current_a=self._read_current_a(
@@ -250,13 +256,30 @@ class FuseGuard:
                     export_w=self._read_power_w(
                         self.config.get(FUSE_GRID_EXPORT_KEYS[index])
                     ),
-                    voltage_v=self._read_entity(
-                        self.config.get(FUSE_GRID_VOLTAGE_KEYS[index])
-                    ),
+                    voltage_v=voltage,
                     charger_current_a=charger[index],
+                    flexible_a=self._battery_flexible_a(index, voltage),
                 )
             )
         return readings
+
+    def _battery_flexible_a(self, index: int, voltage: float | None) -> float | None:
+        """Current the self-balancing battery takes from the grid (v2.53.0).
+
+        Plus = charging (after the invert box). A missing reading credits
+        nothing, so the guard falls back to the normal behaviour.
+        """
+        if not battery_self_balances(self.config) or index >= len(BATTERY_PHASE_POWER_KEYS):
+            return None
+        power_w = self._read_power_w(self.config.get(BATTERY_PHASE_POWER_KEYS[index]))
+        if power_w is None:
+            return None
+        if self.config.get(CONF_BATTERY_PHASE_INVERT):
+            power_w = -power_w
+        if power_w <= 0:
+            return 0.0
+        volts = voltage if voltage and 180.0 <= voltage <= 260.0 else 230.0
+        return power_w / volts
 
     def _margin_a(self) -> float:
         entity_id = None
@@ -571,6 +594,8 @@ class FuseGuard:
                 None if result.room_a is None else round(result.room_a, 1)
             )
             attributes[f"source_{suffix}"] = result.source
+            if battery_self_balances(self.config):
+                attributes[f"battery_flex_{suffix}"] = round(result.flexible_a, 1)
 
         # Write immediately when the ceiling or state changes; otherwise refresh
         # the (fast-moving) per-phase attributes at most every 30 s so the

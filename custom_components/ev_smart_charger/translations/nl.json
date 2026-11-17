@@ -61,12 +61,22 @@
         "data": {
           "soc_home": "SOC thuisbatterij",
           "battery_power": "Batterijvermogen (W, met teken)",
-          "battery_power_invert": "Teken van batterijvermogen omkeren"
+          "battery_power_invert": "Teken van batterijvermogen omkeren",
+          "battery_self_balancing": "De batterij balanceert zelf op de hoofdzekering",
+          "battery_phase_power_l1": "Vermogen batterij / omvormer L1",
+          "battery_phase_power_l2": "Vermogen batterij / omvormer L2",
+          "battery_phase_power_l3": "Vermogen batterij / omvormer L3",
+          "battery_phase_invert": "Teken van het vermogen per fase omkeren"
         },
         "data_description": {
           "soc_home": "Laadtoestand van de thuisbatterij in procent.",
           "battery_power": "Batterijvermogen met teken in W — NEGATIEF = ontladen, POSITIEF = laden. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor (zie de README).",
-          "battery_power_invert": "Vink aan als deze sensor plus toont bij ontladen en min bij laden. De integratie verwacht plus = laden."
+          "battery_power_invert": "Vink aan als deze sensor plus toont bij ontladen en min bij laden. De integratie verwacht plus = laden.",
+          "battery_self_balancing": "Vink aan als de batterij of omvormer zelf minder laadt wanneer de hoofdzekering bijna vol is. Het laden uit het net telt dan als last die de batterij zelf wegneemt: de auto wordt alleen verlaagd als het huis ook zonder die last boven de grens zit. De harde grens blijft gelden.",
+          "battery_phase_power_l1": "AC-vermogen van batterij of omvormer op L1 (W of kW). Verplicht als de batterij zelf balanceert.",
+          "battery_phase_power_l2": "AC-vermogen van batterij of omvormer op L2.",
+          "battery_phase_power_l3": "AC-vermogen van batterij of omvormer op L3.",
+          "battery_phase_invert": "De integratie verwacht plus = laden uit het net. Vink aan als je sensoren min tonen tijdens het laden (bijv. FoxESS Inverter Power R/S/T)."
         }
       },
       "pv_forecast": {
@@ -225,12 +235,22 @@
         "data": {
           "soc_home": "SOC thuisbatterij",
           "battery_power": "Batterijvermogen (W, met teken)",
-          "battery_power_invert": "Teken van batterijvermogen omkeren"
+          "battery_power_invert": "Teken van batterijvermogen omkeren",
+          "battery_self_balancing": "De batterij balanceert zelf op de hoofdzekering",
+          "battery_phase_power_l1": "Vermogen batterij / omvormer L1",
+          "battery_phase_power_l2": "Vermogen batterij / omvormer L2",
+          "battery_phase_power_l3": "Vermogen batterij / omvormer L3",
+          "battery_phase_invert": "Teken van het vermogen per fase omkeren"
         },
         "data_description": {
           "soc_home": "Laadtoestand van de thuisbatterij in procent.",
           "battery_power": "Batterijvermogen met teken in W — NEGATIEF = ontladen, POSITIEF = laden. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor (zie de README).",
-          "battery_power_invert": "Vink aan als deze sensor plus toont bij ontladen en min bij laden. De integratie verwacht plus = laden."
+          "battery_power_invert": "Vink aan als deze sensor plus toont bij ontladen en min bij laden. De integratie verwacht plus = laden.",
+          "battery_self_balancing": "Vink aan als de batterij of omvormer zelf minder laadt wanneer de hoofdzekering bijna vol is. Het laden uit het net telt dan als last die de batterij zelf wegneemt: de auto wordt alleen verlaagd als het huis ook zonder die last boven de grens zit. De harde grens blijft gelden.",
+          "battery_phase_power_l1": "AC-vermogen van batterij of omvormer op L1 (W of kW). Verplicht als de batterij zelf balanceert.",
+          "battery_phase_power_l2": "AC-vermogen van batterij of omvormer op L2.",
+          "battery_phase_power_l3": "AC-vermogen van batterij of omvormer op L3.",
+          "battery_phase_invert": "De integratie verwacht plus = laden uit het net. Vink aan als je sensoren min tonen tijdens het laden (bijv. FoxESS Inverter Power R/S/T)."
         }
       },
       "charger_model": {
@@ -420,7 +440,8 @@
       "charger_control_required": "Koppel een lader-schakelaar of zowel de start- als de stopknop.",
       "car_name_required": "Vul een naam in.",
       "car_name_exists": "Een andere auto heeft deze naam al.",
-      "car_name_reserved": "Deze naam wordt gebruikt door het profiel Gast."
+      "car_name_reserved": "Deze naam wordt gebruikt door het profiel Gast.",
+      "battery_phase_required": "Koppel het batterijvermogen op alle drie de fasen als de batterij zelf op de hoofdzekering balanceert."
     },
     "abort": {
       "already_configured": "Een andere EV Smart Charger-configuratie gebruikt deze laderschakelaar al.",
@@ -546,12 +567,22 @@
         "data": {
           "soc_home": "SOC thuisbatterij",
           "battery_power": "Batterijvermogen (W, met teken)",
-          "battery_power_invert": "Teken van batterijvermogen omkeren"
+          "battery_power_invert": "Teken van batterijvermogen omkeren",
+          "battery_self_balancing": "De batterij balanceert zelf op de hoofdzekering",
+          "battery_phase_power_l1": "Vermogen batterij / omvormer L1",
+          "battery_phase_power_l2": "Vermogen batterij / omvormer L2",
+          "battery_phase_power_l3": "Vermogen batterij / omvormer L3",
+          "battery_phase_invert": "Teken van het vermogen per fase omkeren"
         },
         "data_description": {
           "soc_home": "Laadtoestand van de thuisbatterij in procent.",
           "battery_power": "Batterijvermogen met teken in W — NEGATIEF = ontladen, POSITIEF = laden. Rapporteert je sensor het omgekeerde teken, keer het dan om met een template-sensor (zie de README).",
-          "battery_power_invert": "Vink aan als deze sensor plus toont bij ontladen en min bij laden. De integratie verwacht plus = laden."
+          "battery_power_invert": "Vink aan als deze sensor plus toont bij ontladen en min bij laden. De integratie verwacht plus = laden.",
+          "battery_self_balancing": "Vink aan als de batterij of omvormer zelf minder laadt wanneer de hoofdzekering bijna vol is. Het laden uit het net telt dan als last die de batterij zelf wegneemt: de auto wordt alleen verlaagd als het huis ook zonder die last boven de grens zit. De harde grens blijft gelden.",
+          "battery_phase_power_l1": "AC-vermogen van batterij of omvormer op L1 (W of kW). Verplicht als de batterij zelf balanceert.",
+          "battery_phase_power_l2": "AC-vermogen van batterij of omvormer op L2.",
+          "battery_phase_power_l3": "AC-vermogen van batterij of omvormer op L3.",
+          "battery_phase_invert": "De integratie verwacht plus = laden uit het net. Vink aan als je sensoren min tonen tijdens het laden (bijv. FoxESS Inverter Power R/S/T)."
         }
       },
       "features": {
@@ -648,7 +679,8 @@
       "charger_control_required": "Koppel een lader-schakelaar of zowel de start- als de stopknop.",
       "car_name_required": "Vul een naam in.",
       "car_name_exists": "Een andere auto heeft deze naam al.",
-      "car_name_reserved": "Deze naam wordt gebruikt door het profiel Gast."
+      "car_name_reserved": "Deze naam wordt gebruikt door het profiel Gast.",
+      "battery_phase_required": "Koppel het batterijvermogen op alle drie de fasen als de batterij zelf op de hoofdzekering balanceert."
     }
   },
   "entity": {

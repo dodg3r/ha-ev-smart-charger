@@ -53,6 +53,10 @@ class PhaseReading:
     export_w: float | None = None
     voltage_v: float | None = None
     charger_current_a: float | None = None
+    # v2.53.0: current the home battery takes from the grid on this phase
+    # while it balances against the main fuse itself. It will reduce that on
+    # its own, so it is credited back before the charger is limited.
+    flexible_a: float | None = None
 
 
 @dataclass(frozen=True)
@@ -66,6 +70,7 @@ class PhaseResult:
     charger_current_a: float
     house_current_a: float | None
     room_a: float | None
+    flexible_a: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -191,10 +196,17 @@ def compute_fuse_limit(
                 PhaseResult(index, False, source, None, charger_a, None, None)
             )
             continue
-        house_a = grid_a - charger_a
+        # v2.53.0: never credit more than the load the house actually draws
+        # besides the charger (the battery cannot free more than that).
+        credit = min(
+            max(0.0, reading.flexible_a or 0.0), max(0.0, grid_a - charger_a)
+        )
+        house_a = grid_a - charger_a - credit
         room_a = fuse_a - margin - house_a
         results.append(
-            PhaseResult(index, True, source, grid_a, charger_a, house_a, room_a)
+            PhaseResult(
+                index, True, source, grid_a, charger_a, house_a, room_a, credit
+            )
         )
 
     if missing:
@@ -203,7 +215,10 @@ def compute_fuse_limit(
 
     bottleneck = min(results, key=lambda r: r.room_a)
     max_grid = max(r.grid_current_a for r in results)
-    overloaded = max_grid > fuse_a - margin + 1e-6
+    # v2.53.0: an overload the self-balancing battery can remove by itself
+    # is not one; the hard limit below still uses the raw meter reading.
+    max_firm = max(r.grid_current_a - r.flexible_a for r in results)
+    overloaded = max_firm > fuse_a - margin + 1e-6
     hard_trip = hard_limit_a is not None and max_grid > hard_limit_a + 1e-6
     reason = f"bottleneck L{bottleneck.phase}"
     if hard_trip:
