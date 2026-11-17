@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.50.0
+**Current Version:** 2.51.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,23 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.51.0 (2026-11-17) — fork dodg3r
+**Price chart keeps every known hour during a live plan; card border yields to stack-in-card**
+
+Requested by the maintainer.
+- `PlannedNightCharge._publish_plan`: the chart (`prices` attribute) runs
+  from the window start to the last hour with a known price (at least 12 h
+  or the deadline, and every planned hour), also past the deadline. Hours
+  past the deadline are not in `plannable`, so the card dims them. Prices
+  are read from all fetched prices, not only the window; `prices_until`
+  likewise. Before, a live plan zoomed in to the hours up to the deadline.
+- Frontend: the `border` rules on `ha-card` (base and `theme-ha`) lost
+  their `!important`, so `stack-in-card` can remove the card's frame (two
+  lines between the price chart and a markdown card).
+- Tests: `test_chart_shows_known_prices_past_the_deadline`.
+
+---
 
 ### v2.50.0 (2026-11-16) — fork dodg3r
 **Price chart flat in the HA theme; `hide_header` for the price part**

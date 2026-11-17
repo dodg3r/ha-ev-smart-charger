@@ -5103,7 +5103,7 @@ class EvSmartChargerDashboard extends HTMLElement {
              programmatically and can capture touch pans on WebKit). */
           overflow: hidden;
           overflow: clip;
-          border: 0 !important;
+          border: 0;
           border-radius: 0;
           background:
             radial-gradient(1200px 600px at 8% -10%, color-mix(in srgb, var(--evsc-sys-cyan) 22%, transparent), transparent 60%),
@@ -6016,7 +6016,7 @@ class EvSmartChargerDashboard extends HTMLElement {
           --evsc-ring-home: var(--primary-color, #03a9f4);
           background: var(--ha-card-background, var(--card-background-color, #fff));
           border-radius: var(--ha-card-border-radius, 12px);
-          border: var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--divider-color, #e0e0e0)) !important;
+          border: var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--divider-color, #e0e0e0));
           box-shadow: var(--ha-card-box-shadow, none);
           letter-spacing: normal;
         }

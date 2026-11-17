@@ -798,19 +798,19 @@ class PlannedNightCharge:
             state = self.hass.states.get(self._price_entity)
             if state is not None:
                 unit = state.attributes.get("unit_of_measurement")
-        known = [hour for hour in plan.prices]
-        # v2.21.1: the chart shows the known prices (at least 12 hours and
-        # every planned hour), not a week of empty bars when the deadline is
-        # days away.
-        display_end = current_hour + timedelta(hours=12)
+        # v2.51.0: the chart shows every hour with a known price from the
+        # start of the window on, also past the deadline (those hours are
+        # not plannable and dimmed), so a live plan does not zoom in.
+        known = [hour for hour in self._prices if hour >= plan.window_start]
+        start = plan.hours[0] if plan.hours else current_hour
+        display_end = min(current_hour + timedelta(hours=12), plan.deadline)
         if known:
             display_end = max(display_end, max(known) + timedelta(hours=1))
         if plan.planned:
             display_end = max(display_end, max(plan.planned) + timedelta(hours=1))
-        display_end = min(display_end, plan.deadline)
-        shown = [hour for hour in plan.hours if hour < display_end]
+        shown = window_hours(start, display_end)
         prices = [
-            {"start": hour.isoformat(), "price": plan.prices.get(hour)}
+            {"start": hour.isoformat(), "price": self._prices.get(hour)}
             for hour in shown
         ]
         cheapest_prices = [plan.prices[hour] for hour in plan.cheapest if hour in plan.prices]
@@ -829,7 +829,7 @@ class PlannedNightCharge:
             "needed_hours": plan.needed_hours,
             "power_kw": round(self._power_kw(), 2),
             "prices": prices,
-            "prices_truncated": len(shown) < len(plan.hours),
+            "prices_truncated": bool(shown) and shown[-1] < plan.hours[-1] if plan.hours else False,
             "price_source": self._price_source,
             "prices_until": (
                 (max(known) + timedelta(hours=1)).isoformat() if known else None

@@ -409,6 +409,25 @@ async def test_far_deadline_chart_is_capped(hass):
     assert attrs["price_source"] == "attributes"
 
 
+async def test_chart_shows_known_prices_past_the_deadline(hass):
+    """v2.51.0: a live plan does not zoom in to the window."""
+    base = _base()
+    night, _controller_mock = await _component(hass, base)
+    for day in WEEKDAY_KEYS:
+        hass.states.async_set(f"time.ready_{day}", "05:00:00")
+    published = _capture(night)
+
+    await night._evaluate(_at(base, 3, 0))
+    attrs = published["attrs"]
+    assert attrs["mode"] == "plan"
+    starts = [p["start"] for p in attrs["prices"]]
+    assert _at(base, 5).isoformat() in starts
+    assert _at(base, 6).isoformat() in starts
+    assert starts[-1] == _at(base, 6).isoformat()
+    assert _at(base, 6).isoformat() not in attrs["plannable"]
+    assert attrs["prices_truncated"] is False
+
+
 async def test_missing_prices_are_retried_every_minute(hass):
     """v2.23.0: empty prices are re-read after a minute, not ten."""
     base = _base()
