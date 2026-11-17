@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.52.0"
+VERSION = "2.53.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -271,6 +271,21 @@ CONF_GRID_INVERT = "grid_invert"
 HELPER_CHARGED_TODAY_SUFFIX = "evsc_charged_today"
 CHARGED_TODAY_INTERVAL_SECONDS = 10
 CONF_BATTERY_POWER_INVERT = "battery_power_invert"
+
+# v2.53.0: the home battery balances against the main fuse itself. Its AC
+# power per phase (plus = drawing from the grid / charging, after the invert
+# box) is then counted as a load it will reduce on its own, so the fuse guard
+# only acts when the house is over the limit without that charging.
+CONF_BATTERY_SELF_BALANCING = "battery_self_balancing"
+CONF_BATTERY_PHASE_POWER_L1 = "battery_phase_power_l1"
+CONF_BATTERY_PHASE_POWER_L2 = "battery_phase_power_l2"
+CONF_BATTERY_PHASE_POWER_L3 = "battery_phase_power_l3"
+BATTERY_PHASE_POWER_KEYS = (
+    CONF_BATTERY_PHASE_POWER_L1,
+    CONF_BATTERY_PHASE_POWER_L2,
+    CONF_BATTERY_PHASE_POWER_L3,
+)
+CONF_BATTERY_PHASE_INVERT = "battery_phase_invert"
 
 # v2.17.0: "What do you have?" setup answers. They decide which config steps
 # and fields are shown. Existing entries without the keys derive the answers
@@ -918,6 +933,19 @@ def has_home_battery(config: dict) -> bool:
 def shows_home_battery(config: dict) -> bool:
     """Return True when a home-battery SOC sensor is mapped (v2.24.0)."""
     return bool(config.get(CONF_SOC_HOME))
+
+
+def battery_self_balances(config: dict) -> bool:
+    """Return True when the home battery balances against the fuse itself.
+
+    v2.53.0: needs the setup answer, a home-battery SOC sensor (control by
+    the integration is not required) and the battery power on every phase.
+    """
+    return (
+        bool(config.get(CONF_BATTERY_SELF_BALANCING))
+        and shows_home_battery(config)
+        and all(config.get(key) for key in BATTERY_PHASE_POWER_KEYS)
+    )
 
 
 def controls_home_battery(config: dict) -> bool:

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.52.0
+**Current Version:** 2.53.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,33 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.53.0 (2026-11-17) — fork dodg3r
+**Home battery that balances against the main fuse itself**
+
+Requested by the maintainer: with load balancing by the integration and a
+battery with its own control, both fought over the same room. The battery
+should yield first.
+- Battery step (all three flows): `CONF_BATTERY_SELF_BALANCING` ("The battery
+  balances against the main fuse itself"), `CONF_BATTERY_PHASE_POWER_L1/L2/L3`
+  (`BATTERY_PHASE_POWER_KEYS`, optional, cleared → None) and
+  `CONF_BATTERY_PHASE_INVERT` (plus = charging from the grid). Error
+  `battery_phase_required` when the box is ticked without all three phases
+  (`_battery_errors`). `_apply_features` clears them without a battery.
+  Texts EN/IT/NL.
+- `const.battery_self_balances(config)`: box + SOC sensor + every phase
+  (control by the integration not required).
+- `fuse_math.PhaseReading.flexible_a`: per phase the battery's grid charging
+  is credited, capped to grid − charger; `house = grid − charger − credit`,
+  `overloaded` uses grid − credit. `hard_trip` keeps the raw meter.
+  `PhaseResult.flexible_a` (default 0).
+- `FuseGuard._battery_flexible_a`: battery power (kW normalised, invert
+  applied, discharge = 0) / phase voltage (else 230 V); the entities are
+  tracked; headroom attribute `battery_flex_l{n}`. Box off = unchanged.
+- README: fuse protection section.
+- Tests: NEW `tests/test_v2530_battery_balancing.py`.
+
+---
 
 ### v2.52.0 (2026-11-17) — fork dodg3r
 **Charge plan: the cheapest hours day or night; the night before a sunny day is a reserve; "Night Smart Charge" renamed "Charge plan"**

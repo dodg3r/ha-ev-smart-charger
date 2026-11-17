@@ -170,7 +170,7 @@ steps that apply to your answers are shown.
 | Electricity meter | see [Requirements](#requirements) |
 | Charger | see [Requirements](#requirements) |
 | Solar panels | production |
-| Home battery | SOC and battery power |
+| Home battery | SOC and battery power; optionally "the battery balances against the main fuse itself" with its power per phase |
 | Solar forecast | today and tomorrow |
 | Notifications | notify services and car owner |
 | External | electricity price, optional helper that receives the night energy forecast |
@@ -303,6 +303,16 @@ room = fuse − margin − (grid current − charger current)
 - A phase more than `evsc_fuse_hard_trip` (default 10 A) above the fuse stops
   the charger at once.
 - Missing meter data drops to 6 A and stops after 2 minutes.
+
+**A battery that balances itself.** If the home battery or inverter lowers its
+own charging near the fuse limit, tick *The battery balances against the main
+fuse itself* in the Home battery step and map its AC power per phase (L1–L3;
+plus = charging from the grid, tick *Invert sign* otherwise, e.g. FoxESS
+*Inverter Power R/S/T*). The charging it takes from the grid is then credited
+per phase, so the car is only lowered when the house is over the limit even
+without that charging. The two controllers no longer fight over the same room.
+The hard limit still uses the raw meter reading. The credit per phase is shown
+as `battery_flex_l1`–`l3` on the headroom sensor.
 
 Entities (only with load balancing): `sensor.…_evsc_main_fuse`,
 `sensor.…_evsc_fuse_headroom` (the limit, with per-phase details),

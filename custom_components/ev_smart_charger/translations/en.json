@@ -61,12 +61,22 @@
         "data": {
           "soc_home": "Home battery SOC",
           "battery_power": "Battery power (W, signed)",
-          "battery_power_invert": "Invert sign of battery power"
+          "battery_power_invert": "Invert sign of battery power",
+          "battery_self_balancing": "The battery balances against the main fuse itself",
+          "battery_phase_power_l1": "Battery / inverter power L1",
+          "battery_phase_power_l2": "Battery / inverter power L2",
+          "battery_phase_power_l3": "Battery / inverter power L3",
+          "battery_phase_invert": "Invert sign of the per-phase power"
         },
         "data_description": {
           "soc_home": "Home battery state of charge in percent.",
           "battery_power": "Signed battery power in W — NEGATIVE = discharging, POSITIVE = charging. If your sensor reports the opposite sign, invert it with a template sensor (see the README).",
-          "battery_power_invert": "Tick if this sensor shows plus when the battery discharges and minus when it charges. The integration expects plus = charging."
+          "battery_power_invert": "Tick if this sensor shows plus when the battery discharges and minus when it charges. The integration expects plus = charging.",
+          "battery_self_balancing": "Tick if the battery or inverter lowers its own charging when the main fuse is near its limit. The charging it takes from the grid then counts as load the battery removes by itself: the car is only lowered if the house is over the limit even without it. The hard limit still applies.",
+          "battery_phase_power_l1": "Battery or inverter AC power on L1 (W or kW). Required when the battery balances itself.",
+          "battery_phase_power_l2": "Battery or inverter AC power on L2.",
+          "battery_phase_power_l3": "Battery or inverter AC power on L3.",
+          "battery_phase_invert": "The integration expects plus = charging from the grid. Tick if your sensors show minus while charging (e.g. FoxESS Inverter Power R/S/T)."
         }
       },
       "pv_forecast": {
@@ -225,12 +235,22 @@
         "data": {
           "soc_home": "Home battery SOC",
           "battery_power": "Battery power (W, signed)",
-          "battery_power_invert": "Invert sign of battery power"
+          "battery_power_invert": "Invert sign of battery power",
+          "battery_self_balancing": "The battery balances against the main fuse itself",
+          "battery_phase_power_l1": "Battery / inverter power L1",
+          "battery_phase_power_l2": "Battery / inverter power L2",
+          "battery_phase_power_l3": "Battery / inverter power L3",
+          "battery_phase_invert": "Invert sign of the per-phase power"
         },
         "data_description": {
           "soc_home": "Home battery state of charge in percent.",
           "battery_power": "Signed battery power in W — NEGATIVE = discharging, POSITIVE = charging. If your sensor reports the opposite sign, invert it with a template sensor (see the README).",
-          "battery_power_invert": "Tick if this sensor shows plus when the battery discharges and minus when it charges. The integration expects plus = charging."
+          "battery_power_invert": "Tick if this sensor shows plus when the battery discharges and minus when it charges. The integration expects plus = charging.",
+          "battery_self_balancing": "Tick if the battery or inverter lowers its own charging when the main fuse is near its limit. The charging it takes from the grid then counts as load the battery removes by itself: the car is only lowered if the house is over the limit even without it. The hard limit still applies.",
+          "battery_phase_power_l1": "Battery or inverter AC power on L1 (W or kW). Required when the battery balances itself.",
+          "battery_phase_power_l2": "Battery or inverter AC power on L2.",
+          "battery_phase_power_l3": "Battery or inverter AC power on L3.",
+          "battery_phase_invert": "The integration expects plus = charging from the grid. Tick if your sensors show minus while charging (e.g. FoxESS Inverter Power R/S/T)."
         }
       },
       "charger_model": {
@@ -420,7 +440,8 @@
       "charger_control_required": "Map either a charger switch or both the start and stop charging buttons.",
       "car_name_required": "Enter a name.",
       "car_name_exists": "Another car already has this name.",
-      "car_name_reserved": "This name is used by the Guest profile."
+      "car_name_reserved": "This name is used by the Guest profile.",
+      "battery_phase_required": "Map the battery power on all three phases when the battery balances against the main fuse itself."
     },
     "abort": {
       "already_configured": "Another EV Smart Charger entry already uses this charger switch.",
@@ -546,12 +567,22 @@
         "data": {
           "soc_home": "Home battery SOC",
           "battery_power": "Battery power (W, signed)",
-          "battery_power_invert": "Invert sign of battery power"
+          "battery_power_invert": "Invert sign of battery power",
+          "battery_self_balancing": "The battery balances against the main fuse itself",
+          "battery_phase_power_l1": "Battery / inverter power L1",
+          "battery_phase_power_l2": "Battery / inverter power L2",
+          "battery_phase_power_l3": "Battery / inverter power L3",
+          "battery_phase_invert": "Invert sign of the per-phase power"
         },
         "data_description": {
           "soc_home": "Home battery state of charge in percent.",
           "battery_power": "Signed battery power in W — NEGATIVE = discharging, POSITIVE = charging. If your sensor reports the opposite sign, invert it with a template sensor (see the README).",
-          "battery_power_invert": "Tick if this sensor shows plus when the battery discharges and minus when it charges. The integration expects plus = charging."
+          "battery_power_invert": "Tick if this sensor shows plus when the battery discharges and minus when it charges. The integration expects plus = charging.",
+          "battery_self_balancing": "Tick if the battery or inverter lowers its own charging when the main fuse is near its limit. The charging it takes from the grid then counts as load the battery removes by itself: the car is only lowered if the house is over the limit even without it. The hard limit still applies.",
+          "battery_phase_power_l1": "Battery or inverter AC power on L1 (W or kW). Required when the battery balances itself.",
+          "battery_phase_power_l2": "Battery or inverter AC power on L2.",
+          "battery_phase_power_l3": "Battery or inverter AC power on L3.",
+          "battery_phase_invert": "The integration expects plus = charging from the grid. Tick if your sensors show minus while charging (e.g. FoxESS Inverter Power R/S/T)."
         }
       },
       "features": {
@@ -648,7 +679,8 @@
       "charger_control_required": "Map either a charger switch or both the start and stop charging buttons.",
       "car_name_required": "Enter a name.",
       "car_name_exists": "Another car already has this name.",
-      "car_name_reserved": "This name is used by the Guest profile."
+      "car_name_reserved": "This name is used by the Guest profile.",
+      "battery_phase_required": "Map the battery power on all three phases when the battery balances against the main fuse itself."
     }
   },
   "entity": {
