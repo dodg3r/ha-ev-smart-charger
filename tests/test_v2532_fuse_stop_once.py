@@ -25,6 +25,8 @@ async def test_fuse_stop_is_sent_once_while_the_switch_lags(hass):
         calls.append(call.data["entity_id"])  # state deliberately not updated
 
     hass.services.async_register("switch", "turn_off", turn_off)
+    hass.services.async_register("switch", "turn_on", AsyncMock())
+    hass.services.async_register("number", "set_value", AsyncMock())
     hass.states.async_set("switch.charger", "on")
     hass.states.async_set("number.charger_current", "6")
     controller = _controller(hass, _runtime(_guard_stub(0)))
@@ -45,6 +47,8 @@ async def test_stop_is_resent_after_the_window(hass):
         calls.append(call.data["entity_id"])
 
     hass.services.async_register("switch", "turn_off", turn_off)
+    hass.services.async_register("switch", "turn_on", AsyncMock())
+    hass.services.async_register("number", "set_value", AsyncMock())
     hass.states.async_set("switch.charger", "on")
     hass.states.async_set("number.charger_current", "6")
     controller = _controller(hass, _runtime(_guard_stub(0)))
