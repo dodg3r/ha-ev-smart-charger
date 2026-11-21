@@ -2364,6 +2364,10 @@ class EvSmartChargerDashboard extends HTMLElement {
     }
     const obj = this._stateObj(this._config.charger_current_entity);
     if (!obj || obj.state === "unknown" || obj.state === "unavailable") return null;
+    // v2.53.3: OCPP resets the state to 0 when the session ends but leaves
+    // the L1/L2/L3 attributes at their last values; trust the state.
+    const total = readNum(obj.state);
+    if (total != null && Math.abs(total) < 0.1) return 0;
     const names = [
       ["L1", "l1", "L1-N", "phase_1", "phase1", "current_l1"],
       ["L2", "l2", "L2-N", "phase_2", "phase2", "current_l2"],
