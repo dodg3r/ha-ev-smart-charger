@@ -20,6 +20,7 @@ no-op unless a main fuse size is configured.
 """
 from __future__ import annotations
 
+from dataclasses import replace
 import asyncio
 from datetime import timedelta
 import time
@@ -36,6 +37,7 @@ from .utils import state_helper
 from .const import (
     BATTERY_PHASE_POWER_KEYS,
     CONF_BATTERY_PHASE_INVERT,
+    CHARGING_POWER_DRAWING_FLOOR_W,
     CONF_EV_CHARGER_CURRENT,
     CONF_CHARGING_POWER,
     CONF_CHARGING_POWER_L2,
@@ -312,7 +314,7 @@ class FuseGuard:
     # evaluation
     # ------------------------------------------------------------------
     def _evaluate(self, *, enforce: bool) -> LimiterDecision:
-        readings = self._build_readings()
+        readings = self._ignore_stale_charger_current(self._build_readings())
         # v2.25.2: a charger phase current above ~1 A means the charger draws
         # and the meter includes that draw, whatever the on/off state says.
         # A one-update 'off' (button charger power sensor dropping out) used
@@ -364,6 +366,36 @@ class FuseGuard:
             elif decision.allowed_a > 0 and self._restore_pending():
                 self._start_restore(decision)
         return decision
+
+    def _ignore_stale_charger_current(
+        self, readings: list[PhaseReading]
+    ) -> list[PhaseReading]:
+        """Drop a charger current reading the charger no longer updates.
+
+        v2.53.2: some OCPP chargers stop sending meter values when the
+        session ends, so the current sensor keeps its last value (5.9 A).
+        With the charger switch off and a measured charging power of ~0 W the
+        current cannot be real; counting it would keep the charger "on" and
+        hide it from the house load. Button chargers (no switch) keep the
+        v2.25.2 rule, since their power sensor can drop out mid-session.
+        """
+        if not self._switch_entity:
+            return readings
+        state = self.hass.states.get(self._switch_entity)
+        if state is None or state.state != "off":
+            return readings
+        model = getattr(self._runtime_data, "power_model", None)
+        reader = getattr(model, "read_charging_power", None)
+        power = reader(self.hass) if callable(reader) else None
+        if power is None or power > CHARGING_POWER_DRAWING_FLOOR_W:
+            # No power reading to confirm it: trust the current (v2.25.2).
+            return readings
+        return [
+            replace(reading, charger_current_a=0.0)
+            if reading.charger_current_a
+            else reading
+            for reading in readings
+        ]
 
     def _clear_settle(self) -> None:
         self._settle_until = 0.0
