@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.53.2
+**Current Version:** 2.53.3
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,19 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.53.3 (2026-11-21) — fork dodg3r
+**FIX: charge current tile kept showing the last phase current after a session**
+
+Reported from HiBerry (OCPP, `sensor.charger_current_import`): the tile
+showed 5.9 A after the charger stopped. The OCPP integration resets the
+sensor state to 0 at the end of a session but leaves the L1/L2/L3
+attributes at their last values, and `_measuredChargerCurrentA()` read the
+attributes first. Frontend only: a state below 0.1 A now reads 0 A, the
+same rule as `read_charger_phase_currents` and
+`_measuredChargerPhaseCurrents()`. Control was not affected.
+
+---
 
 ### v2.53.2 (2026-11-21) — fork dodg3r
 **FIX: fuse stop sent up to 13 times in a second; a frozen charger current is ignored**
