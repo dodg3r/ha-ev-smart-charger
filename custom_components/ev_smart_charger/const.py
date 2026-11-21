@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.53.1"
+VERSION = "2.53.2"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -96,6 +96,9 @@ NIGHT_START_RETRY_SECONDS = 60
 # phase current is above this, whatever the on/off state says (the meter then
 # certainly includes the charger's draw).
 FUSE_CHARGER_DRAWING_A = 1.0
+# v2.53.2: a fuse stop is sent once; the charger switch (OCPP) can keep
+# reading "on" for a while, and every meter update would send it again.
+FUSE_STOP_RESEND_SECONDS = 30
 # Night-charge GRID mode: suppress the measured-power blind-spot stop for this
 # long after the session starts. An EV can take tens of seconds to begin drawing
 # after the wallbox reports 'charging' (cold battery, scheduled charging,

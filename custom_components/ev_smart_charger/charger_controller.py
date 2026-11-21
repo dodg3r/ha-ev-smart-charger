@@ -5,6 +5,7 @@ import asyncio
 from dataclasses import dataclass
 from datetime import datetime
 import re
+import time
 from typing import Optional
 
 import async_timeout
@@ -29,6 +30,7 @@ from .const import (
     CONF_EV_CHARGER_SWITCH,
     SERVICE_CALL_TIMEOUT,
     CURRENT_SET_TIMEOUT_SECONDS,
+    FUSE_STOP_RESEND_SECONDS,
     get_amp_levels,
     get_charger_model,
     uses_charger_buttons,
@@ -211,6 +213,7 @@ class ChargerController:
         self._requested_amps: Optional[int] = None
         self._fuse_reduced = False
         self._fuse_stopped = False
+        self._fuse_stop_sent_at: float | None = None
 
         self.logger.info(
             "Initialized ChargerController - Switch: %s, Current: %s, Model: %s",
@@ -1064,11 +1067,22 @@ class ChargerController:
             return
 
         if ceiling <= 0:
+            # v2.53.2: the switch may still read "on" right after the stop;
+            # do not repeat the command on every meter update.
+            sent_at = self._fuse_stop_sent_at
+            if (
+                self._fuse_stopped
+                and sent_at is not None
+                and time.monotonic() - sent_at < FUSE_STOP_RESEND_SECONDS
+            ):
+                self.logger.debug("%s - stop already sent, waiting for the charger", reason)
+                return
             self.logger.info("%s - stopping charger", reason)
             if self._requested_amps is None and self._current_amperage:
                 self._requested_amps = self._current_amperage
             await self._turn_off_charger_switch()
             self._fuse_stopped = True
+            self._fuse_stop_sent_at = time.monotonic()
             self._record_operation_time()
             await self._refresh_state()
             await self._emit_operation_diagnostic(

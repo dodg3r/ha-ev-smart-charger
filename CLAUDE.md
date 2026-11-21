@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.53.1
+**Current Version:** 2.53.2
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,25 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.53.2 (2026-11-21) — fork dodg3r
+**FIX: fuse stop sent up to 13 times in a second; a frozen charger current is ignored**
+
+Log from HiBerry (OCPP, `switch.charger_charge_control`), 12:15 / 12:45 /
+13:45: each fuse stop was followed by up to 12 more within a second. The
+OCPP switch kept reading "on" after `turn_off`, and every meter update made
+the guard enforce the stop again. The charger current sensor also kept its
+last value (5.9 A) after the session ended.
+- `ChargerController.async_enforce_fuse_ceiling(0)`: a stop already sent
+  less than `FUSE_STOP_RESEND_SECONDS` (30 s) ago is not repeated
+  (`_fuse_stop_sent_at`; DEBUG log).
+- `FuseGuard._ignore_stale_charger_current()`: with a charger switch reading
+  off and a measured charging power at or below
+  `CHARGING_POWER_DRAWING_FLOOR_W`, the charger current is counted as 0.
+  Without a power reading, or for button chargers, the v2.25.2 rule stays.
+- Tests: NEW `tests/test_v2532_fuse_stop_once.py`.
+
+---
 
 ### v2.53.1 (2026-11-17) — fork dodg3r
 **FIX: double line between the price chart and a markdown card in stack-in-card**
