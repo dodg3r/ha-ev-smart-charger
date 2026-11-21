@@ -114,6 +114,7 @@ const DOMAIN_SUFFIXES = {
 
   // ── Night Smart Charge
   nightEnabled: ["switch", "evsc_night_smart_charge_enabled"],
+  keepWeekly: ["switch", "evsc_keep_weekly_charge"],
   preserveHomeBattery: ["switch", "evsc_preserve_home_battery"],
   nightTime: ["time", "evsc_night_charge_time"],
   carReadyTime: ["time", "evsc_car_ready_time"],
@@ -304,6 +305,15 @@ const SETTINGS_CATALOG = [
           it: "Interruttore principale per il piano di ricarica.",
           nl: "Hoofdschakelaar voor het laadplan.",
           sv: "Huvudbrytare för laddplanen.",
+        },
+        hint: { en: "Default on", it: "Default on", nl: "Standaard aan", sv: "Standard på" } },
+      { entityKey: "keepWeekly", kind: "toggle",
+        name: { en: "Keep Weekly Charging", it: "Mantieni la ricarica settimanale", nl: "Wekelijks laden behouden", sv: "Behåll veckoladdning" },
+        desc: {
+          en: "On: the car-ready days stay ticked week after week. Off: a day turns itself off when its car-ready time has passed, so each ticked day is used once.",
+          it: "On: i giorni auto pronta restano attivi ogni settimana. Off: un giorno si disattiva da solo quando l'orario auto pronta è passato, quindi ogni giorno vale una volta.",
+          nl: "Aan: de auto-klaar-dagen blijven elke week aangevinkt. Uit: een dag schakelt zichzelf uit zodra de klaar-tijd voorbij is, dus elke dag geldt één keer.",
+          sv: "På: dagarna med bil klar ligger kvar vecka efter vecka. Av: en dag stängs av när dess klartid har passerat, så varje ikryssad dag gäller en gång.",
         },
         hint: { en: "Default on", it: "Default on", nl: "Standaard aan", sv: "Standard på" } },
       { entityKey: "nightAmperage", kind: "stepper",

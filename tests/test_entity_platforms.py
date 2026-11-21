@@ -119,7 +119,8 @@ async def test_switch_platform_setup_restore_and_toggle(hass, runtime_data):
     # v2.10.0 (issue #55): +1 always-created switch (evsc_stop_charging).
     # v2.11.0: +1 always-created switch (evsc_force_charge_auto_disarm).
     # v2.36.0: −1 Hybrid Inverter Mode switch.
-    assert len(entities) == 23
+    # v2.54.0: +1 always-created switch (evsc_keep_weekly_charge).
+    assert len(entities) == 24
 
     restored_switch = next(
         entity for entity in entities if entity.entity_id.endswith("evsc_forza_ricarica")

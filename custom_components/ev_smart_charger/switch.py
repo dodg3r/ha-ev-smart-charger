@@ -18,6 +18,7 @@ from .const import (
     LIVE_ACTIVITIES_DEFAULT_GENERATION,
     HELPER_PRESERVE_HOME_BATTERY_SUFFIX,
     HELPER_FORCE_CHARGE_AUTO_DISARM_SUFFIX,
+    HELPER_KEEP_WEEKLY_CHARGE_SUFFIX,
     HELPER_STOP_CHARGING_SUFFIX,
     HELPER_TRACE_LOGGING_ENABLED_SUFFIX,
     HELPER_USE_HOME_BATTERY_SUFFIX,
@@ -56,6 +57,8 @@ async def async_setup_entry(
         ("evsc_priority_balancer_enabled", "Priority Balancer", "mdi:scale-balance", False),
         # v2.44.0: on in a new install.
         ("evsc_night_smart_charge_enabled", "Night Smart Charge", "mdi:moon-waning-crescent", True),
+        # v2.54.0: off = a "car ready" day turns off once its ready time passes.
+        (HELPER_KEEP_WEEKLY_CHARGE_SUFFIX, "Keep Weekly Charging", "mdi:calendar-sync", True),
         (HELPER_PRESERVE_HOME_BATTERY_SUFFIX, "Preserve Home Battery", "mdi:battery-heart-variant", False),
         # Notification switches (default ON)
         ("evsc_notify_smart_blocker_enabled", "Notify Smart Blocker", "mdi:bell-outline", True),

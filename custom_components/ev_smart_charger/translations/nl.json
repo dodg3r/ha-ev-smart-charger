@@ -709,6 +709,9 @@
       "evsc_night_smart_charge_enabled": {
         "name": "Laadplan"
       },
+      "evsc_keep_weekly_charge": {
+        "name": "Wekelijks laden behouden"
+      },
       "evsc_preserve_home_battery": {
         "name": "Thuisbatterij sparen"
       },
