@@ -49,6 +49,7 @@ from .const import (
     DEFAULT_EV_MIN_SOC_WEEKEND,
     DEFAULT_NIGHT_CHARGE_AMPERAGE,
     HELPER_CAR_READY_TIME_SUFFIX,
+    HELPER_KEEP_WEEKLY_CHARGE_SUFFIX,
     HELPER_NIGHT_CHARGE_AMPERAGE_SUFFIX,
     HELPER_NIGHT_CHARGE_ENABLED_SUFFIX,
     HELPER_NIGHT_CHARGE_PLAN_SUFFIX,
@@ -162,6 +163,8 @@ class PlannedNightCharge:
         self._start_retry_at: datetime | None = None
         self._last_plan: NightPlan | None = None
         self._tick_running = False
+        # v2.54.0: previous tick, to see a car-ready time being passed.
+        self._last_tick_at: datetime | None = None
         # Read by Solar Surplus (1 h cooldown after a night session). Planned
         # night charging never blocks the solar day, so this stays None.
         self._last_completion_time = None
@@ -584,11 +587,60 @@ class PlannedNightCharge:
             return
         self._tick_running = True
         try:
+            await self._release_passed_days(now)
             await self._evaluate(now)
         except Exception as err:  # noqa: BLE001 - keep the loop alive
             self.logger.error(f"Night Smart Charge evaluation failed: {err}")
         finally:
             self._tick_running = False
+
+    def _keep_weekly(self) -> bool:
+        entity = self._entity(HELPER_KEEP_WEEKLY_CHARGE_SUFFIX)
+        if not entity:
+            return True
+        state = state_helper.get_state(self.hass, entity)
+        if state in _UNAVAILABLE:
+            return True
+        return state != "off"
+
+    async def _release_passed_days(self, now: datetime) -> None:
+        """v2.54.0: turn a car-ready day off once its ready time has passed.
+
+        Only with "Keep weekly charging" off. Acts on the moment the ready
+        time is passed between two ticks, so a day switched on again after
+        its ready time (for next week) is left alone. A ready time passed
+        while Home Assistant was down is not caught.
+        """
+        local_now = dt_util.as_local(now)
+        last = self._last_tick_at
+        self._last_tick_at = local_now
+        if last is None or local_now <= last or self._keep_weekly():
+            return
+        day = last.date()
+        while day <= local_now.date():
+            key = WEEKDAY_KEYS[day.weekday()]
+            ready = datetime.combine(
+                day, self._ready_time_for(key), tzinfo=dt_util.DEFAULT_TIME_ZONE
+            )
+            if last < ready <= local_now and self._car_ready_for(key):
+                entity = self._entity(f"evsc_car_ready_{key}")
+                if entity:
+                    self.logger.info(
+                        f"Car ready time {ready.strftime('%H:%M')} passed: "
+                        f"turning car ready off for {key}"
+                    )
+                    try:
+                        await self.hass.services.async_call(
+                            "switch",
+                            "turn_off",
+                            {"entity_id": entity},
+                            blocking=True,
+                        )
+                    except Exception as err:  # noqa: BLE001
+                        self.logger.warning(
+                            f"Could not turn car ready off for {key}: {err}"
+                        )
+            day += timedelta(days=1)
 
     async def _evaluate(self, now: datetime) -> None:
         await self._refresh_prices(now)

@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.53.3"
+VERSION = "2.54.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -349,6 +349,9 @@ HELPER_SMART_BLOCKER_ENABLED_SUFFIX = "evsc_smart_charger_blocker_enabled"
 HELPER_USE_HOME_BATTERY_SUFFIX = "evsc_use_home_battery"
 HELPER_PRIORITY_BALANCER_ENABLED_SUFFIX = "evsc_priority_balancer_enabled"
 HELPER_NIGHT_CHARGE_ENABLED_SUFFIX = "evsc_night_smart_charge_enabled"
+# v2.54.0: off = a day's "car ready" switch turns itself off when that
+# day's car-ready time passes (one-off days instead of a weekly pattern).
+HELPER_KEEP_WEEKLY_CHARGE_SUFFIX = "evsc_keep_weekly_charge"
 HELPER_PRESERVE_HOME_BATTERY_SUFFIX = "evsc_preserve_home_battery"
 
 # Notification Switches
@@ -737,7 +740,8 @@ EV_SOC_MONITOR_INTERVAL = 5  # seconds - polling frequency for cloud sensor reli
 # 1 diagnostic sensor) → 78.
 # v2.42.0 adds 1 number with a home battery (evsc_home_battery_first_soc) → 79.
 # v2.44.0 adds 1 always-created sensor (evsc_charged_today) → 80.
-TOTAL_INTEGRATION_ENTITIES = 80
+# v2.54.0 adds 1 always-created switch (evsc_keep_weekly_charge) → 81.
+TOTAL_INTEGRATION_ENTITIES = 81
 # Verified count (v2.3.0): 53 entities when running in PV-only mode.
 # Unchanged in v2.1.0: the discharge number is battery-only (skipped in PV-only mode).
 # v2.3.0 (issue #32): evsc_night_pv_handoff_threshold is NOT battery-only → +1 → 53.
@@ -756,7 +760,8 @@ TOTAL_INTEGRATION_ENTITIES = 80
 # v2.36.0: the 6 Hybrid Inverter Mode entities were created in PV-only mode
 # too → 64.
 # v2.44.0: the charged-today sensor is NOT battery-only → 65.
-TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 65
+# v2.54.0: the keep-weekly-charge switch is NOT battery-only → 66.
+TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 66
 
 
 # ---------------------------------------------------------------------------

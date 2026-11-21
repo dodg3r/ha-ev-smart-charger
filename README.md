@@ -264,6 +264,11 @@ Switch: `evsc_night_smart_charge_enabled`. Current: `evsc_night_charge_amperage`
    plans at sunset with what is known, so the car is never left empty.
 6. Raising the target re-opens a finished plan; an unplug only stops the session
    after 60 s, so a status blink is not read as a disconnect.
+7. **Keep weekly charging** (`evsc_keep_weekly_charge`, default on): on, the car
+   ready days stay ticked week after week. Off, a day's *car ready* turns itself
+   off when its ready time passes, whether or not anything was charged, so each
+   ticked day is used once. A ready time passed while Home Assistant was down is
+   not caught.
 
 Without a car ready day in the coming week the card shows an overview of the
 known prices and the 5 cheapest hours. A car without SOC (e.g. Guest) charges in

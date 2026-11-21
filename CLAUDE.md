@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.53.3
+**Current Version:** 2.54.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,26 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.54.0 (2026-11-21) — fork dodg3r
+**Keep weekly charging: a car-ready day can turn itself off after use**
+
+Requested by the maintainer: car-ready days as one-off days instead of a
+weekly pattern.
+- NEW switch `evsc_keep_weekly_charge` ("Keep weekly charging", default on,
+  `HELPER_KEEP_WEEKLY_CHARGE_SUFFIX`). `TOTAL_INTEGRATION_ENTITIES` 80 → 81,
+  `_NO_BATTERY` 65 → 66. Entity names EN/IT/NL.
+- `PlannedNightCharge._release_passed_days()` (run first in every tick):
+  with the switch off, a day's `evsc_car_ready_<day>` is turned off when its
+  ready time is passed between two ticks (`_last_tick_at`), whether or not
+  anything was charged. Edge only: a day switched on after its ready time is
+  left alone; the first tick after a start does nothing, so a ready time
+  passed while HA was down is not caught.
+- Dashboard: "Keep Weekly Charging" toggle in the Charge plan settings
+  (EN/SV/IT/NL). README: charge plan section.
+- Tests: NEW `tests/test_v2540_keep_weekly_charge.py`; counts.
+
+---
 
 ### v2.53.3 (2026-11-21) — fork dodg3r
 **FIX: charge current tile kept showing the last phase current after a session**
