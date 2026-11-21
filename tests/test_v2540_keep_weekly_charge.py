@@ -14,9 +14,11 @@ from custom_components.ev_smart_charger.planned_night_charge import (
     PlannedNightCharge,
 )
 
-TZ = dt_util.DEFAULT_TIME_ZONE
-# Monday 23 November 2026
-MONDAY = datetime(2026, 11, 23, tzinfo=TZ)
+
+
+def _monday(**kw) -> datetime:
+    """Monday 23 November 2026 in HA's time zone (set by the hass fixture)."""
+    return datetime(2026, 11, 23, tzinfo=dt_util.DEFAULT_TIME_ZONE).replace(**kw)
 
 
 def _entities() -> dict[str, str]:
@@ -52,12 +54,12 @@ async def test_day_is_turned_off_when_ready_time_passes(hass):
     hass.states.async_set("switch.keep_weekly", "off")
     hass.states.async_set("switch.car_ready_monday", "on")
 
-    await plan._release_passed_days(MONDAY.replace(hour=6, minute=59, second=30))
+    await plan._release_passed_days(_monday(hour=6, minute=59, second=30))
     assert calls == []
-    await plan._release_passed_days(MONDAY.replace(hour=7, minute=0, second=30))
+    await plan._release_passed_days(_monday(hour=7, minute=0, second=30))
     assert calls == ["switch.car_ready_monday"]
     # Later ticks do not act again.
-    await plan._release_passed_days(MONDAY.replace(hour=7, minute=1, second=30))
+    await plan._release_passed_days(_monday(hour=7, minute=1, second=30))
     assert calls == ["switch.car_ready_monday"]
 
 
@@ -67,8 +69,8 @@ async def test_keep_weekly_on_leaves_the_day(hass):
     hass.states.async_set("switch.keep_weekly", "on")
     hass.states.async_set("switch.car_ready_monday", "on")
 
-    await plan._release_passed_days(MONDAY.replace(hour=6, minute=59))
-    await plan._release_passed_days(MONDAY.replace(hour=7, minute=1))
+    await plan._release_passed_days(_monday(hour=6, minute=59))
+    await plan._release_passed_days(_monday(hour=7, minute=1))
     assert calls == []
 
 
@@ -77,9 +79,9 @@ async def test_day_switched_on_after_its_ready_time_is_left_alone(hass):
     plan = _plan(hass, calls)
     hass.states.async_set("switch.keep_weekly", "off")
 
-    await plan._release_passed_days(MONDAY.replace(hour=9, minute=0))
+    await plan._release_passed_days(_monday(hour=9, minute=0))
     hass.states.async_set("switch.car_ready_monday", "on")  # for next Monday
-    await plan._release_passed_days(MONDAY.replace(hour=9, minute=1))
+    await plan._release_passed_days(_monday(hour=9, minute=1))
     assert calls == []
 
 
@@ -89,7 +91,7 @@ async def test_first_tick_after_start_does_nothing(hass):
     hass.states.async_set("switch.keep_weekly", "off")
     hass.states.async_set("switch.car_ready_monday", "on")
 
-    await plan._release_passed_days(MONDAY.replace(hour=7, minute=0, second=30))
+    await plan._release_passed_days(_monday(hour=7, minute=0, second=30))
     assert calls == []
 
 
@@ -99,8 +101,8 @@ async def test_ready_time_passed_over_midnight_gap(hass):
     hass.states.async_set("switch.keep_weekly", "off")
     hass.states.async_set("switch.car_ready_tuesday", "on")
 
-    await plan._release_passed_days(MONDAY.replace(hour=23, minute=59))
+    await plan._release_passed_days(_monday(hour=23, minute=59))
     await plan._release_passed_days(
-        MONDAY.replace(day=24, hour=7, minute=0, second=10)
+        _monday(day=24, hour=7, minute=0, second=10)
     )
     assert calls == ["switch.car_ready_tuesday"]
