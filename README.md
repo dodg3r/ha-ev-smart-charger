@@ -269,6 +269,12 @@ Switch: `evsc_night_smart_charge_enabled`. Current: `evsc_night_charge_amperage`
    off when its ready time passes, whether or not anything was charged, so each
    ticked day is used once. A ready time passed while Home Assistant was down is
    not caught.
+8. **Total price** (`evsc_price_addition`, per kWh excl. VAT, and
+   `evsc_price_vat`, %; both default 0): the price chart and the plan use
+   (sensor price + addition) × (1 + VAT). Put energy tax, grid fee and the
+   supplier's markup in the addition, e.g. 0.48 and 25 % in Sweden. Works with
+   the built-in Nord Pool integration, which has no such settings. A grid fee
+   that varies over the day cannot be entered.
 
 Without a car ready day in the coming week the card shows an overview of the
 known prices and the 5 cheapest hours. A car without SOC (e.g. Guest) charges in

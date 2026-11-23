@@ -831,6 +831,12 @@
       "evsc_min_solar_forecast_threshold": {
         "name": "Salta la notte prima di un giorno di sole"
       },
+      "evsc_price_addition": {
+        "name": "Supplemento al prezzo per kWh"
+      },
+      "evsc_price_vat": {
+        "name": "IVA sul prezzo"
+      },
       "evsc_night_charge_amperage": {
         "name": "Amperaggio piano di ricarica"
       },

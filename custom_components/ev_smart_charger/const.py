@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.54.0"
+VERSION = "2.55.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -612,6 +612,13 @@ DEFAULT_NIGHT_CHARGE_TIME = "01:00:00"
 # v2.52.0: the charge plan skips the night before a sunny day when the
 # day's forecast reaches this value (0 = off; the night stays a reserve).
 DEFAULT_MIN_SOLAR_FORECAST_THRESHOLD = 15  # kWh
+# v2.55.0: total electricity price = (spot price + addition) × (1 + VAT / 100).
+# The addition (per kWh, excl. VAT) covers energy tax, grid fee and the
+# supplier's markup. Both 0 = the price sensor as it is.
+HELPER_PRICE_ADDITION_SUFFIX = "evsc_price_addition"
+HELPER_PRICE_VAT_SUFFIX = "evsc_price_vat"
+DEFAULT_PRICE_ADDITION = 0.0
+DEFAULT_PRICE_VAT = 0
 # Hours of sun needed between that sunrise and the car-ready time.
 CHARGE_PLAN_SOLAR_MIN_HOURS = 2
 DEFAULT_NIGHT_CHARGE_AMPERAGE = 16  # amps
@@ -741,7 +748,8 @@ EV_SOC_MONITOR_INTERVAL = 5  # seconds - polling frequency for cloud sensor reli
 # v2.42.0 adds 1 number with a home battery (evsc_home_battery_first_soc) → 79.
 # v2.44.0 adds 1 always-created sensor (evsc_charged_today) → 80.
 # v2.54.0 adds 1 always-created switch (evsc_keep_weekly_charge) → 81.
-TOTAL_INTEGRATION_ENTITIES = 81
+# v2.55.0 adds 2 always-created numbers (price addition, VAT) → 83.
+TOTAL_INTEGRATION_ENTITIES = 83
 # Verified count (v2.3.0): 53 entities when running in PV-only mode.
 # Unchanged in v2.1.0: the discharge number is battery-only (skipped in PV-only mode).
 # v2.3.0 (issue #32): evsc_night_pv_handoff_threshold is NOT battery-only → +1 → 53.
@@ -761,7 +769,8 @@ TOTAL_INTEGRATION_ENTITIES = 81
 # too → 64.
 # v2.44.0: the charged-today sensor is NOT battery-only → 65.
 # v2.54.0: the keep-weekly-charge switch is NOT battery-only → 66.
-TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 66
+# v2.55.0: the two price numbers are NOT battery-only → 68.
+TOTAL_INTEGRATION_ENTITIES_NO_BATTERY = 68
 
 
 # ---------------------------------------------------------------------------
