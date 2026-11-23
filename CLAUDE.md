@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.54.0
+**Current Version:** 2.55.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,27 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.55.0 (2026-11-23) — fork dodg3r
+**Total electricity price: addition per kWh and VAT for the charge plan and price chart**
+
+Requested by the maintainer: users should see the total price, and the
+built-in Nord Pool integration has no VAT / surcharge settings.
+- NEW numbers `evsc_price_addition` (0–10 per kWh, step 0.01, excl. VAT) and
+  `evsc_price_vat` (0–50 %), default 0, always created.
+  `TOTAL_INTEGRATION_ENTITIES` 81 → 83, `_NO_BATTERY` 66 → 68. Names EN/IT/NL.
+- `PlannedNightCharge`: the sensor's prices are kept in `_raw_prices`
+  (`_fetch_prices`); `_refresh_prices` sets `_prices` to
+  `_total_prices()` = (price + addition) × (1 + VAT / 100) on every tick, so
+  a changed setting applies without a re-read. Both numbers are watched.
+  Everything that uses `_prices` (plan, cheapest hours, chart, averages) uses
+  the total.
+- Dashboard: "Price Addition per kWh" and "Price VAT" steppers in the Charge
+  plan settings (EN/SV/IT/NL); `_adjustNumber` rounds to the step's decimals.
+- README: charge plan section.
+- Tests: NEW `tests/test_v2550_total_price.py`; counts.
+
+---
 
 ### v2.54.0 (2026-11-21) — fork dodg3r
 **Keep weekly charging: a car-ready day can turn itself off after use**

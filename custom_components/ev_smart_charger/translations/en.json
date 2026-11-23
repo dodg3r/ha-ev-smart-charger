@@ -831,6 +831,12 @@
       "evsc_min_solar_forecast_threshold": {
         "name": "Skip night before sunny day"
       },
+      "evsc_price_addition": {
+        "name": "Price addition per kWh"
+      },
+      "evsc_price_vat": {
+        "name": "Price VAT"
+      },
       "evsc_night_charge_amperage": {
         "name": "Charge plan amperage"
       },

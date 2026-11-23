@@ -40,6 +40,10 @@ from .const import (
     DEFAULT_NIGHT_CHARGE_AMPERAGE,
     DEFAULT_NIGHT_PV_HANDOFF_THRESHOLD,
     HELPER_NIGHT_PV_HANDOFF_THRESHOLD_SUFFIX,
+    HELPER_PRICE_ADDITION_SUFFIX,
+    HELPER_PRICE_VAT_SUFFIX,
+    DEFAULT_PRICE_ADDITION,
+    DEFAULT_PRICE_VAT,
     DEFAULT_NIGHTTIME_SUNSET_OFFSET,
     DEFAULT_NIGHTTIME_SUNRISE_OFFSET,
     HELPER_NIGHTTIME_SUNSET_OFFSET_SUFFIX,
@@ -70,7 +74,7 @@ async def async_setup_entry(
 
     # ── Number definition table ──────────────────────────────────
     # (suffix, name, icon, min, max, step, default, unit)
-    _NUMBER_DEFS: list[tuple[str, str, str, float, float, float, float, str]] = [
+    _NUMBER_DEFS: list[tuple[str, str, str, float, float, float, float, str | None]] = [
         # Solar Surplus controls
         ("evsc_check_interval", "EVSC Check Interval", "mdi:timer-outline", 1, 60, 1, DEFAULT_CHECK_INTERVAL, "min"),
         ("evsc_grid_import_threshold", "EVSC Grid Import Threshold", "mdi:transmission-tower", 0, 1000, 10, DEFAULT_GRID_IMPORT_THRESHOLD, "W"),
@@ -91,6 +95,9 @@ async def async_setup_entry(
         ("evsc_min_solar_forecast_threshold", "EVSC Min Solar Forecast Threshold", "mdi:solar-power-variant", 0, 100, 1, DEFAULT_MIN_SOLAR_FORECAST_THRESHOLD, "kWh"),
         ("evsc_night_charge_amperage", "EVSC Night Charge Amperage", "mdi:current-ac", 6, 32, 2, DEFAULT_NIGHT_CHARGE_AMPERAGE, "A"),
         (HELPER_NIGHT_PV_HANDOFF_THRESHOLD_SUFFIX, "EVSC Night PV Handoff Threshold", "mdi:solar-power", 0, 5000, 50, DEFAULT_NIGHT_PV_HANDOFF_THRESHOLD, "W"),
+        # v2.55.0: total electricity price (charge plan and price chart)
+        (HELPER_PRICE_ADDITION_SUFFIX, "EVSC Price Addition Per kWh", "mdi:cash-plus", 0, 10, 0.01, DEFAULT_PRICE_ADDITION, None),
+        (HELPER_PRICE_VAT_SUFFIX, "EVSC Price VAT", "mdi:percent", 0, 50, 1, DEFAULT_PRICE_VAT, "%"),
         # Nighttime window offsets (v2.6.0 — issue #42)
         (HELPER_NIGHTTIME_SUNSET_OFFSET_SUFFIX, "EVSC Nighttime Sunset Offset", "mdi:weather-sunset-down", 0, 120, 5, DEFAULT_NIGHTTIME_SUNSET_OFFSET, "min"),
         (HELPER_NIGHTTIME_SUNRISE_OFFSET_SUFFIX, "EVSC Nighttime Sunrise Offset", "mdi:weather-sunset-up", 0, 120, 5, DEFAULT_NIGHTTIME_SUNRISE_OFFSET, "min"),

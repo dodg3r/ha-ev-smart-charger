@@ -831,6 +831,12 @@
       "evsc_min_solar_forecast_threshold": {
         "name": "Nacht overslaan vóór zonnige dag"
       },
+      "evsc_price_addition": {
+        "name": "Prijstoeslag per kWh"
+      },
+      "evsc_price_vat": {
+        "name": "Btw op prijs"
+      },
       "evsc_night_charge_amperage": {
         "name": "Laadplan-stroom"
       },

@@ -40,6 +40,8 @@ from .const import (
     CHARGE_PLAN_SOLAR_MIN_HOURS,
     DEFAULT_MIN_SOLAR_FORECAST_THRESHOLD,
     HELPER_MIN_SOLAR_FORECAST_THRESHOLD_SUFFIX,
+    HELPER_PRICE_ADDITION_SUFFIX,
+    HELPER_PRICE_VAT_SUFFIX,
     CONF_SOC_CAR,
     DEFAULT_BATTERY_CAPACITY,
     DEFAULT_CAR_READY_TIME,
@@ -143,6 +145,8 @@ class PlannedNightCharge:
 
         self._unsubs: list = []
         self._prices: dict[datetime, float] = {}
+        # v2.55.0: prices as read from the sensor; _prices holds the totals.
+        self._raw_prices: dict[datetime, float] = {}
         self._price_source: str | None = None
         self._unsupported_warned = False
         self._prices_fetched_at: datetime | None = None
@@ -279,6 +283,8 @@ class PlannedNightCharge:
             HELPER_NIGHT_CHARGE_AMPERAGE_SUFFIX,
             HELPER_CAR_READY_TIME_SUFFIX,
             HELPER_MIN_SOLAR_FORECAST_THRESHOLD_SUFFIX,
+            HELPER_PRICE_ADDITION_SUFFIX,
+            HELPER_PRICE_VAT_SUFFIX,
         ):
             entity = self._entity(key)
             if entity:
@@ -520,14 +526,37 @@ class PlannedNightCharge:
             return dt_util.as_local(sunset)
         return deadline - timedelta(hours=12)
 
+    def _price_number(self, suffix: str) -> float:
+        entity = self._entity(suffix)
+        if not entity:
+            return 0.0
+        value = state_helper.get_float(self.hass, entity, None)
+        return max(0.0, float(value)) if value is not None else 0.0
+
+    def _total_prices(self, raw: dict[datetime, float]) -> dict[datetime, float]:
+        """v2.55.0: (sensor price + addition) × (1 + VAT / 100)."""
+        addition = self._price_number(HELPER_PRICE_ADDITION_SUFFIX)
+        vat = self._price_number(HELPER_PRICE_VAT_SUFFIX)
+        if not addition and not vat:
+            return dict(raw)
+        factor = 1 + vat / 100
+        return {
+            hour: round((price + addition) * factor, 5)
+            for hour, price in raw.items()
+        }
+
     async def _refresh_prices(self, now: datetime) -> None:
+        await self._fetch_prices(now)
+        self._prices = self._total_prices(self._raw_prices)
+
+    async def _fetch_prices(self, now: datetime) -> None:
         if not self._price_entity:
-            self._prices = {}
+            self._raw_prices = {}
             self._price_source = PRICE_SOURCE_NOT_MAPPED
             return
         # v2.23.0: without any prices (e.g. the price integration was not
         # ready at startup) retry every minute instead of every 10 minutes.
-        refresh = 60 if not self._prices else NIGHT_PLAN_PRICE_REFRESH_SECONDS
+        refresh = 60 if not self._raw_prices else NIGHT_PLAN_PRICE_REFRESH_SECONDS
         stale = (
             self._prices_fetched_at is None
             or (now - self._prices_fetched_at).total_seconds() >= refresh
@@ -535,7 +564,7 @@ class PlannedNightCharge:
         if not (self._prices_dirty or stale):
             return
         try:
-            self._prices, source = await async_read_prices(
+            self._raw_prices, source = await async_read_prices(
                 self.hass, self._price_entity
             )
             if source != PRICE_SOURCE_UNSUPPORTED:

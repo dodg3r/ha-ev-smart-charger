@@ -115,6 +115,8 @@ const DOMAIN_SUFFIXES = {
   // ── Night Smart Charge
   nightEnabled: ["switch", "evsc_night_smart_charge_enabled"],
   keepWeekly: ["switch", "evsc_keep_weekly_charge"],
+  priceAddition: ["number", "evsc_price_addition"],
+  priceVat: ["number", "evsc_price_vat"],
   preserveHomeBattery: ["switch", "evsc_preserve_home_battery"],
   nightTime: ["time", "evsc_night_charge_time"],
   carReadyTime: ["time", "evsc_car_ready_time"],
@@ -325,6 +327,24 @@ const SETTINGS_CATALOG = [
           sv: "Strömmen under de planerade timmarna. Laddplanen använder den för att räkna ut hur många timmar som behövs.",
         },
         hint: { en: "Default 16 A", it: "Default 16 A", nl: "Standaard 16 A", sv: "Standard 16 A" } },
+      { entityKey: "priceAddition", kind: "stepper",
+        name: { en: "Price Addition per kWh", it: "Supplemento al prezzo per kWh", nl: "Prijstoeslag per kWh", sv: "Pristillägg per kWh" },
+        desc: {
+          en: "Added to the price sensor before VAT: energy tax, grid fee and the supplier's markup. The price chart and the charge plan then use the total price.",
+          it: "Aggiunto al prezzo del sensore prima dell'IVA: accise, oneri di rete e ricarico del fornitore. Il grafico e il piano usano poi il prezzo totale.",
+          nl: "Opgeteld bij de prijssensor vóór btw: energiebelasting, netkosten en de opslag van de leverancier. De prijsgrafiek en het laadplan gebruiken dan de totaalprijs.",
+          sv: "Läggs på elpriset före moms: energiskatt, nätavgift och elhandlarens påslag. Prisdiagrammet och laddplanen använder då totalpriset.",
+        },
+        hint: { en: "Default 0 · same currency as the price sensor, excl. VAT", it: "Default 0 · stessa valuta del sensore, IVA esclusa", nl: "Standaard 0 · zelfde valuta als de prijssensor, excl. btw", sv: "Standard 0 · samma valuta som prissensorn, exkl. moms" } },
+      { entityKey: "priceVat", kind: "stepper",
+        name: { en: "Price VAT", it: "IVA sul prezzo", nl: "Btw op prijs", sv: "Moms på elpriset" },
+        desc: {
+          en: "VAT on the price plus the addition: total = (price + addition) × (1 + VAT).",
+          it: "IVA sul prezzo più il supplemento: totale = (prezzo + supplemento) × (1 + IVA).",
+          nl: "Btw over de prijs plus de toeslag: totaal = (prijs + toeslag) × (1 + btw).",
+          sv: "Moms på priset plus tillägget: totalpris = (pris + tillägg) × (1 + moms).",
+        },
+        hint: { en: "Default 0 % · Sweden 25 %", it: "Default 0 % · Svezia 25 %", nl: "Standaard 0 % · Zweden 25 %", sv: "Standard 0 % · Sverige 25 %" } },
       { entityKey: "minSolarForecast", kind: "stepper", requires: "solar",
         name: { en: "Skip Night Before Sunny Day", it: "Salta la notte prima di un giorno di sole", nl: "Nacht overslaan vóór zonnige dag", sv: "Hoppa över natten före soldag" },
         desc: {
@@ -2137,7 +2157,10 @@ class EvSmartChargerDashboard extends HTMLElement {
     const step = Number(stateObj.attributes?.step ?? 1);
     const min = Number(stateObj.attributes?.min ?? current);
     const max = Number(stateObj.attributes?.max ?? current);
-    const next = Math.min(max, Math.max(min, current + step * direction));
+    // v2.55.0: round to the step's decimals (0.01 steps add float noise).
+    const decimals = (String(step).split(".")[1] || "").length;
+    const raw = Math.min(max, Math.max(min, current + step * direction));
+    const next = Number(raw.toFixed(decimals));
     // v1.11.3: optimistic UI — update every span bound to this entity
     // before the HA service call resolves. Live-update will confirm on
     // the next render tick (or revert if the call errored).
