@@ -324,6 +324,11 @@ per phase, so the car is only lowered when the house is over the limit even
 without that charging. The two controllers no longer fight over the same room.
 The hard limit still uses the raw meter reading. The credit per phase is shown
 as `battery_flex_l1`–`l3` on the headroom sensor.
+The battery's power sensor often updates slower than the meter (FoxESS: every
+10 s), so when the battery starts its charging briefly looks like house load.
+With this option a lower limit or a stop therefore waits 15 s and is dropped
+when the battery's charging is credited by then (`lower_at` on the headroom
+sensor while it waits). The hard limit is never delayed.
 
 Entities (only with load balancing): `sensor.…_evsc_main_fuse`,
 `sensor.…_evsc_fuse_headroom` (the limit, with per-phase details),

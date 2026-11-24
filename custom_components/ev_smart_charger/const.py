@@ -2,7 +2,7 @@
 
 # ========== INTEGRATION METADATA ==========
 DOMAIN = "ev_smart_charger"
-VERSION = "2.55.0"
+VERSION = "2.56.0"
 DEFAULT_NAME = "EV Smart Charger"
 FRONTEND_URL_BASE = "/api/ev_smart_charger/frontend"
 FRONTEND_CARD_FILENAME = "ev-smart-charger-dashboard.js"
@@ -706,6 +706,11 @@ FUSE_INVALID_STOP_SECONDS = 120  # missing meter data this long -> stop charging
 # window the charger is still counted at its previous setpoint (no extra
 # reduction or stop on the same overload) and no increase is made.
 FUSE_SETTLE_SECONDS = 15
+# v2.56.0: with a home battery that balances against the main fuse itself, a
+# lower ceiling or a stop waits this long. The battery's power sensor can lag
+# the meter (FoxESS: 10 s), so its charging briefly looks like house load.
+# The hard limit is never delayed.
+FUSE_BATTERY_BALANCE_GRACE_SECONDS = 15
 # v2.19.0: a phase above main fuse + this many A stops the charger at once.
 DEFAULT_FUSE_HARD_TRIP = 10.0
 # When the charger's setpoint is unknown, measured draw above the ceiling by
