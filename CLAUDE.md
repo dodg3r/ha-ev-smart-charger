@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Home Assistant custom integration** for intelligent EV charging control. It manages EV charger automation based on solar production, time of day, battery levels, grid import protection, and intelligent priority balancing between EV and home battery charging.
 
 **Domain:** `ev_smart_charger`
-**Current Version:** 2.55.0
+**Current Version:** 2.56.0
 **Installation:** HACS custom repository or manual installation to `custom_components/ev_smart_charger`
 
 ## Development Commands
@@ -759,6 +759,28 @@ async def _set_amperage(self, target_amperage: int):
 - **Sensor Unavailability:** When amperage sensor returns None/unavailable (e.g., charger offline), `get_int(entity, default=None)` returns None without warnings (v1.3.7+). The system maintains current state until sensor becomes available again.
 
 ## Version History
+
+### v2.56.0 (2026-11-24) — fork dodg3r
+**Battery self-balancing: a decrease waits 15 s for the battery's power sensor**
+
+Log from Palatset (FoxESS, battery self-balancing on), 05:00:12: the meter on
+L2 jumped 0.4 → 3.7 kW when the battery started charging, but
+`palatset_inv_power_s` (updated every 10 s) followed only at 05:00:20. In
+between the charging counted as house load: room 0 → stopped + 120 s hold.
+With the car charging it would have been paused for 2 minutes.
+- `FuseLimiter(decrease_delay_s=...)`: a lower ceiling or a stop is applied
+  only when it has lasted that long (`_down_since`, new
+  `decrease_remaining()`); the room coming back cancels it. A hard trip and
+  invalid data are never delayed.
+- `FUSE_BATTERY_BALANCE_GRACE_SECONDS = 15`; `FuseGuard` passes it only when
+  `battery_self_balances(config)`. Without the option nothing changes.
+- Headroom attribute `lower_at` while a decrease waits; log lines "waiting
+  15s for the home battery before lowering" / "battery wait over" (INFO while
+  charging, DEBUG otherwise).
+- README: fuse protection section.
+- Tests: NEW `tests/test_v2560_battery_grace.py`.
+
+---
 
 ### v2.55.0 (2026-11-23) — fork dodg3r
 **Total electricity price: addition per kWh and VAT for the charge plan and price chart**

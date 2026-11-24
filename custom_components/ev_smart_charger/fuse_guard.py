@@ -52,6 +52,7 @@ from .const import (
     FUSE_GRID_EXPORT_KEYS,
     FUSE_GRID_IMPORT_KEYS,
     FUSE_GRID_VOLTAGE_KEYS,
+    FUSE_BATTERY_BALANCE_GRACE_SECONDS,
     FUSE_GUARD_INTERVAL_SECONDS,
     FUSE_INVALID_STOP_SECONDS,
     FUSE_MEASURED_OVERDRAW_TOLERANCE_A,
@@ -119,6 +120,11 @@ class FuseGuard:
             stop_hold_s=FUSE_STOP_HOLD_SECONDS,
             increase_delay_s=FUSE_INCREASE_DELAY_SECONDS,
             invalid_stop_s=FUSE_INVALID_STOP_SECONDS,
+            decrease_delay_s=(
+                FUSE_BATTERY_BALANCE_GRACE_SECONDS
+                if battery_self_balances(config)
+                else None
+            ),
         )
 
         self._switch_entity = config.get(CONF_EV_CHARGER_SWITCH)
@@ -135,6 +141,8 @@ class FuseGuard:
         self._settle_until: float = 0.0
         self._settle_commanded: float | None = None
         self._settle_ceiling: int | None = None
+        # v2.56.0: a decrease is waiting for the battery's power sensor
+        self._decrease_waiting = False
 
     # ------------------------------------------------------------------
     # lifecycle
@@ -357,6 +365,7 @@ class FuseGuard:
         self._last_decision = decision
 
         self._log_transition(decision, limit, charger_on)
+        self._log_decrease_wait(decision, now, charger_on)
         self._publish(decision, limit, margin, readings)
 
         if enforce and self.adjusts:
@@ -366,6 +375,29 @@ class FuseGuard:
             elif decision.allowed_a > 0 and self._restore_pending():
                 self._start_restore(decision)
         return decision
+
+    def _log_decrease_wait(
+        self, decision: LimiterDecision, now: float, charger_on: bool
+    ) -> None:
+        """Log the battery grace before a decrease (v2.56.0)."""
+        waiting = self._limiter.decrease_remaining(now) > 0
+        if waiting == self._decrease_waiting:
+            return
+        self._decrease_waiting = waiting
+        log = self.logger.info if charger_on else self.logger.debug
+        if waiting:
+            log(
+                "Fuse protection: room down to %sA, waiting %ss for the home "
+                "battery before lowering (ceiling stays %sA)",
+                decision.target_a,
+                FUSE_BATTERY_BALANCE_GRACE_SECONDS,
+                decision.allowed_a,
+            )
+        else:
+            log(
+                "Fuse protection: battery wait over, ceiling %sA",
+                decision.allowed_a,
+            )
 
     def _ignore_stale_charger_current(
         self, readings: list[PhaseReading]
@@ -601,6 +633,8 @@ class FuseGuard:
             # v2.42.0: when a paused charger may restart / a raise is applied
             "restart_at": None,
             "raise_at": None,
+            # v2.56.0: when a waiting decrease is applied (battery balancing)
+            "lower_at": None,
         }
         now_m = time.monotonic()
         hold = self._limiter.hold_remaining(now_m)
@@ -612,6 +646,11 @@ class FuseGuard:
         if rise > 0:
             attributes["raise_at"] = (
                 dt_util.now() + timedelta(seconds=rise)
+            ).replace(microsecond=0).isoformat()
+        drop = self._limiter.decrease_remaining(now_m)
+        if drop > 0:
+            attributes["lower_at"] = (
+                dt_util.now() + timedelta(seconds=drop)
             ).replace(microsecond=0).isoformat()
         for result in limit.phases:
             suffix = f"l{result.phase}"
@@ -632,7 +671,13 @@ class FuseGuard:
         # Write immediately when the ceiling or state changes; otherwise refresh
         # the (fast-moving) per-phase attributes at most every 30 s so the
         # recorder is not flooded at the meter's update rate.
-        key = (decision.allowed_a, decision.state, limit.valid, limit.bottleneck_phase)
+        key = (
+            decision.allowed_a,
+            decision.state,
+            limit.valid,
+            limit.bottleneck_phase,
+            self._decrease_waiting,
+        )
         now = time.monotonic()
         if self._last_published is not None:
             last_key, last_at = self._last_published

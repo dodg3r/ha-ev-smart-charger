@@ -298,6 +298,7 @@ class FuseLimiter:
         stop_hold_s: float = 120.0,
         invalid_stop_s: float = 120.0,
         increase_delay_s: float | None = None,
+        decrease_delay_s: float | None = None,
     ) -> None:
         self._levels = sorted(levels)
         self._max_a = max_a if max_a is not None else self._levels[-1]
@@ -316,6 +317,13 @@ class FuseLimiter:
         self._increase_delay_s = increase_delay_s
         self._up_since: float | None = None
         self._up_min: int | None = None
+        # v2.56.0: with ``decrease_delay_s`` a lower ceiling (or a stop) is
+        # only applied once it has lasted that long. Used when the home
+        # battery balances against the fuse itself: its power sensor can lag
+        # the meter, so its charging briefly looks like house load. A hard
+        # trip is never delayed.
+        self._decrease_delay_s = decrease_delay_s
+        self._down_since: float | None = None
 
     def _reset_increase(self) -> None:
         self._up_since = None
@@ -334,6 +342,12 @@ class FuseLimiter:
         if self._increase_delay_s is None or self._up_since is None:
             return 0.0
         return max(0.0, self._increase_delay_s - (now - self._up_since))
+
+    def decrease_remaining(self, now: float) -> float:
+        """Seconds until a waiting decrease is applied, 0 when none (v2.56.0)."""
+        if self._decrease_delay_s is None or self._down_since is None:
+            return 0.0
+        return max(0.0, self._decrease_delay_s - (now - self._down_since))
 
     def _next_step_up(self, current: int) -> int:
         above = [level for level in self._levels if level > current]
@@ -354,6 +368,7 @@ class FuseLimiter:
         # ---- invalid data: fail safe -------------------------------------
         if not limit.valid:
             self._reset_increase()
+            self._down_since = None
             if self._invalid_since is None:
                 self._invalid_since = now
             if now - self._invalid_since >= self._invalid_stop_s:
@@ -374,9 +389,33 @@ class FuseLimiter:
         # ---- hard limit: a phase far above the fuse -> stop at once --------
         if limit.hard_trip:
             self._reset_increase()
+            self._down_since = None
             self._hold_until = now + self._stop_hold_s
             self.allowed_a = 0
             return LimiterDecision(0, 0, self.STATE_HARD_TRIP, limit.reason)
+
+        # ---- v2.56.0: wait before a decrease ------------------------------
+        current = self.allowed_a
+        if (
+            self._decrease_delay_s
+            and current
+            and target < current
+            and now >= self._hold_until
+        ):
+            if self._down_since is None:
+                self._down_since = now
+            waited = now - self._down_since
+            if waited < self._decrease_delay_s:
+                self._reset_increase()
+                remaining = int(self._decrease_delay_s - waited + 0.999)
+                state = self.STATE_LIMITED if current < self._max_a else self.STATE_OK
+                return LimiterDecision(
+                    current,
+                    target,
+                    state,
+                    f"{limit.reason}; lowering in {remaining}s unless it clears",
+                )
+        self._down_since = None
 
         # ---- v2.19.0: no pre-emptive cap -----------------------------------
         # While charging and no phase is above fuse − margin the meter says
